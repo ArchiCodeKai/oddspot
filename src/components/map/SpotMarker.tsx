@@ -29,20 +29,31 @@ export function SpotMarker({ spot, isSelected, onClick }: SpotMarkerProps) {
       position={{ lat: spot.lat, lng: spot.lng }}
       onClick={() => onClick(spot)}
     >
+      {/* 外層透明容器確保行動端 tap target 至少 44x44px */}
       <div
         style={{
-          width: isSelected ? 20 : 14,
-          height: isSelected ? 20 : 14,
-          borderRadius: "50%",
-          backgroundColor: color,
-          border: `2px solid ${isSelected ? "#fff" : "rgba(255,255,255,0.7)"}`,
-          boxShadow: isSelected
-            ? `0 0 0 3px ${color}66, 0 2px 8px rgba(0,0,0,0.3)`
-            : "0 1px 4px rgba(0,0,0,0.25)",
+          width: 44,
+          height: 44,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           cursor: "pointer",
-          transition: "all 0.15s ease",
         }}
-      />
+      >
+        <div
+          style={{
+            width: isSelected ? 20 : 14,
+            height: isSelected ? 20 : 14,
+            borderRadius: "50%",
+            backgroundColor: color,
+            border: `2px solid ${isSelected ? "#fff" : "rgba(255,255,255,0.7)"}`,
+            boxShadow: isSelected
+              ? `0 0 0 3px ${color}66, 0 2px 8px rgba(0,0,0,0.3)`
+              : "0 1px 4px rgba(0,0,0,0.25)",
+            transition: "all 0.15s ease",
+          }}
+        />
+      </div>
     </AdvancedMarker>
   );
 }

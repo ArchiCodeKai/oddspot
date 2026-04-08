@@ -50,6 +50,30 @@ export interface SpotCard {
   distance?: number;
 }
 
+// 詳情頁用（images 已解析為陣列）
+export interface SpotDetail {
+  id: string;
+  name: string;
+  nameEn?: string;
+  description?: string;
+  descriptionEn?: string;
+  lat: number;
+  lng: number;
+  address?: string;
+  category: SpotCategory;
+  status: SpotStatus;
+  difficulty: "easy" | "medium" | "hard";
+  images: string[];
+  rating: number;
+  visitCount: number;
+  lastVerifiedAt?: string;
+  recommendedTime?: string;
+  legend?: string;
+  googlePlaceId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SpotFilters {
   radius?: number;
   categories?: SpotCategory[];

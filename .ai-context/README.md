@@ -7,6 +7,9 @@ Claude Code 每次工作前，請依照以下順序讀取文件：
 2. `.ai-context/global/restrictions.md` — 禁止操作清單
 3. `.ai-context/global/coding-standards.md` — 編碼規範
 
+### 涉及 UI / 視覺設計時（必讀）
+- `.ai-context/global/visual-design.md` — 色彩、版型、元件風格、2026 趨勢採用方向
+
 ## 依任務類型選讀
 
 ### 修改地圖相關

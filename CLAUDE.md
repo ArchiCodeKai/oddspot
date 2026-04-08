@@ -39,6 +39,7 @@
 | `.ai-context/README.md` | AI 讀取優先順序 |
 | `.ai-context/global/restrictions.md` | 禁止操作完整清單 |
 | `.ai-context/global/coding-standards.md` | 編碼規範 |
+| `.ai-context/global/visual-design.md` | 視覺設計規範（色彩、版型、UI 元件風格）|
 | `.ai-context/global/state-management.md` | Zustand + React Query 分工 |
 | `.ai-context/global/api-patterns.md` | API 設計模式 |
 | `.ai-context/features/map/_module.md` | 地圖功能模組 |
@@ -72,3 +73,19 @@ visitCount Int  // 欄位存在，v1 UI 不顯示，v2 才有更新機制
 | Step 3 | 景點詳情頁 | ⏳ 待開始 |
 | Step 4 | 滑卡片 + Guest mode | ⏳ 待開始 |
 | Step 5 | NextAuth + 收藏同步 | ⏳ 待開始 |
+
+
+
+ ## 知識庫使用
+
+  當需要查詢我的日記或筆記時：
+  1. 先閱讀 `~/Vault/查詢指南.md`
+  2. 按照指南的路徑規則定位檔案
+
+  當需要幫我撰寫日記時：
+  1. 先閱讀 `~/Vault/撰寫指南.md`
+  2. 按照指南的格式撰寫內容
+
+  日記路徑範例：`~/Vault/日記/2026/03/2026-03-26.md`
+
+  請注意知識庫位置是 Vault>專案>
