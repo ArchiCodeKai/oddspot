@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({
@@ -5,7 +6,6 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    // dev: SQLite，生產環境改成 PostgreSQL URL
-    url: "file:./prisma/dev.db",
+    url: process.env.DATABASE_URL,
   },
 });

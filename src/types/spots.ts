@@ -16,6 +16,9 @@ export interface Spot {
   images: string; // JSON string: ["url1", "url2"]
   rating: number;
   visitCount: number;
+  voteCount: number;
+  expiresAt?: Date;
+  submittedById?: string;
   lastVerifiedAt?: Date;
   recommendedTime?: string;
   legend?: string;

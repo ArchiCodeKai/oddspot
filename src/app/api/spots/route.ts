@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { auth } from "@/auth";
 import type { ApiResponse } from "@/types/api";
 import type { SpotMapPoint } from "@/types/spots";
 
@@ -76,6 +77,77 @@ export async function GET(request: NextRequest) {
     console.error("[GET /api/spots]", error);
     return NextResponse.json<ApiResponse<null>>(
       { data: null, success: false, error: "查詢失敗" },
+      { status: 500 }
+    );
+  }
+}
+
+// 用戶投稿新景點
+export async function POST(request: NextRequest) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return NextResponse.json<ApiResponse<null>>(
+      { data: null, success: false, error: "請先登入才能投稿" },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const body = await request.json();
+    const { name, nameEn, description, category, lat, lng, address, difficulty, recommendedTime, legend, imageUrl } = body as {
+      name: string;
+      nameEn?: string;
+      description?: string;
+      category: string;
+      lat: number;
+      lng: number;
+      address?: string;
+      difficulty?: string;
+      recommendedTime?: string;
+      legend?: string;
+      imageUrl?: string;
+    };
+
+    if (!name || !category || isNaN(lat) || isNaN(lng)) {
+      return NextResponse.json<ApiResponse<null>>(
+        { data: null, success: false, error: "名稱、分類、座標為必填" },
+        { status: 400 }
+      );
+    }
+
+    const images = imageUrl ? JSON.stringify([imageUrl]) : JSON.stringify([]);
+    // pending 景點 30 天內未審核自動到期
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    const spot = await prisma.spot.create({
+      data: {
+        name,
+        nameEn,
+        description,
+        category,
+        lat,
+        lng,
+        address,
+        difficulty: difficulty ?? "easy",
+        recommendedTime,
+        legend,
+        images,
+        status: "pending",
+        submittedById: session.user.id,
+        expiresAt,
+      },
+      select: { id: true, name: true, status: true },
+    });
+
+    return NextResponse.json<ApiResponse<{ id: string; name: string; status: string }>>(
+      { data: spot, success: true },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("[POST /api/spots]", error);
+    return NextResponse.json<ApiResponse<null>>(
+      { data: null, success: false, error: "投稿失敗" },
       { status: 500 }
     );
   }

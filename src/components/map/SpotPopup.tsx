@@ -24,6 +24,7 @@ const STATUS_COLORS_DARK: Record<SpotStatus, string> = {
   active: "bg-green-500/15 text-green-400",
   uncertain: "bg-yellow-500/15 text-yellow-400",
   disappeared: "bg-zinc-700 text-zinc-400",
+  pending: "bg-blue-500/15 text-blue-400",
 };
 
 // 分類對應色（與 SpotMarker 一致）

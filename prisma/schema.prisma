@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // NextAuth 5 Prisma Adapter 要求的欄位結構
@@ -81,6 +81,9 @@ model Spot {
   images          String    // JSON string: ["url1", "url2"]
   rating          Float     @default(0)
   visitCount      Int       @default(0)
+  voteCount       Int       @default(0)
+  expiresAt       DateTime?
+  submittedById   String?
   lastVerifiedAt  DateTime?
   recommendedTime String?
   legend          String?
