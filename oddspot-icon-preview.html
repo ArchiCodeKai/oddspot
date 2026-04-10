@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OddSpot Icon Preview</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Mono', monospace;
+      background: #111;
+      color: #ccc;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    h1 { text-align: center; color: #00e5cc; font-size: 1.2rem; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 8px; }
+    .subtitle { text-align: center; font-size: 0.7rem; color: #555; letter-spacing: 0.15em; margin-bottom: 60px; }
+    .section-title { font-size: 0.65rem; letter-spacing: 0.2em; color: #444; text-transform: uppercase; margin-bottom: 24px; }
+
+    .row { display: flex; gap: 40px; align-items: flex-end; margin-bottom: 60px; }
+    .icon-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .icon-label { font-size: 0.6rem; color: #444; letter-spacing: 0.1em; }
+
+    .sz-lg  { width: 200px; height: 200px; border-radius: 45px; }
+    .sz-md  { width: 120px; height: 120px; border-radius: 27px; }
+    .sz-sm  { width: 60px;  height: 60px;  border-radius: 14px; }
+    .sz-fav { width: 32px;  height: 32px;  border-radius: 7px; }
+
+    .icon-dark  { background: #000; display: flex; align-items: center; justify-content: center; }
+    .icon-light { background: #e4ede8; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 30px rgba(0,180,130,0.08); }
+
+    @keyframes pulse-dark  { 0%,100%{filter:drop-shadow(0 0 6px #00e5cc) drop-shadow(0 0 18px #00e5cc88)} 50%{filter:drop-shadow(0 0 11px #00e5cc) drop-shadow(0 0 32px #00e5ccbb)} }
+    @keyframes pulse-light { 0%,100%{filter:drop-shadow(0 0 2px rgba(13,92,74,.3))} 50%{filter:drop-shadow(0 0 5px rgba(13,92,74,.55))} }
+
+    .icon-dark svg  { animation: pulse-dark  3s ease-in-out infinite; }
+    .icon-light svg { animation: pulse-light 3s ease-in-out infinite; }
+
+    .divider { border: none; border-top: 1px solid #1e1e1e; margin: 40px 0; }
+
+    .palette { display: flex; gap: 16px; margin-bottom: 48px; flex-wrap: wrap; }
+    .chip { display: flex; flex-direction: column; gap: 6px; }
+    .chip-color { width: 60px; height: 36px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+    .chip-hex  { font-size: .55rem; color: #555; letter-spacing: .05em; }
+    .chip-name { font-size: .58rem; color: #777; }
+
+    .prompts { max-width: 800px; margin: 0 auto; }
+    .prompt-block { background: #1a1a1a; border: 1px solid #222; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; }
+    .prompt-block h3 { font-size: .65rem; color: #00e5cc; letter-spacing: .15em; text-transform: uppercase; margin-bottom: 12px; }
+    .prompt-block p { font-size: .72rem; line-height: 1.9; color: #888; }
+    .prompt-block p strong { color: #ccc; }
+    .note { font-size: .65rem; color: #3a3a3a; margin-bottom: 32px; line-height: 1.7; }
+    .note span { color: #00e5cc88; }
+  </style>
+</head>
+<body>
+  <h1>OddSpot — Icon Concept</h1>
+  <p class="subtitle">neon / mystery / phosphor</p>
+
+  <div style="max-width:860px;margin:0 auto;">
+
+    <!-- ══════ DARK ══════ -->
+    <p class="section-title">Dark Mode — Black / Electric Cyan</p>
+    <div class="palette">
+      <div class="chip"><div class="chip-color" style="background:#000"></div><div class="chip-hex">#000000</div><div class="chip-name">BG</div></div>
+      <div class="chip"><div class="chip-color" style="background:#00e5cc"></div><div class="chip-hex">#00e5cc</div><div class="chip-name">Neon</div></div>
+      <div class="chip"><div class="chip-color" style="background:#002b1f"></div><div class="chip-hex">#002b1f</div><div class="chip-name">Dark Green</div></div>
+    </div>
+
+    <div class="row">
+
+      <!-- Large dark -->
+      <div class="icon-wrap">
+        <div class="icon-dark sz-lg">
+          <svg width="90" height="114" viewBox="0 0 110 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
+              stroke="#00e5cc" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <defs>
+              <clipPath id="clip-dk-lg"><path id="clipd-dk-lg" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"/></clipPath>
+            </defs>
+            <path id="eyelid-dk-lg" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"
+              stroke="#00e5cc" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <g clip-path="url(#clip-dk-lg)">
+              <g id="iris-dk-lg"><path d="M57 36 C62 36,66 40,65 45 C64 51,59 55,54 54 C49 54,47 50,48 45 C49 41,52 36,57 36Z" fill="#00e5cc"/></g>
+              <g id="pupil-dk-lg"><path d="M55 42 C58 42,60 44,59 47 C58 50,55 51,53 50 C51 49,50 47,51 45 C52 43,53 42,55 42Z" fill="#002b1f"/></g>
+              <g id="hl-dk-lg"><ellipse cx="61" cy="40" rx="1.6" ry="1.2" fill="#fff" opacity="0.8"/></g>
+            </g>
+          </svg>
+        </div>
+        <span class="icon-label">1024px</span>
+      </div>
+
+      <!-- Medium dark -->
+      <div class="icon-wrap">
+        <div class="icon-dark sz-md">
+          <svg width="54" height="68" viewBox="0 0 110 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
+              stroke="#00e5cc" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <defs>
+              <clipPath id="clip-dk-md"><path id="clipd-dk-md" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"/></clipPath>
+            </defs>
+            <path id="eyelid-dk-md" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"
+              stroke="#00e5cc" stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <g clip-path="url(#clip-dk-md)">
+              <g id="iris-dk-md"><path d="M57 36 C62 36,66 40,65 45 C64 51,59 55,54 54 C49 54,47 50,48 45 C49 41,52 36,57 36Z" fill="#00e5cc"/></g>
+              <g id="pupil-dk-md"><path d="M55 42 C58 42,60 44,59 47 C58 50,55 51,53 50 C51 49,50 47,51 45 C52 43,53 42,55 42Z" fill="#002b1f"/></g>
+              <g id="hl-dk-md"><ellipse cx="61" cy="40" rx="1.6" ry="1.2" fill="#fff" opacity="0.8"/></g>
+            </g>
+          </svg>
+        </div>
+        <span class="icon-label">120px</span>
+      </div>
+
+      <!-- Small dark -->
+      <div class="icon-wrap">
+        <div class="icon-dark sz-sm">
+          <svg width="27" height="34" viewBox="0 0 110 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
+              stroke="#00e5cc" stroke-width="5.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <defs>
+              <clipPath id="clip-dk-sm"><path id="clipd-dk-sm" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"/></clipPath>
+            </defs>
+            <path id="eyelid-dk-sm" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"
+              stroke="#00e5cc" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <g clip-path="url(#clip-dk-sm)">
+              <g id="iris-dk-sm"><path d="M57 36 C62 36,66 40,65 45 C64 51,59 55,54 54 C49 54,47 50,48 45 C49 41,52 36,57 36Z" fill="#00e5cc"/></g>
+              <g id="pupil-dk-sm"><path d="M55 42 C58 42,60 44,59 47 C58 50,55 51,53 50 C51 49,50 47,51 45 C52 43,53 42,55 42Z" fill="#002b1f"/></g>
+              <g id="hl-dk-sm"><ellipse cx="61" cy="40" rx="1.6" ry="1.2" fill="#fff" opacity="0.8"/></g>
+            </g>
+          </svg>
+        </div>
+        <span class="icon-label">60px</span>
+      </div>
+
+      <!-- Favicon dark（保留填充發光效果） -->
+      <div class="icon-wrap">
+        <div class="icon-dark sz-fav">
+          <svg width="14" height="18" viewBox="0 0 110 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
+              stroke="#00e5cc" stroke-width="8" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <ellipse cx="55" cy="45" rx="14" ry="14" fill="#00e5cc"/>
+          </svg>
+        </div>
+        <span class="icon-label">32px</span>
+      </div>
+
+    </div>
+
+    <hr class="divider">
+
+    <!-- ══════ LIGHT ══════ -->
+    <p class="section-title">Light Mode — Phosphor Paper / Single Deep Teal</p>
+    <p class="note">單色：所有線條及填充統一使用 <span>#0d5c4a</span>，提升辨識度。<br>
+    Favicon 改為不規則外框輪廓，非圓點。</p>
+
+    <div class="palette">
+      <div class="chip"><div class="chip-color" style="background:#e4ede8;border:1px solid #ccd8d0"></div><div class="chip-hex">#e4ede8</div><div class="chip-name">Phosphor Mist</div></div>
+      <div class="chip"><div class="chip-color" style="background:#0d5c4a"></div><div class="chip-hex">#0d5c4a</div><div class="chip-name">Single Ink</div></div>
+    </div>
+
+    <div class="row">
+
+      <!-- Large light -->
+      <div class="icon-wrap">
+        <div class="icon-light sz-lg">
+          <svg width="90" height="114" viewBox="0 0 110 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
+              stroke="#0d5c4a" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <defs>
+              <clipPath id="clip-lt-lg"><path id="clipd-lt-lg" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"/></clipPath>
+            </defs>
+            <path id="eyelid-lt-lg" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"
+              stroke="#0d5c4a" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <g clip-path="url(#clip-lt-lg)">
+              <g id="iris-lt-lg"><path d="M57 36 C62 36,66 40,65 45 C64 51,59 55,54 54 C49 54,47 50,48 45 C49 41,52 36,57 36Z" fill="#0d5c4a"/></g>
+              <g id="pupil-lt-lg"><path d="M55 42 C58 42,60 44,59 47 C58 50,55 51,53 50 C51 49,50 47,51 45 C52 43,53 42,55 42Z" fill="#e4ede8"/></g>
+              <g id="hl-lt-lg"><ellipse cx="61" cy="40" rx="1.4" ry="1.1" fill="#0d5c4a" opacity="0.22"/></g>
+            </g>
+          </svg>
+        </div>
+        <span class="icon-label">1024px</span>
+      </div>
+
+      <!-- Medium light -->
+      <div class="icon-wrap">
+        <div class="icon-light sz-md">
+          <svg width="54" height="68" viewBox="0 0 110 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
+              stroke="#0d5c4a" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <defs>
+              <clipPath id="clip-lt-md"><path id="clipd-lt-md" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"/></clipPath>
+            </defs>
+            <path id="eyelid-lt-md" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"
+              stroke="#0d5c4a" stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <g clip-path="url(#clip-lt-md)">
+              <g id="iris-lt-md"><path d="M57 36 C62 36,66 40,65 45 C64 51,59 55,54 54 C49 54,47 50,48 45 C49 41,52 36,57 36Z" fill="#0d5c4a"/></g>
+              <g id="pupil-lt-md"><path d="M55 42 C58 42,60 44,59 47 C58 50,55 51,53 50 C51 49,50 47,51 45 C52 43,53 42,55 42Z" fill="#e4ede8"/></g>
+              <g id="hl-lt-md"><ellipse cx="61" cy="40" rx="1.4" ry="1.1" fill="#0d5c4a" opacity="0.22"/></g>
+            </g>
+          </svg>
+        </div>
+        <span class="icon-label">120px</span>
+      </div>
+
+      <!-- Small light -->
+      <div class="icon-wrap">
+        <div class="icon-light sz-sm">
+          <svg width="27" height="34" viewBox="0 0 110 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
+              stroke="#0d5c4a" stroke-width="5.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <defs>
+              <clipPath id="clip-lt-sm"><path id="clipd-lt-sm" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"/></clipPath>
+            </defs>
+            <path id="eyelid-lt-sm" d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"
+              stroke="#0d5c4a" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <g clip-path="url(#clip-lt-sm)">
+              <g id="iris-lt-sm"><path d="M57 36 C62 36,66 40,65 45 C64 51,59 55,54 54 C49 54,47 50,48 45 C49 41,52 36,57 36Z" fill="#0d5c4a"/></g>
+              <g id="pupil-lt-sm"><path d="M55 42 C58 42,60 44,59 47 C58 50,55 51,53 50 C51 49,50 47,51 45 C52 43,53 42,55 42Z" fill="#e4ede8"/></g>
+              <g id="hl-lt-sm"><ellipse cx="61" cy="40" rx="1.4" ry="1.1" fill="#0d5c4a" opacity="0.22"/></g>
+            </g>
+          </svg>
+        </div>
+        <span class="icon-label">60px</span>
+      </div>
+
+      <!-- Favicon light：不規則外框輪廓，單色，非圓點 -->
+      <div class="icon-wrap">
+        <div class="icon-light sz-fav">
+          <svg width="14" height="18" viewBox="0 0 110 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- 外框 -->
+            <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
+              stroke="#0d5c4a" stroke-width="8" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <!-- 不規則「點」：略傾斜的不對稱橢圓輪廓，非正圓 -->
+            <path d="M50 40 C52 36,58 36,62 39 C65 42,65 48,62 51 C59 54,53 54,50 51 C47 48,47 43,50 40Z"
+              stroke="#0d5c4a" stroke-width="5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="icon-label">32px / favicon</span>
+      </div>
+
+    </div>
+
+    <hr class="divider">
+
+    <div class="prompts">
+      <p class="section-title">AI Image Generation Prompts</p>
+      <div class="prompt-block">
+        <h3>Midjourney — Dark Version</h3>
+        <p>
+          App icon for a mysterious urban exploration app called OddSpot.
+          An organic ghost/blob shape with a stylized asymmetric eye inside — the eyelid is irregular and the pupil is off-center.
+          <strong>Pure black background. Electric cyan neon (#00e5cc) linework with strong glow. Dark near-black green (#002b1f) pupil center.</strong>
+          Eerie, watchful, hacker terminal aesthetic. 512x512 rounded square.
+          <strong>--ar 1:1 --style raw --v 6.1</strong>
+        </p>
+      </div>
+      <div class="prompt-block">
+        <h3>Midjourney — Light Version (Phosphor Paper, Single Color)</h3>
+        <p>
+          App icon for a mysterious urban exploration app called OddSpot.
+          An organic ghost/blob shape with an asymmetric eye inside.
+          <strong>Background: #e4ede8 pale sage. All linework and fills: single deep teal (#0d5c4a) only. No other colors.</strong>
+          Eye shows through with background color (#e4ede8) as negative space. Minimalist, iconic, slightly unsettling.
+          512x512 rounded square.
+          <strong>--ar 1:1 --style raw --v 6.1</strong>
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script>
+    /*
+      眼皮形狀 — 依照生物學原理設計：
+      - 往右上看：眼瞼張開（上眼皮抬升），頂峰右移
+      - 往左下看：上眼皮跟隨眼球下壓左移，下眼皮左側抬起
+      - 往右下看：上眼皮右側下壓，下眼皮右側抬起
+      - 眨眼：上眼皮從弧頂「掃下」至下眼皮位置（非均勻壓縮）
+
+      三層獨立動畫：
+      - iris  (虹膜)：中等幅度位移
+      - pupil (瞳孔)：更大幅度，讓瞳孔在虹膜內偏向視線方向
+      - hl    (反光)：逆向小幅位移，隨光源靜止感
+    */
+
+    const E = {
+      // 中立：左角偏低(y50)，右角偏高(y43)，不對稱
+      neutral:
+        "M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z",
+
+      // 右上：上眼皮整體抬升，頂峰右移，眼睛開大
+      upperRight:
+        "M34 49 C33 37,46 25,62 24 C73 24,82 31,80 38 C78 48,64 54,51 53 C40 53,34 51,34 49Z",
+
+      // 左下：上眼皮跟隨左下沉（左側下壓明顯），下眼皮左側微抬
+      lowerLeft:
+        "M30 53 C29 44,40 37,52 38 C62 38,70 45,68 54 C66 63,55 70,45 69 C33 69,30 64,30 53Z",
+
+      // 右下：上眼皮右側下壓，下眼皮右側微抬（從左下直接漂移）
+      lowerRight:
+        "M35 52 C34 43,47 37,60 38 C72 38,80 45,78 54 C76 63,63 69,51 68 C40 68,35 63,35 52Z",
+
+      // 眨眼閉：上眼皮弧頂掃至下眼皮線，保留輪廓曲率感
+      blink:
+        "M33 51 C32 50,44 49,58 49 C69 49,78 50,76 51 C74 53,62 55,50 55 C39 55,33 53,33 51Z",
+    };
+
+    // 各視線方向的位移量
+    // iris=虹膜基礎位移  pupil=瞳孔總位移(絕對)  hl=反光逆向位移(絕對)
+    const G = {
+      neutral:    { ix:0,  iy:0,  px:0,   py:0,   hx:0,  hy:0  },
+      upperRight: { ix:6,  iy:-6, px:10,  py:-9,  hx:-4, hy:3  },
+      center:     { ix:1,  iy:0,  px:1,   py:0,   hx:-1, hy:0  },
+      lowerLeft:  { ix:-6, iy:7,  px:-10, py:11,  hx:4,  hy:-4 },
+      lowerRight: { ix:4,  iy:7,  px:7,   py:11,  hx:-3, hy:-4 },
+    };
+
+    function makeEyeTl(id, delay) {
+      const lid   = [`#eyelid-${id}`, `#clipd-${id}`];
+      const iris  = `#iris-${id}`;
+      const pupil = `#pupil-${id}`;
+      const hl    = `#hl-${id}`;
+
+      const tl = gsap.timeline({ delay, repeat: -1 });
+      const go = (state, dur, pos) => {
+        const g = G[state];
+        tl.to(lid,   { attr: { d: E[state] ?? E.neutral }, duration: dur, ease: "power2.inOut" }, pos)
+          .to(iris,  { x: g.ix, y: g.iy, duration: dur, ease: "power2.inOut" }, "<")
+          .to(pupil, { x: g.px, y: g.py, duration: dur, ease: "power2.inOut" }, "<")
+          .to(hl,    { x: g.hx, y: g.hy, duration: dur, ease: "power2.inOut" }, "<");
+        return tl;
+      };
+
+      // 1. 看右上
+      go("upperRight", 0.44, "+=0");
+      tl.to({}, { duration: 0.68 });
+
+      // 2. 回正（微右）
+      go("neutral", 0.38, "+=0");
+      tl.to(iris,  { x: G.center.ix, y: G.center.iy, duration: 0.38, ease: "power2.inOut" }, "<")
+        .to(pupil, { x: G.center.px, y: G.center.py, duration: 0.38, ease: "power2.inOut" }, "<")
+        .to(hl,    { x: G.center.hx, y: G.center.hy, duration: 0.38, ease: "power2.inOut" }, "<");
+      tl.to({}, { duration: 0.5 });
+
+      // 3. 看左下
+      go("lowerLeft", 0.44, "+=0");
+      tl.to({}, { duration: 0.48 });
+
+      // 4. 直接跳右下（不回正）
+      go("lowerRight", 0.32, "+=0");
+      tl.to({}, { duration: 0.54 });
+
+      // 5. 回正
+      go("neutral", 0.4, "+=0");
+      tl.to({}, { duration: 0.28 });
+
+      // 6a. 第一眨 — 閉
+      tl.to(lid,   { attr: { d: E.blink }, duration: 0.09, ease: "power2.in" })
+        .to(iris,  { opacity: 0, duration: 0.07 }, "<")
+        .to(pupil, { opacity: 0, duration: 0.07 }, "<")
+        .to(hl,    { opacity: 0, duration: 0.07 }, "<");
+      // 開
+      tl.to(lid,   { attr: { d: E.neutral }, duration: 0.13, ease: "power2.out" })
+        .to(iris,  { opacity: 1, duration: 0.11 }, "<+0.02")
+        .to(pupil, { opacity: 1, duration: 0.11 }, "<")
+        .to(hl,    { opacity: 1, duration: 0.11 }, "<");
+      tl.to({}, { duration: 0.16 });
+
+      // 6b. 第二眨
+      tl.to(lid,   { attr: { d: E.blink }, duration: 0.09, ease: "power2.in" })
+        .to(iris,  { opacity: 0, duration: 0.07 }, "<")
+        .to(pupil, { opacity: 0, duration: 0.07 }, "<")
+        .to(hl,    { opacity: 0, duration: 0.07 }, "<");
+      tl.to(lid,   { attr: { d: E.neutral }, duration: 0.13, ease: "power2.out" })
+        .to(iris,  { opacity: 1, duration: 0.11 }, "<+0.02")
+        .to(pupil, { opacity: 1, duration: 0.11 }, "<")
+        .to(hl,    { opacity: 1, duration: 0.11 }, "<");
+
+      tl.to({}, { duration: 1.3 });
+      return tl;
+    }
+
+    // 六個 icon 錯開啟動（避免全部同步眨眼）
+    makeEyeTl("dk-lg", 0.0);
+    makeEyeTl("dk-md", 0.35);
+    makeEyeTl("dk-sm", 0.7);
+    makeEyeTl("lt-lg", 0.18);
+    makeEyeTl("lt-md", 0.52);
+    makeEyeTl("lt-sm", 0.88);
+  </script>
+</body>
+</html>
