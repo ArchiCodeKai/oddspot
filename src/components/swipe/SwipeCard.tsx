@@ -23,11 +23,11 @@ const CATEGORY_COLORS: Record<SpotCategory, string> = {
   "odd-shopfront": "#eab308",
 };
 
-const STATUS_COLORS_DARK: Record<SpotStatus, string> = {
-  active: "bg-green-500/15 text-green-400",
-  uncertain: "bg-yellow-500/15 text-yellow-400",
-  disappeared: "bg-zinc-700 text-zinc-400",
-  pending: "bg-blue-500/15 text-blue-400",
+const STATUS_COLORS: Record<SpotStatus, string> = {
+  active:      "text-[#00e5cc]",
+  uncertain:   "text-yellow-400",
+  disappeared: "text-[#4e8278]",
+  pending:     "text-blue-400",
 };
 
 const DIFFICULTY_LABELS = { easy: "容易", medium: "普通", hard: "困難" } as const;
@@ -55,8 +55,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
     const categoryLabel =
       CATEGORY_OPTIONS.find((c) => c.value === spot.category)?.label ?? spot.category;
     const statusLabel = STATUS_LABELS[spot.status as SpotStatus] ?? spot.status;
-    const statusColor =
-      STATUS_COLORS_DARK[spot.status as SpotStatus] ?? "bg-zinc-700 text-zinc-400";
+    const statusColor = STATUS_COLORS[spot.status as SpotStatus] ?? "text-[#4e8278]";
 
     const flyOut = (direction: "left" | "right") => {
       const target = direction === "left" ? -600 : 600;
@@ -70,16 +69,27 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
     if (!isTop) {
       return (
         <div
-          className="absolute inset-0 rounded-3xl bg-zinc-800 border border-white/5"
-          style={{ transform: "scale(0.95) translateY(12px)", zIndex: 0 }}
+          className="absolute inset-0 rounded-3xl"
+          style={{
+            background: "#091310",
+            border: "1px solid rgba(0,229,204,0.06)",
+            transform: "scale(0.95) translateY(12px)",
+            zIndex: 0,
+          }}
         />
       );
     }
 
     return (
       <motion.div
-        className="absolute inset-0 rounded-3xl overflow-hidden border border-white/5 cursor-grab active:cursor-grabbing bg-zinc-900"
-        style={{ x, rotate, zIndex: 1 }}
+        className="absolute inset-0 rounded-3xl overflow-hidden cursor-grab active:cursor-grabbing"
+        style={{
+          x,
+          rotate,
+          zIndex: 1,
+          background: "#091310",
+          border: "1px solid rgba(0,229,204,0.1)",
+        }}
         drag="x"
         dragMomentum={false}
         dragElastic={0.2}
@@ -89,60 +99,85 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
           else animate(x, 0, { type: "spring", stiffness: 220, damping: 22 });
         }}
       >
-        {/* 拖曳提示 overlay */}
+        {/* 跳過提示 */}
         <motion.div
-          className="absolute left-6 top-16 z-10 rotate-[-15deg] border-4 border-red-400 rounded-xl px-4 py-2 pointer-events-none"
-          style={{ opacity: leftOpacity }}
+          className="absolute left-5 top-14 z-10 rotate-[-15deg] rounded-sm px-3 py-1.5 pointer-events-none"
+          style={{
+            opacity: leftOpacity,
+            border: "2px solid rgba(239,68,68,0.8)",
+          }}
         >
-          <span className="text-red-400 text-2xl font-black tracking-widest">跳過</span>
+          <span className="text-red-400 text-xl font-black tracking-widest">跳過</span>
         </motion.div>
         <motion.div
-          className="absolute right-6 top-16 z-10 rotate-15 border-4 border-green-400 rounded-xl px-4 py-2 pointer-events-none"
-          style={{ opacity: rightOpacity }}
+          className="absolute right-5 top-14 z-10 rotate-[15deg] rounded-sm px-3 py-1.5 pointer-events-none"
+          style={{
+            opacity: rightOpacity,
+            border: "2px solid rgba(0,229,204,0.8)",
+          }}
         >
-          <span className="text-green-400 text-2xl font-black tracking-widest">收藏</span>
+          <span style={{ color: "#00e5cc" }} className="text-xl font-black tracking-widest">
+            收藏
+          </span>
         </motion.div>
 
-        {/* 封面圖（上半部） */}
-        <div className="h-[52%] w-full bg-zinc-800 relative">
+        {/* 封面圖 */}
+        <div className="h-[52%] w-full relative" style={{ background: "#0c1a14" }}>
           {spot.coverImage && (
             <div
               className="absolute inset-0 bg-cover bg-center"
               style={{ backgroundImage: `url(${spot.coverImage})` }}
             />
           )}
-          <div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-zinc-900/60" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "linear-gradient(to bottom, transparent 50%, #091310 100%)",
+            }}
+          />
         </div>
 
-        {/* 可捲動內容區 */}
+        {/* 內容區 */}
         <div
           ref={scrollRef}
-          className="h-[48%] bg-zinc-900 overflow-y-auto overscroll-contain px-5 pt-4 pb-6"
+          className="h-[48%] overflow-y-auto overscroll-contain px-5 pt-4 pb-6"
+          style={{ background: "#091310" }}
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-2 flex-wrap mb-3">
             <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{ backgroundColor: `${categoryColor}20`, color: categoryColor }}
+              className="text-[10px] px-2 py-0.5 rounded-sm font-medium tracking-wider"
+              style={{
+                backgroundColor: `${categoryColor}18`,
+                color: categoryColor,
+                border: `1px solid ${categoryColor}30`,
+              }}
             >
               {categoryLabel}
             </span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-sm font-medium tracking-wider ${statusColor}`}
+              style={{ background: "rgba(0,229,204,0.06)", border: "1px solid rgba(0,229,204,0.12)" }}
+            >
               {statusLabel}
             </span>
-            <span className="text-xs text-zinc-500">
+            <span className="text-[10px] tracking-wider" style={{ color: "var(--muted)" }}>
               {DIFFICULTY_LABELS[spot.difficulty]}
             </span>
           </div>
 
-          <h2 className="text-xl font-bold text-white leading-tight">{spot.name}</h2>
+          <h2 className="text-lg font-bold leading-tight" style={{ color: "#d8f0e9" }}>
+            {spot.name}
+          </h2>
           {spot.nameEn && (
-            <p className="text-xs text-zinc-500 font-mono mt-0.5">{spot.nameEn}</p>
+            <p className="text-[11px] font-mono mt-0.5" style={{ color: "var(--muted)" }}>
+              {spot.nameEn}
+            </p>
           )}
 
           <Link
             href={ROUTES.SPOT_DETAIL(spot.id)}
-            className="inline-block mt-4 text-xs text-zinc-400 underline underline-offset-2 hover:text-zinc-200 transition-colors"
+            className="inline-block mt-4 text-[11px] tracking-wider transition-opacity hover:opacity-70"
+            style={{ color: "var(--accent)" }}
             onClick={(e) => e.stopPropagation()}
           >
             查看完整詳情 →

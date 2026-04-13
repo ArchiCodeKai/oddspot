@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="232" fill="#E4EDE8"/>
+  <g transform="translate(204 148) scale(5.6)">
+    <defs>
+      <clipPath id="iris-clip-light-error">
+        <path d="M56 38 C62 38,66 42,65 47 C64 53,59 57,53 56 C48 56,46 52,47 47 C48 42,51 38,56 38Z"/>
+      </clipPath>
+    </defs>
+    <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z" stroke="#0D5C4A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M34 56 C33 48,45 40,58 40 C69 40,77 45,75 52 C73 60,61 66,49 66 C39 66,34 62,34 56Z" stroke="#0D5C4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M56 42 C62 42,66 46,65 51 C64 57,59 61,53 60 C48 60,46 56,47 51 C48 46,51 42,56 42Z" fill="#0D5C4A"/>
+    <g clip-path="url(#iris-clip-light-error)">
+      <path d="M55 47 C58 47,60 49,59 52 C58 55,55 56,53 55 C51 54,50 52,51 50 C52 48,53 47,55 47Z" fill="#E4EDE8"/>
+    </g>
+    <path d="M59 72 C61.8 75,63.4 79.3,63 84 C62.6 88.1,60.4 91.6,57.4 91.6 C54.4 91.6,52 88.2,51.7 84 C51.3 79.4,53 75,55.8 72 C56.8 70.9,58 70.9,59 72Z" fill="#0D5C4A"/>
+  </g>
+</svg>

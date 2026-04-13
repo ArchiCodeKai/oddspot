@@ -5,6 +5,7 @@ import { MapView } from "@/components/map/MapView";
 import { SwipeView } from "@/components/swipe/SwipeView";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { AuthButton } from "@/components/auth/AuthButton";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import type { SpotMapPoint } from "@/types/spots";
 
 const TAIPEI_CENTER = { lat: 25.0478, lng: 121.5319 };
@@ -52,22 +53,27 @@ export default function MapPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-zinc-950">
+      <div
+        className="flex h-screen flex-col items-center justify-center gap-4"
+        style={{ background: "var(--background)" }}
+      >
         <div className="flex items-center gap-1.5">
           <span
-            className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce"
-            style={{ animationDelay: "0ms" }}
+            className="w-1.5 h-1.5 rounded-sm animate-bounce"
+            style={{ background: "var(--accent)", animationDelay: "0ms", boxShadow: "0 0 6px rgba(0,229,204,0.6)" }}
           />
           <span
-            className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce"
-            style={{ animationDelay: "150ms" }}
+            className="w-1.5 h-1.5 rounded-sm animate-bounce"
+            style={{ background: "var(--accent)", animationDelay: "150ms", boxShadow: "0 0 6px rgba(0,229,204,0.6)" }}
           />
           <span
-            className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce"
-            style={{ animationDelay: "300ms" }}
+            className="w-1.5 h-1.5 rounded-sm animate-bounce"
+            style={{ background: "var(--accent)", animationDelay: "300ms", boxShadow: "0 0 6px rgba(0,229,204,0.6)" }}
           />
         </div>
-        <p className="text-zinc-600 text-xs tracking-wider">定位中</p>
+        <p className="text-[10px] tracking-[0.3em] uppercase" style={{ color: "var(--muted)" }}>
+          定位中
+        </p>
       </div>
     );
   }
@@ -76,7 +82,8 @@ export default function MapPage() {
 
   return (
     <div className="h-screen w-full flex flex-col relative">
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <ThemeToggle />
         <AuthButton />
       </div>
       <div className="flex-1 min-h-0">
