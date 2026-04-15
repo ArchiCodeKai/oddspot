@@ -58,6 +58,9 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
     const statusLabel = getStatusLabel(tMeta, spot.status as SpotStatus);
     const statusColor = STATUS_COLORS[spot.status as SpotStatus] ?? "text-[var(--muted)]";
 
+    // 追蹤是否發生拖曳，用來抑制 drag end 後誤觸 Link navigation
+    const didDrag = useRef(false);
+
     const flyOut = (direction: "left" | "right") => {
       const target = direction === "left" ? -600 : 600;
       animate(x, target, { duration: 0.3, ease: "easeOut" }).then(() => {
@@ -97,6 +100,8 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
         drag="x"
         dragMomentum={false}
         dragElastic={0.2}
+        onDragStart={() => { didDrag.current = false; }}
+        onDrag={() => { didDrag.current = true; }}
         onDragEnd={(_, info) => {
           if (info.offset.x > SWIPE_THRESHOLD) flyOut("right");
           else if (info.offset.x < -SWIPE_THRESHOLD) flyOut("left");
@@ -183,7 +188,15 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
             href={ROUTES.SPOT_DETAIL(spot.id)}
             className="inline-block mt-4 text-[11px] tracking-wider transition-opacity hover:opacity-70"
             style={{ color: "var(--accent)" }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              // 若剛才發生拖曳，攔截 click 避免誤觸 navigation
+              if (didDrag.current) {
+                e.preventDefault();
+                didDrag.current = false;
+                return;
+              }
+              e.stopPropagation();
+            }}
           >
             {t("viewDetail")}
           </Link>

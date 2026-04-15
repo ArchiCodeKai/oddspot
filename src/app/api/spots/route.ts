@@ -4,6 +4,11 @@ import { auth } from "@/auth";
 import type { ApiResponse } from "@/types/api";
 import type { SpotMapPoint } from "@/types/spots";
 
+interface SpotsResponse {
+  spots: SpotMapPoint[];
+  nextCursor: string | null;
+}
+
 // 根據經緯度和半徑（公里）計算 bounding box
 function getBoundingBox(lat: number, lng: number, radiusKm: number) {
   const latDelta = radiusKm / 111;
@@ -16,12 +21,15 @@ function getBoundingBox(lat: number, lng: number, radiusKm: number) {
   };
 }
 
+const MAX_SPOTS = 50;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const lat = parseFloat(searchParams.get("lat") ?? "");
   const lng = parseFloat(searchParams.get("lng") ?? "");
   const radius = parseFloat(searchParams.get("radius") ?? "5");
   const categories = searchParams.get("categories")?.split(",").filter(Boolean);
+  const cursor = searchParams.get("cursor") ?? undefined;
 
   if (isNaN(lat) || isNaN(lng)) {
     return NextResponse.json<ApiResponse<null>>(
@@ -52,6 +60,9 @@ export async function GET(request: NextRequest) {
         lat: true,
         lng: true,
       },
+      take: MAX_SPOTS,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { id: "asc" },
     });
 
     const result: SpotMapPoint[] = spots.map((spot) => {
@@ -69,8 +80,10 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json<ApiResponse<SpotMapPoint[]>>({
-      data: result,
+    const nextCursor = spots.length === MAX_SPOTS ? (spots[spots.length - 1]?.id ?? null) : null;
+
+    return NextResponse.json<{ data: SpotsResponse; success: boolean }>({
+      data: { spots: result, nextCursor },
       success: true,
     });
   } catch (error) {

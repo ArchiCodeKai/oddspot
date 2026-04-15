@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { ClientAuthProvider } from "@/components/auth/ClientAuthProvider";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import { LocaleProvider } from "@/components/providers/LocaleProvider";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 
 // 品牌字體：UI 標籤、英文、數字、系統文字
 const spaceMono = Space_Mono({
@@ -65,14 +66,16 @@ export default async function RootLayout({
       <body className="antialiased">
         <ThemeProvider />
         <LocaleProvider>
-          <ClientAuthProvider
-            userId={session?.user?.id}
-            userName={session?.user?.name}
-            userEmail={session?.user?.email}
-            userImage={session?.user?.image}
-          >
-            {children}
-          </ClientAuthProvider>
+          <QueryProvider>
+            <ClientAuthProvider
+              userId={session?.user?.id}
+              userName={session?.user?.name}
+              userEmail={session?.user?.email}
+              userImage={session?.user?.image}
+            >
+              {children}
+            </ClientAuthProvider>
+          </QueryProvider>
         </LocaleProvider>
       </body>
     </html>

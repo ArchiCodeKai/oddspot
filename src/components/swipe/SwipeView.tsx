@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { SwipeCard, type SwipeCardHandle } from "./SwipeCard";
 import { SwipeActionBar } from "./SwipeActionBar";
@@ -15,9 +15,11 @@ const TOAST_DURATION = 2500;
 interface SwipeViewProps {
   spots: SpotMapPoint[];
   userLocation?: { lat: number; lng: number } | null;
+  isError?: boolean;
+  onRetry?: () => void;
 }
 
-export function SwipeView({ spots, userLocation = null }: SwipeViewProps) {
+export function SwipeView({ spots, userLocation = null, isError, onRetry }: SwipeViewProps) {
   const t = useTranslations("swipe");
   const cardRef = useRef<SwipeCardHandle>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,10 +28,13 @@ export function SwipeView({ spots, userLocation = null }: SwipeViewProps) {
   const [tripFlash, setTripFlash] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const { addSkipped, addToTrip, tripSpotIds } = useSwipeStore();
+  const { addSkipped, addToTrip, tripSpotIds, skippedIds } = useSwipeStore();
   const { addSave } = useSavedStore();
 
-  const visibleSpots = spots.filter((s) => !useSwipeStore.getState().skippedIds.includes(s.id));
+  const visibleSpots = useMemo(
+    () => spots.filter((s) => !skippedIds.includes(s.id)),
+    [spots, skippedIds]
+  );
   const currentSpot = visibleSpots[currentIndex] ?? null;
   const nextSpot = visibleSpots[currentIndex + 1] ?? null;
 
@@ -132,7 +137,30 @@ export function SwipeView({ spots, userLocation = null }: SwipeViewProps) {
 
       {/* 卡片區 */}
       <div className="flex-1 flex items-center justify-center px-5 min-h-0">
-        {allDone ? (
+        {isError ? (
+          <div className="text-center">
+            <p className="text-base font-content" style={{ color: "var(--muted)" }}>
+              無法載入景點
+            </p>
+            <p className="text-sm mt-1 font-content" style={{ color: "var(--muted)", opacity: 0.6 }}>
+              請檢查網路連線後重試
+            </p>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="mt-4 px-5 py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
+                style={{
+                  borderRadius: "2px",
+                  background: "var(--foreground)",
+                  color: "var(--background)",
+                  cursor: "pointer",
+                }}
+              >
+                重試
+              </button>
+            )}
+          </div>
+        ) : allDone ? (
           <div className="text-center">
             <p className="text-base font-content" style={{ color: "var(--muted)" }}>
               {t("allDoneTitle")}
@@ -181,7 +209,7 @@ export function SwipeView({ spots, userLocation = null }: SwipeViewProps) {
       </div>
 
       {/* 桌機方向按鈕（只在大螢幕顯示） */}
-      {!allDone && (
+      {!allDone && !isError && (
         <div className="hidden md:flex items-center justify-center gap-2 mb-4 shrink-0">
           <button
             onClick={() => cardRef.current?.flyOut("left")}
@@ -219,7 +247,7 @@ export function SwipeView({ spots, userLocation = null }: SwipeViewProps) {
       )}
 
       {/* 按鈕列 */}
-      {!allDone && (
+      {!allDone && !isError && (
         <div className="shrink-0 px-5 pb-2">
           <SwipeActionBar
             onSkip={() => cardRef.current?.flyOut("left")}

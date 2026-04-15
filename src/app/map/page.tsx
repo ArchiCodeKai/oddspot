@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSpots } from "@/hooks/useSpots";
 import { MapView } from "@/components/map/MapView";
 import { SwipeView } from "@/components/swipe/SwipeView";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
@@ -9,42 +11,32 @@ import { AuthButton } from "@/components/auth/AuthButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LangToggle } from "@/components/ui/LangToggle";
 import { OnboardingOverlay } from "@/components/ui/OnboardingOverlay";
-import type { SpotMapPoint } from "@/types/spots";
 
-const TAIPEI_CENTER = { lat: 25.0478, lng: 121.5319 };
 const RADIUS_STEPS = [5, 10, 20];
 
 type ViewMode = "map" | "swipe";
 
 export default function MapPage() {
   const t = useTranslations("map");
-  const [spots, setSpots] = useState<SpotMapPoint[]>([]);
+  const queryClient = useQueryClient();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [loading, setLoading] = useState(true);
   const [radius, setRadius] = useState(5);
   const [viewMode, setViewMode] = useState<ViewMode>("map");
 
+  // 取得使用者定位（純 UI side effect，不屬於 server state）
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      },
+      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => setUserLocation(null)
     );
   }, []);
 
-  useEffect(() => {
-    const lat = userLocation?.lat ?? TAIPEI_CENTER.lat;
-    const lng = userLocation?.lng ?? TAIPEI_CENTER.lng;
+  const { data, isLoading, isError } = useSpots({ userLocation, radius });
+  const spots = data?.spots ?? [];
 
-    fetch(`/api/spots?lat=${lat}&lng=${lng}&radius=${radius}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) setSpots(data.data);
-      })
-      .catch((err) => console.error("載入景點失敗", err))
-      .finally(() => setLoading(false));
-  }, [userLocation, radius]);
+  const handleRetry = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["spots"] });
+  }, [queryClient]);
 
   const handleExpandRadius = () => {
     const currentIndex = RADIUS_STEPS.indexOf(radius);
@@ -53,11 +45,11 @@ export default function MapPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div
         className="flex flex-col items-center justify-center gap-4"
-        style={{ minHeight: "100dvh", background: "var(--background)" }}
+        style={{ height: "100dvh", background: "var(--background)" }}
       >
         <div
           className="flex flex-col items-center gap-3 px-5 py-4"
@@ -120,9 +112,16 @@ export default function MapPage() {
             userLocation={userLocation}
             radius={radius}
             onExpandRadius={isMaxRadius ? undefined : handleExpandRadius}
+            isError={isError}
+            onRetry={handleRetry}
           />
         ) : (
-          <SwipeView spots={spots} userLocation={userLocation} />
+          <SwipeView
+            spots={spots}
+            userLocation={userLocation}
+            isError={isError}
+            onRetry={handleRetry}
+          />
         )}
       </div>
 
