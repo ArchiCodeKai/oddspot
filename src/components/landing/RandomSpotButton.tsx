@@ -38,24 +38,24 @@ export function RandomSpotButton() {
         alignItems: "center",
         gap: 8,
         padding: "12px 28px",
-        border: "1px solid rgba(0,229,204,0.18)",
+        border: "1px solid var(--line)",
         borderRadius: "2px",
         fontSize: "0.78rem",
         letterSpacing: "0.18em",
         textTransform: "uppercase",
         color: "var(--muted)",
-        background: "transparent",
+        background: "rgb(var(--foreground-rgb) / 0.02)",
         cursor: loading ? "wait" : "pointer",
         transition: "all 0.2s ease",
         opacity: loading ? 0.6 : 1,
       }}
       onMouseEnter={(e) => {
         if (loading) return;
-        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(0,229,204,0.4)";
+        (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--line-strong)";
         (e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(0,229,204,0.18)";
+        (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--line)";
         (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)";
       }}
     >

@@ -54,17 +54,22 @@ export function LoginPromptModal() {
       {/* 背景 overlay */}
       <div
         className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
-        style={{ background: "rgba(2, 8, 6, 0.82)", backdropFilter: "blur(6px)" }}
+        style={{
+          background: "rgb(var(--background-rgb) / 0.82)",
+          backdropFilter: "blur(6px)",
+        }}
         onClick={close}
       >
         {/* Modal 卡片 */}
         <div
           className="modal-card relative w-full sm:max-w-sm mx-4 mb-6 sm:mb-0 p-7"
           style={{
-            background: "#091310",
-            border: "1px solid rgba(0,229,204,0.18)",
+            background: "var(--panel-glass-strong)",
+            border: "1px solid var(--line-strong)",
             borderRadius: "4px",
-            boxShadow: "0 0 60px rgba(0,229,204,0.08), 0 24px 48px rgba(0,0,0,0.6)",
+            boxShadow:
+              "0 0 60px rgb(var(--accent-rgb) / 0.08), 0 24px 48px rgb(var(--background-rgb) / 0.36)",
+            backdropFilter: "blur(16px)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -87,11 +92,11 @@ export function LoginPromptModal() {
               viewBox="0 0 110 130"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              style={{ filter: "drop-shadow(0 0 8px rgba(0,229,204,0.5))" }}
+              style={{ filter: "drop-shadow(0 0 8px rgb(var(--accent-rgb) / 0.5))" }}
             >
               <path
                 d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
-                stroke="#00e5cc"
+                stroke="var(--accent)"
                 strokeWidth="3"
                 fill="none"
                 strokeLinejoin="round"
@@ -99,7 +104,7 @@ export function LoginPromptModal() {
               />
               <path
                 d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"
-                stroke="#00e5cc"
+                stroke="var(--accent)"
                 strokeWidth="2"
                 fill="none"
                 strokeLinejoin="round"
@@ -107,11 +112,11 @@ export function LoginPromptModal() {
               />
               <path
                 d="M57 36 C62 36,66 40,65 45 C64 51,59 55,54 54 C49 54,47 50,48 45 C49 41,52 36,57 36Z"
-                fill="#00e5cc"
+                fill="var(--accent)"
               />
               <path
                 d="M55 42 C58 42,60 44,59 47 C58 50,55 51,53 50 C51 49,50 47,51 45 C52 43,53 42,55 42Z"
-                fill="#013629"
+                fill="rgb(var(--background-rgb) / 0.78)"
               />
               <ellipse cx="61" cy="40" rx="1.4" ry="1.1" fill="#fff" opacity="0.82" />
             </svg>
@@ -120,13 +125,13 @@ export function LoginPromptModal() {
           {/* 文字 */}
           <p
             className="text-[10px] tracking-[0.3em] uppercase text-center mb-2"
-            style={{ color: "rgba(0,229,204,0.55)" }}
+            style={{ color: "rgb(var(--accent-rgb) / 0.55)" }}
           >
             需要登入
           </p>
           <h2
             className="text-base font-bold text-center mb-2"
-            style={{ color: "#d8f0e9" }}
+            style={{ color: "var(--foreground)" }}
           >
             收藏景點需要帳號
           </h2>

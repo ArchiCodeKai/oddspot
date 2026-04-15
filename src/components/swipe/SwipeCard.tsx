@@ -3,9 +3,9 @@
 import { forwardRef, useImperativeHandle, useRef } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ROUTES } from "@/lib/constants/routes";
-import { CATEGORY_OPTIONS } from "@/lib/constants/categories";
-import { STATUS_LABELS } from "@/lib/constants/status";
+import { getCategoryLabel, getStatusLabel } from "@/lib/i18n/spotMeta";
 import type { SpotMapPoint } from "@/types/spots";
 import type { SpotCategory } from "@/lib/constants/categories";
 import type { SpotStatus } from "@/lib/constants/status";
@@ -24,13 +24,13 @@ const CATEGORY_COLORS: Record<SpotCategory, string> = {
 };
 
 const STATUS_COLORS: Record<SpotStatus, string> = {
-  active:      "text-[#00e5cc]",
+  active:      "text-[var(--accent)]",
   uncertain:   "text-yellow-400",
-  disappeared: "text-[#4e8278]",
+  disappeared: "text-[var(--muted)]",
   pending:     "text-blue-400",
 };
 
-const DIFFICULTY_LABELS = { easy: "容易", medium: "普通", hard: "困難" } as const;
+type DifficultyKey = "easy" | "medium" | "hard";
 
 export interface SwipeCardHandle {
   flyOut: (direction: "left" | "right") => void;
@@ -45,6 +45,8 @@ interface SwipeCardProps {
 
 export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
   function SwipeCard({ spot, onSwipeLeft, onSwipeRight, isTop }, ref) {
+    const t = useTranslations("swipe");
+    const tMeta = useTranslations("spotMeta");
     const x = useMotionValue(0);
     const rotate = useTransform(x, [-300, 0, 300], [-18, 0, 18]);
     const leftOpacity = useTransform(x, [-SWIPE_THRESHOLD, 0], [1, 0]);
@@ -52,15 +54,15 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const categoryColor = CATEGORY_COLORS[spot.category] ?? "#6b7280";
-    const categoryLabel =
-      CATEGORY_OPTIONS.find((c) => c.value === spot.category)?.label ?? spot.category;
-    const statusLabel = STATUS_LABELS[spot.status as SpotStatus] ?? spot.status;
-    const statusColor = STATUS_COLORS[spot.status as SpotStatus] ?? "text-[#4e8278]";
+    const categoryLabel = getCategoryLabel(tMeta, spot.category);
+    const statusLabel = getStatusLabel(tMeta, spot.status as SpotStatus);
+    const statusColor = STATUS_COLORS[spot.status as SpotStatus] ?? "text-[var(--muted)]";
 
     const flyOut = (direction: "left" | "right") => {
       const target = direction === "left" ? -600 : 600;
       animate(x, target, { duration: 0.3, ease: "easeOut" }).then(() => {
-        direction === "left" ? onSwipeLeft() : onSwipeRight();
+        if (direction === "left") onSwipeLeft();
+        else onSwipeRight();
       });
     };
 
@@ -71,10 +73,11 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
         <div
           className="absolute inset-0 rounded-3xl"
           style={{
-            background: "#091310",
-            border: "1px solid rgba(0,229,204,0.06)",
+            background: "var(--panel)",
+            border: "1px solid var(--line)",
             transform: "scale(0.95) translateY(12px)",
             zIndex: 0,
+            boxShadow: "var(--shadow-glow)",
           }}
         />
       );
@@ -87,8 +90,9 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
           x,
           rotate,
           zIndex: 1,
-          background: "#091310",
-          border: "1px solid rgba(0,229,204,0.1)",
+          background: "var(--panel)",
+          border: "1px solid var(--line)",
+          boxShadow: "var(--shadow-glow)",
         }}
         drag="x"
         dragMomentum={false}
@@ -102,27 +106,23 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
         {/* 跳過提示 */}
         <motion.div
           className="absolute left-5 top-14 z-10 rotate-[-15deg] rounded-sm px-3 py-1.5 pointer-events-none"
-          style={{
-            opacity: leftOpacity,
-            border: "2px solid rgba(239,68,68,0.8)",
-          }}
+          style={{ opacity: leftOpacity, border: "2px solid rgba(239,68,68,0.8)" }}
         >
-          <span className="text-red-400 text-xl font-black tracking-widest">跳過</span>
+          <span className="text-red-400 text-xl font-black tracking-widest font-content">
+            {t("skip")}
+          </span>
         </motion.div>
         <motion.div
           className="absolute right-5 top-14 z-10 rotate-[15deg] rounded-sm px-3 py-1.5 pointer-events-none"
-          style={{
-            opacity: rightOpacity,
-            border: "2px solid rgba(0,229,204,0.8)",
-          }}
+          style={{ opacity: rightOpacity, border: "2px solid rgb(var(--accent-rgb) / 0.8)" }}
         >
-          <span style={{ color: "#00e5cc" }} className="text-xl font-black tracking-widest">
-            收藏
+          <span style={{ color: "var(--accent)" }} className="text-xl font-black tracking-widest font-content">
+            {t("save")}
           </span>
         </motion.div>
 
         {/* 封面圖 */}
-        <div className="h-[52%] w-full relative" style={{ background: "#0c1a14" }}>
+        <div className="h-[52%] w-full relative" style={{ background: "var(--panel-light)" }}>
           {spot.coverImage && (
             <div
               className="absolute inset-0 bg-cover bg-center"
@@ -132,7 +132,8 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
           <div
             className="absolute inset-0"
             style={{
-              background: "linear-gradient(to bottom, transparent 50%, #091310 100%)",
+              background:
+                "linear-gradient(to bottom, transparent 50%, rgb(var(--panel-rgb)) 100%)",
             }}
           />
         </div>
@@ -141,7 +142,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
         <div
           ref={scrollRef}
           className="h-[48%] overflow-y-auto overscroll-contain px-5 pt-4 pb-6"
-          style={{ background: "#091310" }}
+          style={{ background: "var(--panel)" }}
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-2 flex-wrap mb-3">
@@ -156,16 +157,20 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
               {categoryLabel}
             </span>
             <span className={`text-[10px] px-2 py-0.5 rounded-sm font-medium tracking-wider ${statusColor}`}
-              style={{ background: "rgba(0,229,204,0.06)", border: "1px solid rgba(0,229,204,0.12)" }}
+              style={{
+                background: "rgb(var(--accent-rgb) / 0.06)",
+                border: "1px solid var(--line)",
+              }}
             >
               {statusLabel}
             </span>
             <span className="text-[10px] tracking-wider" style={{ color: "var(--muted)" }}>
-              {DIFFICULTY_LABELS[spot.difficulty]}
+              {t(`difficulty.${spot.difficulty as DifficultyKey}`)}
             </span>
           </div>
 
-          <h2 className="text-lg font-bold leading-tight" style={{ color: "#d8f0e9" }}>
+          {/* 景點名稱：中文用 Noto Sans TC 閱讀最佳化 */}
+          <h2 className="text-lg font-bold leading-snug font-content" style={{ color: "var(--foreground)" }}>
             {spot.name}
           </h2>
           {spot.nameEn && (
@@ -180,7 +185,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
             style={{ color: "var(--accent)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            查看完整詳情 →
+            {t("viewDetail")}
           </Link>
         </div>
       </motion.div>

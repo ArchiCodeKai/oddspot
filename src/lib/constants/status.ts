@@ -1,11 +1,11 @@
 export type SpotStatus = "active" | "uncertain" | "disappeared" | "pending";
 
-export const STATUS_LABELS: Record<SpotStatus, string> = {
-  active: "可探索",
-  uncertain: "狀況不明",
-  disappeared: "已消失",
-  pending: "審核中",
-};
+export const STATUS_VALUES: SpotStatus[] = [
+  "active",
+  "uncertain",
+  "disappeared",
+  "pending",
+];
 
 export const STATUS_COLORS: Record<SpotStatus, string> = {
   active: "bg-green-100 text-green-800",

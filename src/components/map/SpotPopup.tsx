@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ROUTES } from "@/lib/constants/routes";
-import { CATEGORY_OPTIONS } from "@/lib/constants/categories";
-import { STATUS_LABELS } from "@/lib/constants/status";
+import { getCategoryLabel, getDifficultyLabel, getStatusLabel } from "@/lib/i18n/spotMeta";
 import type { SpotMapPoint } from "@/types/spots";
 import type { SpotCategory } from "@/lib/constants/categories";
 import type { SpotStatus } from "@/lib/constants/status";
@@ -12,12 +12,6 @@ interface SpotPopupProps {
   spot: SpotMapPoint;
   onClose: () => void;
 }
-
-const DIFFICULTY_LABELS = {
-  easy: "容易",
-  medium: "普通",
-  hard: "困難",
-} as const;
 
 // 深色主題版本的狀態 badge 顏色
 const STATUS_COLORS_DARK: Record<SpotStatus, string> = {
@@ -40,9 +34,10 @@ const CATEGORY_COLORS: Record<SpotCategory, string> = {
 };
 
 export function SpotPopup({ spot, onClose }: SpotPopupProps) {
-  const categoryLabel =
-    CATEGORY_OPTIONS.find((c) => c.value === spot.category)?.label ?? spot.category;
-  const statusLabel = STATUS_LABELS[spot.status] ?? spot.status;
+  const tMeta = useTranslations("spotMeta");
+  const tSwipe = useTranslations("swipe");
+  const categoryLabel = getCategoryLabel(tMeta, spot.category);
+  const statusLabel = getStatusLabel(tMeta, spot.status);
   const statusColor = STATUS_COLORS_DARK[spot.status] ?? "bg-zinc-700 text-zinc-400";
   const categoryColor = CATEGORY_COLORS[spot.category] ?? "#6b7280";
 
@@ -79,7 +74,7 @@ export function SpotPopup({ spot, onClose }: SpotPopupProps) {
               {statusLabel}
             </span>
             <span className="text-xs text-zinc-500">
-              {DIFFICULTY_LABELS[spot.difficulty]}
+              {getDifficultyLabel(tMeta, spot.difficulty)}
             </span>
           </div>
 
@@ -87,7 +82,7 @@ export function SpotPopup({ spot, onClose }: SpotPopupProps) {
             href={ROUTES.SPOT_DETAIL(spot.id)}
             className="block mt-3 w-full text-center py-2.5 bg-white text-zinc-900 text-sm font-semibold rounded-xl hover:bg-zinc-100 transition-colors"
           >
-            查看詳情
+            {tSwipe("viewDetail")}
           </Link>
         </div>
       </div>

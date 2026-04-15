@@ -1,19 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { CATEGORY_OPTIONS } from "@/lib/constants/categories";
-
-const DIFFICULTY_OPTIONS = [
-  { value: "easy", label: "容易（任何人都能去）" },
-  { value: "medium", label: "中等（需要一點努力）" },
-  { value: "hard", label: "困難（需要特別準備）" },
-];
+import { getCategoryOptions, getDifficultyLabel } from "@/lib/i18n/spotMeta";
 
 export default function SubmitPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const tMeta = useTranslations("spotMeta");
 
   const [form, setForm] = useState({
     name: "",
@@ -31,6 +27,11 @@ export default function SubmitPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const categoryOptions = getCategoryOptions(tMeta);
+  const difficultyOptions = ["easy", "medium", "hard"].map((value) => ({
+    value,
+    label: getDifficultyLabel(tMeta, value),
+  }));
 
   if (status === "loading") {
     return (
@@ -185,7 +186,7 @@ export default function SubmitPage() {
               required
             >
               <option value="">選擇分類</option>
-              {CATEGORY_OPTIONS.map((opt) => (
+              {categoryOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -237,7 +238,7 @@ export default function SubmitPage() {
               onChange={handleChange}
               className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-600"
             >
-              {DIFFICULTY_OPTIONS.map((opt) => (
+              {difficultyOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>

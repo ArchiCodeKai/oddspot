@@ -31,11 +31,11 @@ export function MapView({ spots, userLocation, radius, onExpandRadius }: MapView
 
   return (
     <APIProvider apiKey={apiKey}>
-      <div className="relative w-full h-full">
+      <div className="relative w-full" style={{ height: "100%" }}>
         <Map
           defaultCenter={center}
           defaultZoom={14}
-          mapId="oddspot-map"
+          mapId="DEMO_MAP_ID"
           onClick={handleMapClick}
           gestureHandling="greedy"
           disableDefaultUI={true}

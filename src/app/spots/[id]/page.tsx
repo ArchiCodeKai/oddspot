@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/db";
 import { ROUTES } from "@/lib/constants/routes";
-import { CATEGORY_OPTIONS } from "@/lib/constants/categories";
-import { STATUS_LABELS } from "@/lib/constants/status";
+import { getCategoryLabel, getDifficultyLabel, getStatusLabel } from "@/lib/i18n/spotMeta";
 import { SpotActionBar } from "@/components/spots/SpotActionBar";
 import type { SpotCategory } from "@/lib/constants/categories";
 import type { SpotStatus } from "@/lib/constants/status";
@@ -26,12 +26,6 @@ const STATUS_COLORS_DARK: Record<SpotStatus, string> = {
   pending: "bg-blue-500/15 text-blue-400",
 };
 
-const DIFFICULTY_LABELS = {
-  easy: "容易",
-  medium: "普通",
-  hard: "困難",
-} as const;
-
 export default async function SpotDetailPage({
   params,
 }: {
@@ -41,13 +35,14 @@ export default async function SpotDetailPage({
 
   const spot = await prisma.spot.findUnique({ where: { id } });
   if (!spot) notFound();
+  const tMeta = await getTranslations("spotMeta");
+  const tDetail = await getTranslations("spotDetail");
 
   const images: string[] = JSON.parse(spot.images || "[]");
   const coverImage = images[0] ?? "";
 
-  const categoryLabel =
-    CATEGORY_OPTIONS.find((c) => c.value === spot.category)?.label ?? spot.category;
-  const statusLabel = STATUS_LABELS[spot.status as SpotStatus] ?? spot.status;
+  const categoryLabel = getCategoryLabel(tMeta, spot.category as SpotCategory);
+  const statusLabel = getStatusLabel(tMeta, spot.status as SpotStatus);
   const statusColor = STATUS_COLORS_DARK[spot.status as SpotStatus] ?? "bg-zinc-700 text-zinc-400";
   const categoryColor = CATEGORY_COLORS[spot.category as SpotCategory] ?? "#6b7280";
 
@@ -68,7 +63,7 @@ export default async function SpotDetailPage({
         <Link
           href={ROUTES.MAP}
           className="absolute top-12 left-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/10 text-white text-lg"
-          aria-label="返回地圖"
+          aria-label={tDetail("back")}
         >
           ←
         </Link>
@@ -91,7 +86,7 @@ export default async function SpotDetailPage({
             {statusLabel}
           </span>
           <span className="text-xs text-zinc-500">
-            {DIFFICULTY_LABELS[spot.difficulty as keyof typeof DIFFICULTY_LABELS]}
+            {getDifficultyLabel(tMeta, spot.difficulty)}
           </span>
         </div>
 
@@ -106,7 +101,7 @@ export default async function SpotDetailPage({
         {/* 地址 */}
         {spot.address && (
           <p className="text-sm text-zinc-400 mt-3">
-            📍 {spot.address}
+            {tDetail("addressPrefix")} {spot.address}
           </p>
         )}
 
@@ -121,7 +116,7 @@ export default async function SpotDetailPage({
         {spot.legend && (
           <>
             <div className="border-t border-zinc-800 mt-5 pt-5">
-              <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">傳說</p>
+              <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">{tDetail("legend")}</p>
               <p className="text-sm text-zinc-300 leading-relaxed">{spot.legend}</p>
             </div>
           </>
@@ -130,7 +125,7 @@ export default async function SpotDetailPage({
         {/* 推薦到訪時段 */}
         {spot.recommendedTime && (
           <div className="mt-5">
-            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">推薦時段</p>
+            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">{tDetail("recommendedTime")}</p>
             <p className="text-sm text-zinc-300">{spot.recommendedTime}</p>
           </div>
         )}

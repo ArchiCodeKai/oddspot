@@ -4,20 +4,48 @@
   --background: #040c0a;
   --foreground: #c6e8e0;
   --accent: #00e5cc;
-  --muted: #4e8278;
+  --background-rgb: 4 12 10;
+  --foreground-rgb: 198 232 224;
+  --accent-rgb: 0 229 204;
+
+  /* #6aada0 on #040c0a ≈ 5.1:1（通過 WCAG AA） */
+  --muted: #6aada0;
+  --muted-rgb: 106 173 160;
+
   --panel: #091310;
   --panel-light: #0c1a14;
-  --line: rgba(0, 229, 204, 0.1);
+  --panel-rgb: 9 19 16;
+  --panel-light-rgb: 12 26 20;
+  --line: rgb(var(--accent-rgb) / 0.1);
+  --line-strong: rgb(var(--accent-rgb) / 0.18);
+  --panel-glass: rgb(var(--panel-rgb) / 0.78);
+  --panel-glass-strong: rgb(var(--panel-rgb) / 0.9);
+  --panel-contrast: rgb(var(--foreground-rgb) / 0.035);
+  --shadow-glow: 0 0 24px rgb(var(--accent-rgb) / 0.08);
 }
 
 :root.light {
   --background: #f0f7f5;
   --foreground: #0d2e26;
   --accent: #00a896;
-  --muted: #5a8c80;
+  --background-rgb: 240 247 245;
+  --foreground-rgb: 13 46 38;
+  --accent-rgb: 0 168 150;
+
+  /* #3a7269 on #f0f7f5 ≈ 5.3:1（通過 WCAG AA） */
+  --muted: #3a7269;
+  --muted-rgb: 58 114 105;
+
   --panel: #dff0ec;
   --panel-light: #e8f5f2;
-  --line: rgba(0, 168, 150, 0.15);
+  --panel-rgb: 223 240 236;
+  --panel-light-rgb: 232 245 242;
+  --line: rgb(var(--accent-rgb) / 0.15);
+  --line-strong: rgb(var(--accent-rgb) / 0.24);
+  --panel-glass: rgb(var(--panel-rgb) / 0.78);
+  --panel-glass-strong: rgb(var(--panel-rgb) / 0.9);
+  --panel-contrast: rgb(var(--foreground-rgb) / 0.04);
+  --shadow-glow: 0 0 24px rgb(var(--accent-rgb) / 0.06);
 }
 
 @theme inline {
@@ -26,12 +54,39 @@
   --color-accent: var(--accent);
   --color-muted: var(--muted);
   --color-panel: var(--panel);
+
+  /* 雙字體策略：
+     brand  = Space Mono  → UI 標籤、英文、數字、系統文字
+     content = Noto Sans TC → 中文景點名稱、描述、正文 */
   --font-sans: var(--font-space-mono);
   --font-mono: var(--font-space-mono);
+  --font-brand: var(--font-space-mono);
+  --font-content: var(--font-noto-sans-tc);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  /* 預設 body 用品牌字體（維持原有 terminal 風格） */
   font-family: var(--font-space-mono), "Courier New", monospace;
+  /* 消除手機瀏覽器的 300ms tap delay */
+  touch-action: manipulation;
+}
+
+/* 中文內容字體 utility（對標 Tailwind 的 font-sans） */
+.font-content {
+  font-family: var(--font-noto-sans-tc), "Noto Sans TC", "PingFang TC",
+    "Microsoft JhengHei", sans-serif;
+}
+
+/* 尊重使用者的動畫偏好設定 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

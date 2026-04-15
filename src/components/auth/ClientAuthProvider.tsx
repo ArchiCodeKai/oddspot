@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useAuthSync } from "@/hooks/useAuthSync";
 import { SessionProvider } from "@/contexts/SessionContext";
 import { LoginPromptModal } from "@/components/auth/LoginPromptModal";
@@ -20,13 +19,7 @@ export function ClientAuthProvider({
   userEmail,
   userImage,
 }: ClientAuthProviderProps) {
-  const [mounted, setMounted] = useState(false);
-
   useAuthSync(userId);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const user = userId
     ? { id: userId, name: userName, email: userEmail, image: userImage }
@@ -36,7 +29,7 @@ export function ClientAuthProvider({
     <SessionProvider user={user}>
       {children}
       {/* LoginPromptModal 掛在全域，任何地方都能透過 useLoginPromptStore 觸發 */}
-      {mounted && <LoginPromptModal />}
+      <LoginPromptModal />
     </SessionProvider>
   );
 }

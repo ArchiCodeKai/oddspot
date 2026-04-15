@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { CATEGORY_OPTIONS } from "@/lib/constants/categories";
+import {
+  getCategoryLabel as getTranslatedCategoryLabel,
+  getDifficultyLabel,
+} from "@/lib/i18n/spotMeta";
 
 interface PendingSpot {
   id: string;
@@ -24,6 +28,7 @@ interface PendingSpot {
 export default function AdminPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const tMeta = useTranslations("spotMeta");
   const [spots, setSpots] = useState<PendingSpot[]>([]);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
@@ -65,7 +70,7 @@ export default function AdminPage() {
   }
 
   function getCategoryLabel(value: string) {
-    return CATEGORY_OPTIONS.find((o) => o.value === value)?.label ?? value;
+    return getTranslatedCategoryLabel(tMeta, value);
   }
 
   if (status === "loading" || loading) {
@@ -144,7 +149,7 @@ export default function AdminPage() {
                       {getCategoryLabel(spot.category)}
                     </span>
                     <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
-                      {spot.difficulty === "easy" ? "容易" : spot.difficulty === "medium" ? "中等" : "困難"}
+                      {getDifficultyLabel(tMeta, spot.difficulty)}
                     </span>
                   </div>
                   {spot.address && (

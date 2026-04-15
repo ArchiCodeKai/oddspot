@@ -1,0 +1,104 @@
+{
+  "meta": {
+    "title": "OddSpot",
+    "description": "Discovering the unexplainable corners of Taiwan's cities"
+  },
+  "nav": {
+    "brand": "sys://oddspot"
+  },
+  "onboarding": {
+    "badge": "B-Grade Spot Explorer",
+    "tagline": "Discovering the unexplainable\ncorners of Taiwan's cities",
+    "cta": "Start Exploring",
+    "skip": "Skip"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "saved": "Saved",
+    "trip": "Today's Trip",
+    "user": "User"
+  },
+  "map": {
+    "locating": "Locating"
+  },
+  "spotMeta": {
+    "categories": {
+      "weird-temple": "Weird Temple",
+      "abandoned": "Abandoned Site",
+      "giant-object": "Giant Object",
+      "kitsch": "Kitsch Installation",
+      "marginal-architecture": "Marginal Architecture",
+      "urban-legend": "Urban Legend",
+      "absurd-landscape": "Absurd Landscape",
+      "odd-shopfront": "Odd Shopfront"
+    },
+    "status": {
+      "active": "Explorable",
+      "uncertain": "Uncertain",
+      "disappeared": "Gone",
+      "pending": "Pending Review"
+    },
+    "difficulty": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    }
+  },
+  "filter": {
+    "title": "Filter Spots",
+    "category": "Category",
+    "difficulty": "Difficulty",
+    "status": "Status",
+    "reset": "Reset",
+    "apply": "Apply Filters"
+  },
+  "tripPlan": {
+    "title": "Today's Route",
+    "clear": "Clear",
+    "emptyTitle": "No spots added yet",
+    "emptyHint": "Tap + to add a spot to today's route",
+    "routeHint": "Sorted by add order for now. Route optimization comes in v2.",
+    "navigate": "Open in Google Maps",
+    "remove": "Remove"
+  },
+  "spotDetail": {
+    "back": "Back to Map",
+    "legend": "Legend",
+    "recommendedTime": "Best Time to Visit",
+    "addressPrefix": "📍"
+  },
+  "tabs": {
+    "map": "Map",
+    "explore": "Explore",
+    "submit": "Submit"
+  },
+  "swipe": {
+    "skip": "Skip",
+    "save": "Save",
+    "filter": "Filter",
+    "leftArrow": "Swipe Left",
+    "rightArrow": "Swipe Right",
+    "tripLimitReached": "Trip limit reached (5 spots max)",
+    "tripProgress": "{count}/5 spots",
+    "allDoneTitle": "All nearby spots explored",
+    "allDoneHint": "Try expanding your search radius or resetting filters",
+    "viewTripCta": "View Today's Trip ({count} spots)",
+    "viewDetail": "View Full Details →",
+    "addToTrip": "Add to Trip",
+    "loginToSave": "Login to save spots",
+    "difficulty": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    }
+  },
+  "theme": {
+    "toDark": "Switch to Dark Mode",
+    "toLight": "Switch to Light Mode"
+  },
+  "lang": {
+    "toggle": "切換為繁體中文",
+    "label": "EN"
+  }
+}

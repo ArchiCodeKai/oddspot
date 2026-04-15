@@ -41,12 +41,14 @@ export function SwipeActionBar({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "#091310",
-    border: "1px solid rgba(0,229,204,0.12)",
+    background: "var(--panel-glass-strong)",
+    border: "1px solid var(--line)",
     color: "var(--muted)",
     transition: "all 0.2s ease",
     cursor: "pointer",
     position: "relative",
+    backdropFilter: "blur(14px)",
+    boxShadow: "var(--shadow-glow)",
   };
 
   return (
@@ -60,7 +62,7 @@ export function SwipeActionBar({
           (e.currentTarget as HTMLButtonElement).style.color = "#f87171";
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(0,229,204,0.12)";
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--line)";
           (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)";
         }}
         aria-label="跳過"
@@ -78,11 +80,11 @@ export function SwipeActionBar({
           ...btnBase,
           ...(showTripFlash
             ? {
-                background: "rgba(0,229,204,0.15)",
-                borderColor: "rgba(0,229,204,0.5)",
+                background: "rgb(var(--accent-rgb) / 0.15)",
+                borderColor: "var(--line-strong)",
                 color: "var(--accent)",
                 transform: "scale(1.1)",
-                boxShadow: "0 0 16px rgba(0,229,204,0.25)",
+                boxShadow: "0 0 16px rgb(var(--accent-rgb) / 0.25)",
               }
             : {}),
         }}
@@ -95,7 +97,7 @@ export function SwipeActionBar({
         {tripCount > 0 && (
           <span
             className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-sm text-[9px] font-bold flex items-center justify-center"
-            style={{ background: "var(--accent)", color: "#040c0a" }}
+            style={{ background: "var(--accent)", color: "var(--background)" }}
           >
             {tripCount}
           </span>

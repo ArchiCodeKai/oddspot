@@ -1,0 +1,104 @@
+{
+  "meta": {
+    "title": "OddSpot",
+    "description": "發現台灣城市裡那些說不清楚的地方"
+  },
+  "nav": {
+    "brand": "sys://oddspot"
+  },
+  "onboarding": {
+    "badge": "B 級景點探勘系統",
+    "tagline": "發現台灣城市裡那些\n說不清楚的地方",
+    "cta": "開始探索",
+    "skip": "跳過"
+  },
+  "auth": {
+    "login": "登入",
+    "logout": "登出",
+    "saved": "已收藏",
+    "trip": "今日行程",
+    "user": "用戶"
+  },
+  "map": {
+    "locating": "定位中"
+  },
+  "spotMeta": {
+    "categories": {
+      "weird-temple": "詭異廟宇",
+      "abandoned": "廢棄場所",
+      "giant-object": "巨型物體",
+      "kitsch": "俗豔裝置",
+      "marginal-architecture": "邊緣建築",
+      "urban-legend": "都市傳說",
+      "absurd-landscape": "荒謬景觀",
+      "odd-shopfront": "奇異店面"
+    },
+    "status": {
+      "active": "可探索",
+      "uncertain": "狀況不明",
+      "disappeared": "已消失",
+      "pending": "審核中"
+    },
+    "difficulty": {
+      "easy": "容易",
+      "medium": "普通",
+      "hard": "困難"
+    }
+  },
+  "filter": {
+    "title": "篩選景點",
+    "category": "景點類型",
+    "difficulty": "難度",
+    "status": "狀態",
+    "reset": "重設",
+    "apply": "套用篩選"
+  },
+  "tripPlan": {
+    "title": "今日行程",
+    "clear": "清空",
+    "emptyTitle": "還沒有加入任何地點",
+    "emptyHint": "按 + 把景點加入今日行程",
+    "routeHint": "依加入順序排列，v2 加入最佳路線計算",
+    "navigate": "在 Google Maps 中導航",
+    "remove": "移除"
+  },
+  "spotDetail": {
+    "back": "返回地圖",
+    "legend": "傳說",
+    "recommendedTime": "推薦時段",
+    "addressPrefix": "📍"
+  },
+  "tabs": {
+    "map": "地圖",
+    "explore": "探索",
+    "submit": "投稿"
+  },
+  "swipe": {
+    "skip": "跳過",
+    "save": "收藏",
+    "viewDetail": "查看完整詳情 →",
+    "addToTrip": "加入今日行程",
+    "loginToSave": "登入後即可收藏",
+    "filter": "篩選",
+    "leftArrow": "向左滑",
+    "rightArrow": "向右滑",
+    "tripLimitReached": "今日行程已達上限（5 個地點）",
+    "tripProgress": "{count}/5 行程",
+    "allDoneTitle": "附近景點已全部看完",
+    "allDoneHint": "試試擴大搜尋範圍或重設篩選",
+    "viewTripCta": "查看今日行程（{count} 個地點）",
+    "difficulty": {
+      "easy": "容易",
+      "medium": "普通",
+      "hard": "困難"
+    }
+  },
+  "theme": {
+    "toDark": "切換為深色模式",
+    "toLight": "切換為淺色模式"
+  },
+  "lang": {
+    "toggle": "Switch to English",
+    "label": "中"
+  }
+}
