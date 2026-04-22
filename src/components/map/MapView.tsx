@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { APIProvider, Map } from "@vis.gl/react-google-maps";
+import { APIProvider, Map, type MapCameraChangedEvent } from "@vis.gl/react-google-maps";
 import { SpotMarker } from "./SpotMarker";
 import { SpotPopup } from "./SpotPopup";
+import { useAppStore } from "@/store/useAppStore";
 import type { SpotMapPoint } from "@/types/spots";
 
 const TAIPEI_CENTER = { lat: 25.0478, lng: 121.5319 };
+
+// invert(1) hue-rotate(180deg) 能保留飽和色的色相（數學上互相抵消），
+// 同時把原本的淺色地圖背景轉為深色，達到黑暗模式效果
+const DARK_MAP_FILTER = "invert(1) hue-rotate(180deg) brightness(0.88) saturate(0.85)";
 
 interface MapViewProps {
   spots: SpotMapPoint[];
@@ -19,7 +24,13 @@ interface MapViewProps {
 
 export function MapView({ spots, userLocation, radius, onExpandRadius, isError, onRetry }: MapViewProps) {
   const [selectedSpot, setSelectedSpot] = useState<SpotMapPoint | null>(null);
+  const [zoom, setZoom] = useState(14);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const isDark = useAppStore((s) => s.theme !== "light");
+
+  const handleCameraChange = useCallback((e: MapCameraChangedEvent) => {
+    setZoom(Math.round(e.detail.zoom));
+  }, []);
 
   const handleMarkerClick = useCallback((spot: SpotMapPoint) => {
     setSelectedSpot((prev) => (prev?.id === spot.id ? null : spot));
@@ -33,26 +44,40 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
 
   return (
     <APIProvider apiKey={apiKey}>
-      <div className="relative w-full" style={{ height: "100%" }}>
-        <Map
-          defaultCenter={center}
-          defaultZoom={14}
-          mapId="DEMO_MAP_ID"
-          onClick={handleMapClick}
-          gestureHandling="greedy"
-          disableDefaultUI={true}
-          style={{ width: "100%", height: "100%" }}
-        >
-          {spots.map((spot) => (
-            <SpotMarker
-              key={spot.id}
-              spot={spot}
-              isSelected={selectedSpot?.id === spot.id}
-              onClick={handleMarkerClick}
-            />
-          ))}
-        </Map>
+      {/* data-cursor-map 在最外層，確保游標效果涵蓋整個地圖區域 */}
+      <div className="relative w-full" style={{ height: "100%" }} data-cursor-map>
 
+        {/* 地圖圖層：深色模式套用 CSS filter，不影響外層 UI 元素 */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            filter: isDark ? DARK_MAP_FILTER : "none",
+          }}
+        >
+          <Map
+            defaultCenter={center}
+            defaultZoom={14}
+            mapId="DEMO_MAP_ID"
+            onClick={handleMapClick}
+            onCameraChanged={handleCameraChange}
+            gestureHandling="greedy"
+            disableDefaultUI={true}
+            style={{ width: "100%", height: "100%" }}
+          >
+            {spots.map((spot) => (
+              <SpotMarker
+                key={spot.id}
+                spot={spot}
+                isSelected={selectedSpot?.id === spot.id}
+                zoom={zoom}
+                onClick={handleMarkerClick}
+              />
+            ))}
+          </Map>
+        </div>
+
+        {/* UI 覆蓋層：不受 filter 影響，顏色與主題一致 */}
         {selectedSpot && (
           <SpotPopup
             spot={selectedSpot}

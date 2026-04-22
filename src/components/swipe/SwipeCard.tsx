@@ -5,30 +5,12 @@ import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ROUTES } from "@/lib/constants/routes";
+import { CATEGORY_COLORS, type SpotCategory } from "@/lib/constants/categories";
+import { STATUS_TEXT_COLORS, type SpotStatus } from "@/lib/constants/status";
 import { getCategoryLabel, getStatusLabel } from "@/lib/i18n/spotMeta";
 import type { SpotMapPoint } from "@/types/spots";
-import type { SpotCategory } from "@/lib/constants/categories";
-import type { SpotStatus } from "@/lib/constants/status";
 
 const SWIPE_THRESHOLD = 100;
-
-const CATEGORY_COLORS: Record<SpotCategory, string> = {
-  "weird-temple": "#f97316",
-  "abandoned": "#6b7280",
-  "giant-object": "#3b82f6",
-  "kitsch": "#ec4899",
-  "marginal-architecture": "#14b8a6",
-  "urban-legend": "#8b5cf6",
-  "absurd-landscape": "#22c55e",
-  "odd-shopfront": "#eab308",
-};
-
-const STATUS_COLORS: Record<SpotStatus, string> = {
-  active:      "text-[var(--accent)]",
-  uncertain:   "text-yellow-400",
-  disappeared: "text-[var(--muted)]",
-  pending:     "text-blue-400",
-};
 
 type DifficultyKey = "easy" | "medium" | "hard";
 
@@ -56,7 +38,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
     const categoryColor = CATEGORY_COLORS[spot.category] ?? "#6b7280";
     const categoryLabel = getCategoryLabel(tMeta, spot.category);
     const statusLabel = getStatusLabel(tMeta, spot.status as SpotStatus);
-    const statusColor = STATUS_COLORS[spot.status as SpotStatus] ?? "text-[var(--muted)]";
+    const statusColor = STATUS_TEXT_COLORS[spot.status as SpotStatus] ?? "text-[var(--muted)]";
 
     // 追蹤是否發生拖曳，用來抑制 drag end 後誤觸 Link navigation
     const didDrag = useRef(false);

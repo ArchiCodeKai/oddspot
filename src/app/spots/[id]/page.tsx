@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/db";
-import { ROUTES } from "@/lib/constants/routes";
 import { getCategoryLabel, getDifficultyLabel, getStatusLabel } from "@/lib/i18n/spotMeta";
 import { SpotActionBar } from "@/components/spots/SpotActionBar";
+import { SpotDetailShell } from "@/components/spots/SpotDetailShell";
 import type { SpotCategory } from "@/lib/constants/categories";
 import type { SpotStatus } from "@/lib/constants/status";
 
@@ -47,6 +46,7 @@ export default async function SpotDetailPage({
   const categoryColor = CATEGORY_COLORS[spot.category as SpotCategory] ?? "#6b7280";
 
   return (
+    <SpotDetailShell backLabel={tDetail("back")}>
     <div className="min-h-screen bg-zinc-950">
       {/* Hero 圖片 */}
       <div className="relative w-full h-[55vh] bg-zinc-800">
@@ -56,17 +56,8 @@ export default async function SpotDetailPage({
             style={{ backgroundImage: `url(${coverImage})` }}
           />
         )}
-        {/* 漸層遮罩，讓返回按鈕更易讀 */}
+        {/* 漸層遮罩 */}
         <div className="absolute inset-0 bg-linear-to-b from-black/40 via-transparent to-transparent" />
-
-        {/* 返回按鈕 */}
-        <Link
-          href={ROUTES.MAP}
-          className="absolute top-12 left-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/10 text-white text-lg"
-          aria-label={tDetail("back")}
-        >
-          ←
-        </Link>
       </div>
 
       {/* 內容區 */}
@@ -133,5 +124,6 @@ export default async function SpotDetailPage({
 
       <SpotActionBar lat={spot.lat} lng={spot.lng} spotId={spot.id} />
     </div>
+    </SpotDetailShell>
   );
 }

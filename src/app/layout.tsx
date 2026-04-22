@@ -6,6 +6,9 @@ import { ClientAuthProvider } from "@/components/auth/ClientAuthProvider";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import { LocaleProvider } from "@/components/providers/LocaleProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { PageTransition } from "@/components/providers/PageTransition";
+import { MagneticCursor } from "@/components/ui/MagneticCursor";
+import { MapClickEffect } from "@/components/map/MapClickEffect";
 
 // 品牌字體：UI 標籤、英文、數字、系統文字
 const spaceMono = Space_Mono({
@@ -73,10 +76,16 @@ export default async function RootLayout({
               userEmail={session?.user?.email}
               userImage={session?.user?.image}
             >
-              {children}
+              <PageTransition>
+                {children}
+              </PageTransition>
             </ClientAuthProvider>
           </QueryProvider>
         </LocaleProvider>
+        {/* 游標系統：獨立於頁面內容之外，不受任何 transform 影響 */}
+        <MagneticCursor />
+        {/* 地圖點擊箭頭效果：position:fixed 必須在所有 transform 祖先之外 */}
+        <MapClickEffect />
       </body>
     </html>
   );

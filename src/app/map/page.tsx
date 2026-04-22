@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpots } from "@/hooks/useSpots";
@@ -105,8 +106,17 @@ export default function MapPage() {
         <AuthButton />
       </div>
 
-      <div className="flex-1 min-h-0">
-        {viewMode === "map" ? (
+      {/* 兩個 view 常駐 DOM（地圖不因切換而重載），用 motion 控制顯隱 */}
+      <div className="flex-1 min-h-0 relative">
+        <motion.div
+          className="absolute inset-0"
+          animate={{
+            opacity: viewMode === "map" ? 1 : 0,
+            scale: viewMode === "map" ? 1 : 0.97,
+          }}
+          transition={{ duration: 0.22, ease: "easeInOut" }}
+          style={{ pointerEvents: viewMode === "map" ? "auto" : "none" }}
+        >
           <MapView
             spots={spots}
             userLocation={userLocation}
@@ -115,14 +125,24 @@ export default function MapPage() {
             isError={isError}
             onRetry={handleRetry}
           />
-        ) : (
+        </motion.div>
+
+        <motion.div
+          className="absolute inset-0"
+          animate={{
+            opacity: viewMode === "swipe" ? 1 : 0,
+            y: viewMode === "swipe" ? 0 : 18,
+          }}
+          transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+          style={{ pointerEvents: viewMode === "swipe" ? "auto" : "none" }}
+        >
           <SwipeView
             spots={spots}
             userLocation={userLocation}
             isError={isError}
             onRetry={handleRetry}
           />
-        )}
+        </motion.div>
       </div>
 
       <BottomTabBar viewMode={viewMode} onChange={setViewMode} />
