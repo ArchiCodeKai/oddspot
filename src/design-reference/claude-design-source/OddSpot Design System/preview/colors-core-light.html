@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Color palette — light</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f0f7f5;
+  }
+  body {
+    font-family: var(--font-brand);
+    color: #0d2e26;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .swatch {
+    aspect-ratio: 1.6 / 1;
+    border-radius: 2px;
+    border: 1px solid rgba(0,168,150,0.15);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .swatch .hex {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .swatch .name {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="swatch" style="background:#f0f7f5; color:#0d2e26;">
+      <span class="name">background</span>
+      <span class="hex">#F0F7F5</span>
+    </div>
+    <div class="swatch" style="background:#dff0ec; color:#0d2e26;">
+      <span class="name">panel</span>
+      <span class="hex">#DFF0EC</span>
+    </div>
+    <div class="swatch" style="background:#e8f5f2; color:#0d2e26;">
+      <span class="name">panel-light</span>
+      <span class="hex">#E8F5F2</span>
+    </div>
+    <div class="swatch" style="background:#00a896; color:#f0f7f5;">
+      <span class="name">accent</span>
+      <span class="hex">#00A896</span>
+    </div>
+    <div class="swatch" style="background:#0d2e26; color:#f0f7f5;">
+      <span class="name">foreground</span>
+      <span class="hex">#0D2E26</span>
+    </div>
+    <div class="swatch" style="background:#3a7269; color:#f0f7f5;">
+      <span class="name">muted</span>
+      <span class="hex">#3A7269</span>
+    </div>
+    <div class="swatch" style="background:rgba(0,168,150,0.15); color:#00a896;">
+      <span class="name">line</span>
+      <span class="hex">accent / 15%</span>
+    </div>
+    <div class="swatch" style="background:rgba(0,168,150,0.24); color:#00a896;">
+      <span class="name">line-strong</span>
+      <span class="hex">accent / 24%</span>
+    </div>
+  </div>
+</body>
+</html>

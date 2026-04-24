@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<title>Type — scale (in-app)</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body {
+    color: var(--foreground);
+    padding: 32px 36px 64px;
+    box-sizing: border-box;
+    font-family: var(--font-brand);
+  }
+
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 48px; line-height: 1; letter-spacing: 0.01em;
+    margin: 0 0 6px;
+  }
+  .page-sub {
+    font-family: var(--font-brand);
+    font-size: 10px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 28px;
+  }
+
+  /* Section header */
+  .section {
+    display: flex; align-items: center; gap: 10px;
+    margin: 28px 0 14px;
+    font-family: var(--font-brand);
+    font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .section::after {
+    content: ""; flex: 1;
+    height: 1px; background: rgb(var(--accent-rgb) / 0.18);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 140px 1fr 280px;
+    gap: 20px;
+    align-items: baseline;
+    padding: 12px 0;
+    border-bottom: 1px solid rgb(var(--accent-rgb) / 0.08);
+  }
+  .row:last-child { border-bottom: 0; }
+
+  .tag {
+    font-family: var(--font-brand);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    line-height: 1.4;
+  }
+  .tag .cls {
+    display: block;
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    margin-top: 3px;
+    text-transform: none;
+  }
+  .spec {
+    font-family: var(--font-brand);
+    font-size: 9px;
+    color: var(--muted);
+    opacity: 0.7;
+    letter-spacing: 0.06em;
+    line-height: 1.7;
+    text-transform: uppercase;
+  }
+  .sample { min-width: 0; }
+
+  /* Canonical role styles (pulled from colors_and_type.css) */
+  /* (present for clarity — real classes exist in the stylesheet) */
+
+  /* in-app condensed sizes */
+  .x-tc-h1  { font-family: var(--font-content); font-weight: 700; font-size: 24px; line-height: 1.2; letter-spacing: 0.03em; }
+  .x-tc-h2  { font-family: var(--font-content); font-weight: 700; font-size: 18px; line-height: 1.3; letter-spacing: 0.02em; }
+  .x-tc-body{ font-family: var(--font-content); font-size: 14px; line-height: 1.7; letter-spacing: 0.03em; }
+  .x-en-h2-sm { font-family: var(--font-display); font-size: 28px; line-height: 1; letter-spacing: 0.02em; }
+  .x-en-body-sm { font-family: var(--font-brand); font-size: 13px; line-height: 1.6; }
+  .x-meta { font-family: var(--font-brand); font-size: 11px; letter-spacing: 0.06em; color: var(--muted); }
+  .x-meta-wide { font-family: var(--font-brand); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+  .x-brand { font-family: var(--font-brand); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); }
+  .x-micro { font-family: var(--font-brand); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+
+  .x-tc-body code, .x-tc-body .mono { font-family: var(--font-brand); font-size: inherit; background: none; padding: 0; }
+  .x-tc-body .mono-accent { color: var(--accent); }
+</style>
+</head>
+<body>
+
+  <h1 class="page-title">Type · scale</h1>
+  <div class="page-sub">5 canonical roles · in-app sizes</div>
+
+  <!-- ===== CANONICAL ROLES (reference) ===== -->
+  <div class="section">canonical roles</div>
+
+  <div class="row">
+    <span class="tag">★ EN H1 <span class="cls">.t-en-h1</span></span>
+    <span class="sample"><span class="t-en-h1" style="font-size: 72px; line-height: 1;">Odd<b style="color: var(--accent); font-weight: inherit;">Spot</b></span></span>
+    <span class="spec">VT323 · 120px hero / 72px shown<br>tracking 0.01em · line 0.95 · glow accent 35%</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">EN H2 <span class="cls">.t-en-h2</span></span>
+    <span class="sample"><span class="t-en-h2" style="font-size: 40px;">SCANNING_NEARBY.EXE</span></span>
+    <span class="spec">VT323 · 48–64px section<br>tracking 0.02em · line 1.0</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">EN body <span class="cls">.t-en-body</span></span>
+    <span class="sample"><span class="t-en-body">Scanning 237 weird spots · press START to begin</span></span>
+    <span class="spec">JetBrains Mono · 15px<br>tracking 0.01em · line 1.7</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">★ TC H1 <span class="cls">.t-tc-h1</span></span>
+    <span class="sample"><span class="t-tc-h1" style="font-size: 36px;">附<span style="color: var(--accent);">近</span>有什麼怪東西</span></span>
+    <span class="spec">Noto Sans TC 700 · 56px hero / 36px shown<br>tracking 0.08em · line 1.2</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">TC body <span class="cls">.t-tc-body</span></span>
+    <span class="sample"><span class="t-tc-body">這個 <code class="t-mono-accent">spot</code> 狀態 <code class="t-mono-accent">ACTIVE</code>，距離 <code>1.2km</code>。</span></span>
+    <span class="spec">Noto Sans TC · 15px<br>tracking 0.03em · line 1.8<br>inline &lt;code&gt; → JetBrains Mono</span>
+  </div>
+
+  <!-- ===== IN-APP CONDENSED SIZES ===== -->
+  <div class="section">in-app · condensed sizes</div>
+
+  <div class="row">
+    <span class="tag">spot name <span class="cls">TC H1 · 24px</span></span>
+    <span class="sample"><span class="x-tc-h1">廢棄軍事營區 · 舊北投</span></span>
+    <span class="spec">Noto Sans TC 700 · 24 / 1.2<br>detail screen hero title</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">card title <span class="cls">TC H2 · 18px</span></span>
+    <span class="sample"><span class="x-tc-h2">附近還有三個奇特的東西</span></span>
+    <span class="spec">Noto Sans TC 700 · 18 / 1.3<br>card / list row title</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">TC paragraph <span class="cls">TC body · 14px</span></span>
+    <span class="sample"><span class="x-tc-body">這是條通往山坡的小徑，盡頭有個幾乎沒人記得的地方。<code>2.4km</code>，大約 <code class="mono-accent">30 min</code> 車程。</span></span>
+    <span class="spec">Noto Sans TC · 14 / 1.7<br>inline &lt;code&gt; → mono</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">section header <span class="cls">EN H2 · 28px</span></span>
+    <span class="sample"><span class="x-en-h2-sm">NEARBY · 237 SPOTS</span></span>
+    <span class="spec">VT323 · 28 / 1.0<br>in-screen section divider</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">EN paragraph <span class="cls">EN body · 13px</span></span>
+    <span class="sample"><span class="x-en-body-sm">Abandoned military barracks · bring a flashlight, terrain is uneven.</span></span>
+    <span class="spec">JetBrains Mono · 13 / 1.6<br>English description / log</span>
+  </div>
+
+  <!-- ===== UTILITY ===== -->
+  <div class="section">utility · meta / labels</div>
+
+  <div class="row">
+    <span class="tag">coord · meta <span class="cls">.x-meta</span></span>
+    <span class="sample"><span class="x-meta">25.0478, 121.5319 · 2.4 KM</span></span>
+    <span class="spec">JetBrains Mono · 11 · 0.06em<br>coordinate, distance, timestamp</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">wide label <span class="cls">.x-meta-wide</span></span>
+    <span class="sample"><span class="x-meta-wide">Distance · Difficulty · Status</span></span>
+    <span class="spec">JetBrains Mono · 10 · 0.22em · UPPER<br>meta strip labels, form keys</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">brand tag <span class="cls">.x-brand</span></span>
+    <span class="sample"><span class="x-brand">sys://oddspot · B-grade</span></span>
+    <span class="spec">JetBrains Mono · 10 · 0.22em · UPPER<br>accent · corner brand stamp</span>
+  </div>
+
+  <div class="row">
+    <span class="tag">micro <span class="cls">.x-micro</span></span>
+    <span class="sample"><span class="x-micro">TM · #001 · placeholder imagery</span></span>
+    <span class="spec">JetBrains Mono · 9 · 0.22em · UPPER<br>pin codes, footnotes, status line</span>
+  </div>
+
+</body>
+</html>

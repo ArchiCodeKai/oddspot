@@ -1,5 +1,7 @@
 # 視覺設計規範
 
+> **版本說明：** 本文件為 v1 基礎規範。v2 (Acid / Y2K) 方向的覆寫規則請見 `.ai-context/global/design-direction-v2.md`，以 v2 為優先。
+
 ## 設計方向
 
 OddSpot 的核心調性：**神秘、探索感、台灣在地奇景**。

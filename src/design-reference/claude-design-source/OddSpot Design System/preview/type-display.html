@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<title>Type — canonical role map</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body { color: var(--foreground); padding: 40px 40px 80px; box-sizing: border-box; }
+
+  .card {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 32px;
+    padding: 28px 0 32px;
+    border-top: 1px solid rgb(var(--accent-rgb) / 0.14);
+  }
+  .card:first-of-type { border-top: none; padding-top: 0; }
+
+  .role {
+    font-family: var(--font-brand);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    line-height: 1.4;
+  }
+  .role .class {
+    display: block;
+    color: var(--muted);
+    margin-top: 6px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: none;
+  }
+  .role .spec {
+    display: block;
+    color: var(--muted);
+    margin-top: 10px;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.8;
+    line-height: 1.7;
+  }
+
+  .specimen {
+    min-width: 0;
+  }
+  .specimen .use {
+    font-family: var(--font-brand);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-top: 14px;
+    max-width: 56ch;
+    line-height: 1.7;
+    opacity: 0.9;
+  }
+  .specimen .use b { color: var(--foreground); font-weight: 400; }
+
+  h1.page-title {
+    font-family: var(--font-display);
+    font-size: 56px;
+    color: var(--foreground);
+    margin: 0 0 8px;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+  .page-sub {
+    font-family: var(--font-brand);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 40px;
+  }
+</style>
+</head>
+<body>
+
+  <h1 class="page-title">Typography · role map</h1>
+  <div class="page-sub">locked · v0.2 · five roles cover every surface</div>
+
+  <!-- ================================================= -->
+  <div class="card">
+    <div class="role">
+      ★ EN H1
+      <span class="class">.t-en-h1 · .type-display</span>
+      <span class="spec">
+        VT323 · 120px<br>
+        tracking 0.01em<br>
+        line 0.95<br>
+        glow @accent 35%
+      </span>
+    </div>
+    <div class="specimen">
+      <div class="t-en-h1" style="font-size: 120px; line-height: 0.95;">Odd<b style="color: var(--accent); font-weight: inherit;">Spot</b></div>
+      <p class="use">英文主標題 / hero moment / 404 / onboarding。<br><b>只用於品牌名稱與 splash 畫面，</b>全域僅 1 次。</p>
+    </div>
+  </div>
+
+  <!-- ================================================= -->
+  <div class="card">
+    <div class="role">
+      EN H2
+      <span class="class">.t-en-h2</span>
+      <span class="spec">
+        VT323 · 48–64px<br>
+        tracking 0.02em<br>
+        line 1.0<br>
+        accent variant available
+      </span>
+    </div>
+    <div class="specimen">
+      <div class="t-en-h2" style="font-size: 64px;">SCANNING_NEARBY.EXE</div>
+      <div class="t-en-h2 t-en-h2--accent" style="font-size: 64px; margin-top: 6px;">237 ODD_SPOTS_FOUND</div>
+      <p class="use">副標題 / section starter / 系統狀態訊息。適合用 <b>大寫 + 底線或點連接</b> 保持終端機節奏。accent 變體用於強調數字或狀態。</p>
+    </div>
+  </div>
+
+  <!-- ================================================= -->
+  <div class="card">
+    <div class="role">
+      EN body
+      <span class="class">.t-en-body</span>
+      <span class="spec">
+        JetBrains Mono · 15px<br>
+        tracking 0.01em<br>
+        line 1.7<br>
+        weight 400
+      </span>
+    </div>
+    <div class="specimen">
+      <div class="t-en-body" style="max-width: 640px;">
+        <span style="color: var(--accent);">sys://oddspot · v0.2.0-alpha</span><br>
+        Scanning 237 registered weird locations within 3km radius.<br>
+        Abandoned buildings, strange temples, giant pineapples, late-night barbershops.<br>
+        <span style="color: var(--accent);">→</span> Press START to begin exploration.
+      </div>
+      <p class="use">英文內文 / 系統訊息 / 長段 log / meta。<br>accent 綠色僅用於 system prefix、箭頭、關鍵字，不拿來寫整段。</p>
+    </div>
+  </div>
+
+  <!-- ================================================= -->
+  <div class="card">
+    <div class="role">
+      ★ TC H1
+      <span class="class">.t-tc-h1</span>
+      <span class="spec">
+        Noto Sans TC 700 · 56px<br>
+        tracking 0.08em<br>
+        line 1.2<br>
+        glow @accent 25%
+      </span>
+    </div>
+    <div class="specimen">
+      <div class="t-tc-h1" style="font-size: 56px;">
+        附<span style="color: var(--accent);">近</span>現在有什麼<br>
+        怪東西值得去一下？
+      </div>
+      <p class="use">中文主標題 / hero 文案 / landing headline。<br>關鍵：<b>letter-spacing 0.08em</b> 讓中文字之間有呼吸感，跟 VT323 並列時不會顯得太擠。單字可用 accent 強調。</p>
+    </div>
+  </div>
+
+  <!-- ================================================= -->
+  <div class="card">
+    <div class="role">
+      TC body
+      <span class="class">.t-tc-body</span>
+      <span class="spec">
+        Noto Sans TC · 15px<br>
+        tracking 0.03em<br>
+        line 1.8<br>
+        inline &lt;code&gt; → mono
+      </span>
+    </div>
+    <div class="specimen">
+      <p class="t-tc-body" style="margin: 0; max-width: 640px;">
+        這個 <code class="t-mono-accent">spot</code> 被登記於 <code>2019-08-13</code>。 狀態：<code class="t-mono-accent">ACTIVE</code>。 距離你目前位置約 <code>1.2km</code>，步行 <code>16 min</code>。
+      </p>
+      <p class="use">中文正文 / 描述 / 說明文字。<br>
+        <b>節奏機制：</b>中文本體走 Noto，英文 / 數字 / 代號用 <code>&lt;code&gt;</code> 或 <code>.t-mono</code> 自動切回 JetBrains Mono — mono × sans 的反差就是這個系統的節奏感。<br>
+        <code>.t-mono-accent</code> 同時改成螢光青，用於狀態關鍵字。</p>
+    </div>
+  </div>
+
+</body>
+</html>

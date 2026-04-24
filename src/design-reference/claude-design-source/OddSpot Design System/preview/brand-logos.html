@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Logo mark — family</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body {
+    color: var(--foreground);
+    padding: 20px;
+    font-family: var(--font-brand);
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    align-items: end;
+  }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  img {
+    width: 100%;
+    max-width: 100px;
+    aspect-ratio: 1;
+    border-radius: 12px;
+  }
+  .tag {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="cell"><img src="../assets/logos/oddspot-icon-dark-open.svg"><span class="tag">open · dark</span></div>
+  <div class="cell"><img src="../assets/logos/oddspot-icon-dark-closed.svg"><span class="tag">closed</span></div>
+  <div class="cell"><img src="../assets/logos/oddspot-icon-dark-error.svg"><span class="tag">error</span></div>
+  <div class="cell"><img src="../assets/logos/oddspot-favicon-dark.svg"><span class="tag">favicon</span></div>
+  <div class="cell"><img src="../assets/logos/oddspot-icon-light-open.svg"><span class="tag">open · light</span></div>
+  <div class="cell"><img src="../assets/logos/oddspot-icon-light-closed.svg"><span class="tag">closed</span></div>
+  <div class="cell"><img src="../assets/logos/oddspot-icon-light-error.svg"><span class="tag">error</span></div>
+  <div class="cell"><img src="../assets/logos/oddspot-favicon-light.svg"><span class="tag">favicon</span></div>
+</body>
+</html>

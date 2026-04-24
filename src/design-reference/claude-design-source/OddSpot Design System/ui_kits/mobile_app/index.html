@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OddSpot · Mobile UI Kit</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: #060606; min-height: 100vh; }
+  body {
+    font-family: var(--font-brand, 'JetBrains Mono', monospace);
+    color: #c6e8e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  /* ambient keyframes used by Primitives */
+  @keyframes ob-blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.05); }
+  }
+  @keyframes os-pulse {
+    0%, 100% { opacity: 0.45; }
+    50%      { opacity: 1; }
+  }
+  .frame {
+    width: 390px;
+    height: 780px;
+    border-radius: 44px;
+    background: #000;
+    padding: 10px;
+    position: relative;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06), 0 0 40px rgba(0,229,204,0.08);
+  }
+  .screen {
+    width: 100%; height: 100%;
+    border-radius: 36px;
+    overflow: hidden;
+    background: #040c0a;
+    position: relative;
+  }
+  .notch {
+    position: absolute;
+    top: 20px; left: 50%; transform: translateX(-50%);
+    width: 110px; height: 30px;
+    background: #000;
+    border-radius: 18px;
+    z-index: 100;
+  }
+  .status-bar {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    font-family: var(--font-brand, 'JetBrains Mono', monospace);
+    font-size: 12px;
+    color: #c6e8e0;
+    z-index: 90;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+  }
+  .status-bar .right { display: flex; gap: 6px; align-items: center; }
+  .page {
+    position: absolute;
+    top: 52px; left: 0; right: 0; bottom: 0;
+  }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="screen">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>9:41</span>
+        <span class="right">
+          <svg width="16" height="10" viewBox="0 0 16 10" fill="currentColor"><rect y="6" width="3" height="4"/><rect x="4" y="4" width="3" height="6"/><rect x="8" y="2" width="3" height="8"/><rect x="12" width="3" height="10"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="18" height="10" rx="2"/><rect x="2" y="2" width="15" height="7" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" fill="currentColor"/></svg>
+        </span>
+      </div>
+      <div id="root" class="page"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="SAMPLE_SPOTS.js"></script>
+  <script type="text/babel" src="Primitives.jsx"></script>
+  <script type="text/babel" src="OnboardingScreen.jsx"></script>
+  <script type="text/babel" src="BottomTabBar.jsx"></script>
+  <script type="text/babel" src="MapScreen.jsx"></script>
+  <script type="text/babel" src="SwipeScreen.jsx"></script>
+  <script type="text/babel" src="DetailScreen.jsx"></script>
+
+  <script type="text/babel">
+    function SubmitScreen() {
+      return (
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, #07201c 0%, #040c0a 70%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gap: 16 }}>
+          <SceneBg variant="submit" />
+          <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+            <EyeMark size={56} blinking={false} />
+            <BrandTag>sys://oddspot / submit</BrandTag>
+            <h2 style={{ fontFamily: "var(--font-content, sans-serif)", fontSize: 22, fontWeight: 700, color: TOKENS.fg, margin: 0, lineHeight: 1.3 }}>發現了什麼奇怪的地方？</h2>
+            <p style={{ fontFamily: "var(--font-content, sans-serif)", fontSize: 14, color: TOKENS.muted, lineHeight: 1.7, margin: 0 }}>分享給大家。審核通常在 48 小時內完成。</p>
+            <Button variant="accent" style={{ marginTop: 12 }} icon={<Icon.Plus size={16} />}>新增景點</Button>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [route, setRoute] = React.useState(() => localStorage.getItem("oddspot-route") || "onboarding");
+      const [tab, setTab] = React.useState(() => localStorage.getItem("oddspot-tab") || "map");
+      const [detailId, setDetailId] = React.useState(null);
+
+      React.useEffect(() => { localStorage.setItem("oddspot-route", route); }, [route]);
+      React.useEffect(() => { localStorage.setItem("oddspot-tab", tab); }, [tab]);
+
+      const openSpot = (id) => { setDetailId(id); setRoute("detail"); };
+
+      if (route === "onboarding") {
+        return <OnboardingScreen onStart={() => setRoute("main")} />;
+      }
+      if (route === "detail") {
+        return <DetailScreen spotId={detailId} onBack={() => setRoute("main")} />;
+      }
+      return (
+        <>
+          {tab === "map" && <MapScreen onOpenSpot={openSpot} />}
+          {tab === "swipe" && <SwipeScreen onOpenSpot={openSpot} />}
+          {tab === "submit" && <SubmitScreen />}
+          <BottomTabBar active={tab} onChange={setTab} />
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

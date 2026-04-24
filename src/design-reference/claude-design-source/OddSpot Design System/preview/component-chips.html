@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<title>Filter chips · neon tube</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); min-height: 100vh; }
+  body {
+    color: var(--foreground);
+    padding: 32px 24px;
+    box-sizing: border-box;
+    font-family: var(--font-brand);
+  }
+  .section-label {
+    font-family: var(--font-brand);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .row {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    margin-bottom: 32px;
+  }
+  .hint {
+    font-family: var(--font-brand); font-size: 10px; color: var(--muted);
+    letter-spacing: 0.05em; margin-top: 8px;
+  }
+
+  /* ----- Monochrome neon-tube chip ----- */
+  .chip {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px 8px 10px;
+    font-family: var(--font-brand);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid rgb(var(--accent-rgb) / 0.18);
+    border-radius: 2px;            /* 終端感，不用藥丸 */
+    cursor: pointer;
+    transition: color 220ms var(--ease-standard, ease), border-color 220ms var(--ease-standard, ease);
+    user-select: none;
+    overflow: hidden;
+  }
+  /* Category glyph — two-character mono tag, this IS the recognizability layer */
+  .chip .glyph {
+    font-family: var(--font-brand);
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 5px;
+    border: 1px solid currentColor;
+    border-radius: 1px;
+    opacity: 0.55;
+    transition: opacity 220ms;
+    letter-spacing: 0.08em;
+  }
+  .chip .cn { font-family: var(--font-content); letter-spacing: 0.05em; }
+
+  /* Scanline sweep (dormant) */
+  .chip::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgb(var(--accent-rgb) / 0) 40%,
+      rgb(var(--accent-rgb) / 0.15) 50%,
+      rgb(var(--accent-rgb) / 0) 60%,
+      transparent 100%);
+    transform: translateX(-120%);
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  /* ---- HOVER: neon ignite ---- */
+  .chip:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow:
+      0 0 0 1px var(--accent) inset,
+      0 0 8px rgb(var(--accent-rgb) / 0.6),
+      0 0 22px rgb(var(--accent-rgb) / 0.35);
+    animation: ignite 380ms var(--ease-out, cubic-bezier(.2,.8,.2,1)) both;
+  }
+  .chip:hover .glyph { opacity: 1; }
+  .chip:hover::before {
+    opacity: 1;
+    animation: sweep 900ms linear infinite;
+  }
+
+  /* When leaving (no hover, was hovered) — use a separate class driven by JS for flicker-out */
+  .chip.flicker {
+    animation: flickerOut 1400ms steps(1,end) forwards;
+  }
+
+  /* ---- ACTIVE / SELECTED state = permanently lit, gentle pulse ---- */
+  .chip.is-selected {
+    color: var(--bg, var(--background));
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow:
+      0 0 12px rgb(var(--accent-rgb) / 0.55),
+      0 0 32px rgb(var(--accent-rgb) / 0.28);
+  }
+  .chip.is-selected .glyph {
+    opacity: 1;
+    border-color: rgb(var(--background-rgb) / 0.45);
+    color: var(--background);
+  }
+  .chip.is-selected::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(120% 60% at 50% 100%, rgb(var(--background-rgb) / 0.2), transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ---- KEYFRAMES ---- */
+  @keyframes ignite {
+    0%   { filter: brightness(0.4); }
+    12%  { filter: brightness(1.6); }
+    18%  { filter: brightness(0.7); }
+    26%  { filter: brightness(1.4); }
+    40%  { filter: brightness(1.0); }
+    100% { filter: brightness(1.0); }
+  }
+
+  @keyframes sweep {
+    0%   { transform: translateX(-120%); }
+    100% { transform: translateX(120%); }
+  }
+
+  /* Broken-bulb die-off: quick bright pop, stutter, then fade */
+  @keyframes flickerOut {
+    0%   { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 22px rgb(var(--accent-rgb) / 0.55); }
+    5%   { color: var(--fg); border-color: var(--accent); box-shadow: 0 0 28px rgb(var(--accent-rgb) / 0.8); }   /* last hot flare */
+    8%   { filter: brightness(1.4); }
+    12%  { color: rgb(var(--accent-rgb) / 0.2); box-shadow: 0 0 2px rgb(var(--accent-rgb) / 0.1); filter: brightness(0.6); } /* blink off */
+    18%  { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 14px rgb(var(--accent-rgb) / 0.35); filter: brightness(1.2); }  /* sputter on */
+    24%  { color: rgb(var(--accent-rgb) / 0.3); box-shadow: 0 0 2px rgb(var(--accent-rgb) / 0.1); filter: brightness(0.5); } /* off */
+    32%  { color: var(--accent); box-shadow: 0 0 8px rgb(var(--accent-rgb) / 0.25); filter: brightness(1); } /* weak flicker */
+    38%  { color: rgb(var(--accent-rgb) / 0.25); box-shadow: 0 0 1px rgb(var(--accent-rgb) / 0.05); }
+    55%  { color: rgb(var(--muted-rgb) / 0.7); border-color: rgb(var(--accent-rgb) / 0.3); box-shadow: 0 0 6px rgb(var(--accent-rgb) / 0.15); filter: brightness(0.85); }
+    100% { color: var(--muted); border-color: rgb(var(--accent-rgb) / 0.18); box-shadow: none; filter: brightness(1); }
+  }
+
+  .toolbar {
+    display: flex; gap: 8px; align-items: center;
+    margin-bottom: 18px;
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted);
+  }
+  .toolbar button {
+    background: transparent; color: var(--muted);
+    border: 1px solid rgb(var(--accent-rgb) / 0.2);
+    padding: 5px 10px; font: inherit; letter-spacing: inherit; text-transform: inherit;
+    cursor: pointer; border-radius: 2px;
+  }
+  .toolbar button:hover { color: var(--accent); border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+  <div class="section-label">category filter · hover to ignite, move away to flicker out</div>
+  <div class="toolbar">
+    <button id="clear">× clear all</button>
+    <span>· try hovering, then move away</span>
+  </div>
+
+  <div class="row" id="chipRow">
+    <button class="chip is-selected" data-cat="TM"><span class="glyph">TM</span><span class="cn">詭異廟宇</span></button>
+    <button class="chip"             data-cat="AB"><span class="glyph">AB</span><span class="cn">廢棄場所</span></button>
+    <button class="chip is-selected" data-cat="GO"><span class="glyph">GO</span><span class="cn">巨型物體</span></button>
+    <button class="chip"             data-cat="KT"><span class="glyph">KT</span><span class="cn">俗豔裝置</span></button>
+    <button class="chip"             data-cat="MA"><span class="glyph">MA</span><span class="cn">邊緣建築</span></button>
+    <button class="chip"             data-cat="UL"><span class="glyph">UL</span><span class="cn">都市傳說</span></button>
+    <button class="chip"             data-cat="AL"><span class="glyph">AL</span><span class="cn">荒謬景觀</span></button>
+    <button class="chip"             data-cat="OS"><span class="glyph">OS</span><span class="cn">奇異店面</span></button>
+  </div>
+
+  <div class="section-label" style="margin-top: 32px;">recognizability layer</div>
+  <p class="hint" style="max-width: 560px; line-height: 1.7;">
+    單色系 (accent only) + 兩字母代號 (TM/AB/GO…) 當辨識標籤 — 取代原本八彩大雜燴。<br>
+    代號借用產品縮寫文化，同時跟 map-pin 用的代號一致，整個系統視覺收斂到單一霓虹綠。
+  </p>
+
+<script>
+  const row = document.getElementById('chipRow');
+  // Only trigger flicker-out after a real hover (not on initial render)
+  row.querySelectorAll('.chip').forEach(chip => {
+    let wasHovered = false;
+    chip.addEventListener('mouseenter', () => {
+      wasHovered = true;
+      chip.classList.remove('flicker'); // kill any in-flight flicker
+    });
+    chip.addEventListener('mouseleave', () => {
+      if (!wasHovered || chip.classList.contains('is-selected')) return;
+      chip.classList.remove('flicker');
+      // reflow hack so animation restarts
+      void chip.offsetWidth;
+      chip.classList.add('flicker');
+      setTimeout(() => chip.classList.remove('flicker'), 1500);
+    });
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('is-selected');
+      chip.classList.remove('flicker');
+    });
+  });
+  document.getElementById('clear').addEventListener('click', () => {
+    row.querySelectorAll('.chip').forEach(c => c.classList.remove('is-selected'));
+  });
+</script>
+
+</body>
+</html>

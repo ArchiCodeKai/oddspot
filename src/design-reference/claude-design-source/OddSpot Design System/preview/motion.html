@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Motion tokens</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body {
+    color: var(--foreground);
+    padding: 20px;
+    box-sizing: border-box;
+    font-family: var(--font-brand);
+    display: grid;
+    gap: 10px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 120px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .row:last-child { border: 0; }
+  .tag {
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .track {
+    height: 6px;
+    background: var(--panel-light);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  .ball {
+    position: absolute;
+    width: 16px;
+    height: 6px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation-duration: 2s;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+  }
+  .e1 { animation-name: run; animation-timing-function: cubic-bezier(0.4,0,0.2,1); }
+  .e2 { animation-name: run; animation-timing-function: cubic-bezier(0.32,0.72,0,1); }
+  .e3 { animation-name: run; animation-timing-function: cubic-bezier(0.4,0,1,1); }
+  @keyframes run {
+    from { left: 0; }
+    to { left: calc(100% - 16px); }
+  }
+  .spec { font-size: 9px; color: var(--accent); letter-spacing: 0.04em; }
+</style>
+</head>
+<body>
+  <div class="row"><span class="tag">ease-standard</span><div class="track"><div class="ball e1"></div></div><span class="spec">0.4, 0, 0.2, 1</span></div>
+  <div class="row"><span class="tag">ease-out</span><div class="track"><div class="ball e2"></div></div><span class="spec">0.32, 0.72, 0, 1</span></div>
+  <div class="row"><span class="tag">ease-in</span><div class="track"><div class="ball e3"></div></div><span class="spec">0.4, 0, 1, 1</span></div>
+</body>
+</html>

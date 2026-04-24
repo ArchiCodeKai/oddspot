@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="zh-TW" data-theme="terminal">
+<head>
+<meta charset="utf-8">
+<title>OddSpot · Acid Landing (v2)</title>
+<link rel="stylesheet" href="themes.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; }
+  body {
+    font-family: var(--font-brand);
+    color: var(--fg);
+    background: var(--bg);
+    min-height: 100vh;
+    position: relative;
+    transition: background 300ms var(--ease-standard), color 300ms var(--ease-standard);
+  }
+
+  /* Film grain overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='200' height='200' filter='url(%23n)' opacity='0.9'/></svg>");
+    mix-blend-mode: overlay;
+  }
+
+  /* CRT scanlines */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    background: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgb(var(--accent-rgb) / 0.025) 3px, rgb(var(--accent-rgb) / 0.025) 4px);
+  }
+
+  /* Theme switcher */
+  .theme-switch {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    background: rgb(0 0 0 / 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+  }
+  .theme-switch button {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid transparent;
+    padding: 6px 10px;
+    font-family: var(--font-brand);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 160ms;
+  }
+  .theme-switch button:hover { color: var(--fg); }
+  .theme-switch button.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgb(var(--accent-rgb) / 0.35);
+  }
+
+  /* Top bar */
+  .topbar {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    right: 220px;
+    z-index: 50;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .topbar span { color: var(--muted); }
+  .topbar .accent { color: var(--accent); text-shadow: 0 0 10px rgb(var(--accent-rgb) / 0.5); }
+  .topbar .coord { display: flex; gap: 18px; }
+
+  /* Main layout */
+  .stage {
+    min-height: 100vh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 60px 60px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Globe canvas */
+  .globe-wrap {
+    position: absolute;
+    top: 50%;
+    right: 4%;
+    transform: translateY(-50%);
+    width: 520px;
+    height: 520px;
+    pointer-events: none;
+  }
+  .globe-wrap svg { width: 100%; height: 100%; }
+
+  /* Headline */
+  .headline {
+    position: relative;
+    z-index: 5;
+    max-width: 620px;
+  }
+  .system-tag {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .system-tag::before {
+    content: "";
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  h1 {
+    font-family: var(--font-content);
+    font-size: clamp(40px, 6.5vw, 84px);
+    font-weight: 700;
+    line-height: 1.02;
+    margin: 0;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+  }
+  h1 em {
+    font-style: normal;
+    color: var(--accent);
+    text-shadow: 0 0 32px rgb(var(--accent-rgb) / 0.45);
+  }
+  .lede {
+    font-family: var(--font-content);
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--muted);
+    margin: 32px 0 0;
+    max-width: 480px;
+    letter-spacing: 0.04em;
+  }
+
+  /* CTA */
+  .cta-row {
+    margin-top: 48px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+  .cta {
+    font-family: var(--font-brand);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 16px 28px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background: transparent;
+    cursor: pointer;
+    box-shadow: var(--glow);
+    transition: all 180ms var(--ease-standard);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cta:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .cta-meta {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Acid stickers — floating SVG stamps */
+  .stickers { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+  .sticker {
+    position: absolute;
+    color: var(--fg);
+  }
+  .sticker .label {
+    font-family: var(--font-brand);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .sticker.accent .label { color: var(--accent); }
+
+  .s1 { top: 8%;   left: 4%;  transform: rotate(-6deg); }
+  .s2 { top: 14%;  left: 38%; transform: rotate(4deg);  }
+  .s3 { top: 88%;  left: 3%;  transform: rotate(-3deg); }
+  .s4 { top: 78%;  left: 36%; transform: rotate(2deg);  }
+  .s5 { top: 30%;  right: 42%;transform: rotate(-8deg); }
+  .s6 { bottom: 8%; right: 8%;transform: rotate(5deg);  }
+  .s7 { top: 6%;   right: 38%;transform: rotate(8deg);  }
+
+  /* Bottom strip */
+  .bottom-strip {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 40;
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-top: 1px solid var(--line);
+    background: rgb(0 0 0 / 0.45);
+    backdrop-filter: blur(12px);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .bottom-strip .seg { display: flex; gap: 20px; }
+
+  /* Marquee tape */
+  .marquee {
+    position: absolute;
+    bottom: 48px;
+    left: 0;
+    right: 0;
+    overflow: hidden;
+    padding: 8px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    background: rgb(0 0 0 / 0.3);
+    z-index: 3;
+  }
+  .marquee-track {
+    display: flex;
+    gap: 40px;
+    white-space: nowrap;
+    animation: slide 30s linear infinite;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--fg);
+  }
+  @keyframes slide {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .marquee-track span.dot { color: var(--accent); }
+
+  /* Mascot eye — active scanning */
+  .eye-container {
+    position: absolute;
+    top: 12%;
+    right: 4%;
+    z-index: 6;
+  }
+
+  /* Globe rotation */
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes spin-reverse {
+    from { transform: rotate(360deg); }
+    to   { transform: rotate(0deg); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(-50%) translateY(0); }
+    50%      { transform: translateY(-50%) translateY(-10px); }
+  }
+
+  .globe-wrap { animation: float 6s ease-in-out infinite; }
+  .globe-inner { animation: spin 40s linear infinite; transform-origin: center; }
+  .globe-ring-1 { animation: spin-reverse 60s linear infinite; transform-origin: center; }
+
+  /* Contour terrain (bottom left decoration) */
+  .terrain {
+    position: absolute;
+    bottom: 80px;
+    left: -40px;
+    width: 340px;
+    height: 180px;
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Responsive — collapse for narrow viewports */
+  @media (max-width: 980px) {
+    .globe-wrap { width: 360px; height: 360px; right: -80px; opacity: 0.5; }
+    .stage { padding: 100px 32px 120px; }
+    .terrain { display: none; }
+    .topbar { right: 20px; left: 20px; flex-direction: column; align-items: flex-start; gap: 8px; }
+    .theme-switch { top: auto; bottom: 70px; right: 10px; }
+    .s2, .s5, .s7 { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Theme switcher -->
+<div class="theme-switch">
+  <button data-theme-btn="terminal" class="active">Terminal</button>
+  <button data-theme-btn="blueprint">Blueprint</button>
+  <button data-theme-btn="caution">Caution</button>
+  <button data-theme-btn="midnight">Midnight</button>
+</div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <span class="accent">sys://oddspot · v0.2.0-alpha</span>
+  <div class="coord">
+    <span>lat 25.0330°N</span>
+    <span>lng 121.5654°E</span>
+    <span id="clock">--:--:--</span>
+  </div>
+</div>
+
+<!-- Main stage -->
+<main class="stage">
+
+  <!-- Globe (SVG wireframe) -->
+  <div class="globe-wrap">
+    <svg viewBox="0 0 400 400" fill="none">
+      <!-- outer ring -->
+      <g class="globe-ring-1">
+        <circle cx="200" cy="200" r="196" stroke="currentColor" stroke-width="0.5" stroke-dasharray="2 8" opacity="0.4"/>
+        <circle cx="200" cy="200" r="184" stroke="currentColor" stroke-width="0.3" opacity="0.25"/>
+      </g>
+      <!-- ticks -->
+      <g opacity="0.5">
+        <g transform="translate(200 200)">
+          <line x1="0" y1="-198" x2="0" y2="-188" stroke="currentColor" stroke-width="1"/>
+          <line x1="0" y1="198" x2="0" y2="188" stroke="currentColor" stroke-width="1"/>
+          <line x1="-198" y1="0" x2="-188" y2="0" stroke="currentColor" stroke-width="1"/>
+          <line x1="198" y1="0" x2="188" y2="0" stroke="currentColor" stroke-width="1"/>
+        </g>
+      </g>
+      <!-- globe body -->
+      <g class="globe-inner" stroke="currentColor" fill="none">
+        <!-- sphere outline -->
+        <circle cx="200" cy="200" r="160" stroke-width="1" opacity="0.8"/>
+        <!-- latitude lines (ellipses) -->
+        <ellipse cx="200" cy="200" rx="160" ry="30"  stroke-width="0.6" opacity="0.55"/>
+        <ellipse cx="200" cy="200" rx="160" ry="70"  stroke-width="0.6" opacity="0.55"/>
+        <ellipse cx="200" cy="200" rx="160" ry="110" stroke-width="0.6" opacity="0.55"/>
+        <ellipse cx="200" cy="200" rx="160" ry="150" stroke-width="0.6" opacity="0.45"/>
+        <!-- longitude lines -->
+        <ellipse cx="200" cy="200" rx="30"  ry="160" stroke-width="0.6" opacity="0.55"/>
+        <ellipse cx="200" cy="200" rx="70"  ry="160" stroke-width="0.6" opacity="0.55"/>
+        <ellipse cx="200" cy="200" rx="110" ry="160" stroke-width="0.6" opacity="0.55"/>
+        <!-- Taiwan marker pin (fake) -->
+        <g transform="translate(262 172)">
+          <circle r="4" fill="var(--accent)" stroke="none"/>
+          <circle r="10" fill="none" stroke="var(--accent)" stroke-width="0.5" opacity="0.5"/>
+          <circle r="18" fill="none" stroke="var(--accent)" stroke-width="0.3" opacity="0.3"/>
+          <text x="14" y="3" font-family="Space Mono" font-size="8" fill="var(--accent)" letter-spacing="1.5" stroke="none">TAIWAN</text>
+        </g>
+      </g>
+      <!-- crosshair fixed -->
+      <g stroke="currentColor" fill="none" opacity="0.4">
+        <line x1="200" y1="30" x2="200" y2="60" stroke-width="0.5"/>
+        <line x1="200" y1="340" x2="200" y2="370" stroke-width="0.5"/>
+        <line x1="30" y1="200" x2="60" y2="200" stroke-width="0.5"/>
+        <line x1="340" y1="200" x2="370" y2="200" stroke-width="0.5"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Mascot eye — scanning -->
+  <div class="eye-container">
+    <svg width="80" height="90" viewBox="0 0 120 130" fill="none">
+      <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
+        stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"
+        style="filter: drop-shadow(0 0 16px rgb(var(--accent-rgb) / 0.5));"/>
+      <g id="eye-mask">
+        <path d="M34 52 C33 44,45 36,58 36 C69 36,77 41,75 48 C73 56,61 62,49 62 C39 62,34 58,34 52Z"
+          stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </g>
+      <g id="eyeball">
+        <ellipse cx="56" cy="49" rx="7" ry="9" fill="var(--accent)"/>
+        <circle cx="55" cy="47" r="2" fill="var(--bg)"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Terrain decoration -->
+  <svg class="terrain" viewBox="0 0 340 180" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.9">
+    <g>
+      <path d="M0 150 Q60 90 120 110 T240 130 T340 100" opacity="0.3"/>
+      <path d="M0 140 Q60 80 120 100 T240 120 T340 90" opacity="0.4"/>
+      <path d="M0 130 Q60 70 120 90 T240 110 T340 80" opacity="0.5"/>
+      <path d="M0 120 Q60 60 120 80 T240 100 T340 70" opacity="0.6"/>
+      <path d="M0 110 Q60 50 120 70 T240 90 T340 60" opacity="0.7"/>
+      <path d="M0 100 Q60 40 120 60 T240 80 T340 50" opacity="0.8"/>
+      <!-- grid floor projection -->
+      <g transform="translate(0 150)" opacity="0.4">
+        <line x1="0" y1="0"  x2="340" y2="0"  />
+        <line x1="20" y1="8" x2="320" y2="8"/>
+        <line x1="40" y1="16" x2="300" y2="16"/>
+        <line x1="0"   y1="0" x2="20"  y2="8"/>
+        <line x1="60"  y1="0" x2="70"  y2="16"/>
+        <line x1="120" y1="0" x2="130" y2="16"/>
+        <line x1="180" y1="0" x2="200" y2="16"/>
+        <line x1="240" y1="0" x2="260" y2="16"/>
+        <line x1="300" y1="0" x2="310" y2="16"/>
+        <line x1="340" y1="0" x2="320" y2="16"/>
+      </g>
+    </g>
+  </svg>
+
+  <!-- Acid stickers -->
+  <div class="stickers">
+    <!-- S1: barcode -->
+    <div class="sticker s1">
+      <svg width="90" height="36" viewBox="0 0 90 36">
+        <g fill="currentColor">
+          <rect x="0"  y="0" width="2" height="28"/>
+          <rect x="4"  y="0" width="1" height="28"/>
+          <rect x="7"  y="0" width="3" height="28"/>
+          <rect x="12" y="0" width="1" height="28"/>
+          <rect x="15" y="0" width="2" height="28"/>
+          <rect x="19" y="0" width="1" height="28"/>
+          <rect x="22" y="0" width="4" height="28"/>
+          <rect x="28" y="0" width="1" height="28"/>
+          <rect x="31" y="0" width="2" height="28"/>
+          <rect x="35" y="0" width="3" height="28"/>
+          <rect x="40" y="0" width="1" height="28"/>
+          <rect x="43" y="0" width="2" height="28"/>
+          <rect x="47" y="0" width="1" height="28"/>
+          <rect x="50" y="0" width="3" height="28"/>
+          <rect x="55" y="0" width="2" height="28"/>
+          <rect x="59" y="0" width="1" height="28"/>
+          <rect x="62" y="0" width="2" height="28"/>
+          <rect x="66" y="0" width="4" height="28"/>
+        </g>
+        <text x="0" y="35" font-family="Space Mono" font-size="7" fill="currentColor" letter-spacing="1">N25°03'13.2"</text>
+      </svg>
+    </div>
+    <!-- S2: checkerboard wave -->
+    <div class="sticker s2 accent">
+      <svg width="140" height="60" viewBox="0 0 140 60">
+        <defs>
+          <pattern id="ck" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+            <rect width="5" height="5" fill="currentColor"/>
+            <rect x="5" y="5" width="5" height="5" fill="currentColor"/>
+          </pattern>
+        </defs>
+        <path d="M0 50 Q35 10 70 30 T140 20 V60 H0 Z" fill="url(#ck)" opacity="0.85"/>
+      </svg>
+      <div class="label" style="margin-top:4px">HARD FORM / 001</div>
+    </div>
+    <!-- S3: error -->
+    <div class="sticker s3">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2 L22 20 L2 20 Z"/>
+        <line x1="12" y1="9" x2="12" y2="14"/>
+        <circle cx="12" cy="17" r="0.8" fill="currentColor"/>
+      </svg>
+      <div class="label" style="margin-top:6px">ERR_NO_LEGEND / archive 1998-08-13</div>
+    </div>
+    <!-- S4: star burst -->
+    <div class="sticker s4 accent">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="currentColor">
+        <path d="M22 0 L25 18 L44 22 L25 26 L22 44 L19 26 L0 22 L19 18 Z"/>
+      </svg>
+    </div>
+    <!-- S5: sphere -->
+    <div class="sticker s5">
+      <svg width="70" height="70" viewBox="0 0 70 70" fill="none" stroke="currentColor" stroke-width="0.8">
+        <circle cx="35" cy="35" r="32"/>
+        <ellipse cx="35" cy="35" rx="32" ry="10"/>
+        <ellipse cx="35" cy="35" rx="32" ry="20"/>
+        <ellipse cx="35" cy="35" rx="10" ry="32"/>
+        <ellipse cx="35" cy="35" rx="20" ry="32"/>
+      </svg>
+      <div class="label" style="margin-top:6px">GLOBAL NULL</div>
+    </div>
+    <!-- S6: stamp -->
+    <div class="sticker s6">
+      <div style="border: 2px solid currentColor; padding: 8px 14px; color: var(--fg);">
+        <div style="font-size: 20px; font-family: var(--font-brand); font-weight: 700; letter-spacing: 0.04em;">DEAL WITH IT</div>
+        <div class="label" style="margin-top: 4px;">It works. Make it raw.</div>
+      </div>
+    </div>
+    <!-- S7: swirl -->
+    <div class="sticker s7 accent">
+      <svg width="46" height="46" viewBox="0 0 46 46" fill="none" stroke="currentColor" stroke-width="1.2">
+        <circle cx="23" cy="23" r="3"/>
+        <circle cx="23" cy="23" r="8"/>
+        <circle cx="23" cy="23" r="14"/>
+        <circle cx="23" cy="23" r="20"/>
+      </svg>
+      <div class="label" style="margin-top:4px">INPUT:0</div>
+    </div>
+  </div>
+
+  <!-- Headline -->
+  <div class="headline">
+    <div class="system-tag">scanning taiwan · 8 categories detected</div>
+    <h1>附近有個<em>說不出來</em><br>是什麼<em>的地方</em></h1>
+    <p class="lede">
+      不是觀光導覽，也不是打卡點。只是那些「誰會特地來啊」的
+      廢墟、怪廟、巨型鳳梨、和半夜才開的理髮店。
+    </p>
+    <div class="cta-row">
+      <button class="cta">
+        Start Scanning
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <span class="cta-meta">→ 開始探索 · 不用註冊</span>
+    </div>
+  </div>
+
+  <!-- Marquee -->
+  <div class="marquee">
+    <div class="marquee-track">
+      <span>archive://taipei</span>
+      <span class="dot">●</span>
+      <span>237 spots indexed</span>
+      <span class="dot">●</span>
+      <span>12 disappeared this year</span>
+      <span class="dot">●</span>
+      <span>softly catastrophic</span>
+      <span class="dot">●</span>
+      <span>made in taiwan · since 1998-08-13</span>
+      <span class="dot">●</span>
+      <span>err_no_weird_found → scan()</span>
+      <span class="dot">●</span>
+      <!-- duplicate for seamless loop -->
+      <span>archive://taipei</span>
+      <span class="dot">●</span>
+      <span>237 spots indexed</span>
+      <span class="dot">●</span>
+      <span>12 disappeared this year</span>
+      <span class="dot">●</span>
+      <span>softly catastrophic</span>
+      <span class="dot">●</span>
+      <span>made in taiwan · since 1998-08-13</span>
+      <span class="dot">●</span>
+      <span>err_no_weird_found → scan()</span>
+      <span class="dot">●</span>
+    </div>
+  </div>
+</main>
+
+<!-- Bottom strip -->
+<div class="bottom-strip">
+  <div class="seg">
+    <span>© OddSpot / archive</span>
+    <span>v0.2.0-alpha</span>
+  </div>
+  <div class="seg">
+    <span>/map</span>
+    <span>/swipe</span>
+    <span>/submit</span>
+  </div>
+</div>
+
+<script>
+  // Theme switcher
+  const buttons = document.querySelectorAll('[data-theme-btn]');
+  const html = document.documentElement;
+  const saved = localStorage.getItem('oddspot-theme') || 'terminal';
+  html.setAttribute('data-theme', saved);
+  buttons.forEach(btn => {
+    if (btn.dataset.themeBtn === saved) btn.classList.add('active');
+    btn.addEventListener('click', () => {
+      const theme = btn.dataset.themeBtn;
+      html.setAttribute('data-theme', theme);
+      localStorage.setItem('oddspot-theme', theme);
+      buttons.forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  // Clock
+  const clock = document.getElementById('clock');
+  setInterval(() => {
+    const d = new Date();
+    const p = n => String(n).padStart(2,'0');
+    clock.textContent = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }, 1000);
+
+  // Eye scanning animation — eyeball follows mouse within constraints
+  const eyeball = document.getElementById('eyeball');
+  const eyeContainer = document.querySelector('.eye-container svg');
+  window.addEventListener('mousemove', (e) => {
+    if (!eyeball || !eyeContainer) return;
+    const rect = eyeContainer.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height * 0.42;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const dist = Math.min(6, Math.hypot(dx, dy) / 50);
+    const ang = Math.atan2(dy, dx);
+    const ox = Math.cos(ang) * dist;
+    const oy = Math.sin(ang) * dist;
+    eyeball.style.transform = `translate(${ox}px, ${oy}px)`;
+    eyeball.style.transition = 'transform 120ms ease-out';
+  });
+</script>
+
+</body>
+</html>

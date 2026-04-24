@@ -1,0 +1,101 @@
+/* OddSpot — Theme system (v2)
+   4 themes share the same token names; switch via <html data-theme="...">
+   Category colors and type scale remain constant across themes. */
+
+/* === Default === TERMINAL (legacy, black + mint) */
+:root,
+[data-theme="terminal"] {
+  --bg:          #040c0a;
+  --bg-deep:     #020604;
+  --fg:          #c6e8e0;
+  --muted:       #6aada0;
+  --panel:       #091310;
+  --panel-2:     #0c1a14;
+  --accent:      #00e5cc;
+  --accent-rgb:  0 229 204;
+  --line:        rgb(0 229 204 / 0.10);
+  --line-strong: rgb(0 229 204 / 0.18);
+  --grain-opacity: 0.04;
+  --glow: 0 0 24px rgb(var(--accent-rgb) / 0.25);
+}
+
+/* === BLUEPRINT === black + cool grey + electric blue (Acid / Y2K) */
+[data-theme="blueprint"] {
+  --bg:          #060709;
+  --bg-deep:     #000000;
+  --fg:          #e6e8ee;
+  --muted:       #7b8391;
+  --panel:       #0d1015;
+  --panel-2:     #14181f;
+  --accent:      #2d5bff;
+  --accent-rgb:  45 91 255;
+  --line:        rgb(255 255 255 / 0.08);
+  --line-strong: rgb(45 91 255 / 0.45);
+  --grain-opacity: 0.06;
+  --glow: 0 0 28px rgb(var(--accent-rgb) / 0.35);
+}
+
+/* === CAUTION === black + warm grey + hazard yellow */
+[data-theme="caution"] {
+  --bg:          #0a0906;
+  --bg-deep:     #000000;
+  --fg:          #f0ead6;
+  --muted:       #8a8370;
+  --panel:       #15130d;
+  --panel-2:     #1c1a14;
+  --accent:      #ffd60a;
+  --accent-rgb:  255 214 10;
+  --line:        rgb(255 255 255 / 0.07);
+  --line-strong: rgb(255 214 10 / 0.4);
+  --grain-opacity: 0.07;
+  --glow: 0 0 28px rgb(var(--accent-rgb) / 0.3);
+}
+
+/* === MIDNIGHT === pure monochrome — the wireframe extremum */
+[data-theme="midnight"] {
+  --bg:          #000000;
+  --bg-deep:     #000000;
+  --fg:          #ffffff;
+  --muted:       #7a7a7a;
+  --panel:       #0a0a0a;
+  --panel-2:     #111111;
+  --accent:      #ffffff;
+  --accent-rgb:  255 255 255;
+  --line:        rgb(255 255 255 / 0.12);
+  --line-strong: rgb(255 255 255 / 0.28);
+  --grain-opacity: 0.08;
+  --glow: 0 0 24px rgb(var(--accent-rgb) / 0.18);
+}
+
+/* Type + tokens stable across themes */
+:root {
+  --font-brand:   'Space Mono', monospace;
+  --font-content: 'Noto Sans TC', sans-serif;
+  --radius-xs: 2px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:      cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in:       cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Category colors — theme-invariant (information layer) */
+:root {
+  --cat-temple:     #f97316;
+  --cat-abandoned:  #6b7280;
+  --cat-giant:      #3b82f6;
+  --cat-kitsch:     #ec4899;
+  --cat-marginal:   #14b8a6;
+  --cat-legend:     #8b5cf6;
+  --cat-absurd:     #22c55e;
+  --cat-shopfront:  #eab308;
+}
+
+html, body { background: var(--bg); color: var(--fg); }
+
+@keyframes ob-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.05); }
+}

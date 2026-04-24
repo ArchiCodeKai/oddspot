@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="zh-TW" data-theme="blueprint">
+<head>
+<meta charset="utf-8">
+<title>OddSpot · Globe Intro</title>
+<link rel="stylesheet" href="themes.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow: hidden; background: var(--bg); height: 100vh; }
+  body { font-family: var(--font-brand); color: var(--fg); }
+
+  #stage { position: fixed; inset: 0; }
+  #canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* Grain + scanlines */
+  #stage::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+  }
+  #stage::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
+    background: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgb(var(--accent-rgb) / 0.025) 3px, rgb(var(--accent-rgb) / 0.025) 4px);
+  }
+
+  /* HUD overlay */
+  .hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; }
+  .hud .tl { position: absolute; top: 24px; left: 24px; display: flex; gap: 18px; color: var(--muted); }
+  .hud .tl .accent { color: var(--accent); text-shadow: 0 0 10px rgb(var(--accent-rgb) / 0.4); }
+  .hud .tr { position: absolute; top: 24px; right: 24px; color: var(--muted); display: flex; gap: 16px; }
+  .hud .bl { position: absolute; bottom: 24px; left: 24px; color: var(--muted); }
+  .hud .br { position: absolute; bottom: 24px; right: 24px; color: var(--muted); }
+
+  /* Phase-driven content — headline, visible after zoom lands */
+  .headline {
+    position: absolute; z-index: 12;
+    bottom: 14%; left: 8%; right: 8%; max-width: 680px;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 900ms var(--ease-out), transform 900ms var(--ease-out);
+  }
+  .headline.show { opacity: 1; transform: translateY(0); }
+  .headline .tag {
+    font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .headline .tag::before {
+    content: ""; width: 8px; height: 8px; background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% {opacity:1} 50% {opacity:0.3} }
+
+  .headline h1 {
+    font-family: var(--font-content);
+    font-size: clamp(32px, 5.5vw, 68px);
+    font-weight: 700;
+    line-height: 1.04;
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+  .headline h1 em { font-style: normal; color: var(--accent); text-shadow: 0 0 32px rgb(var(--accent-rgb) / 0.45); }
+  .headline .lede {
+    font-family: var(--font-content);
+    font-size: 15px; color: var(--muted); margin: 20px 0 28px; line-height: 1.7; letter-spacing: 0.04em; max-width: 440px;
+  }
+  .headline .cta {
+    font-family: var(--font-brand);
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 14px 24px;
+    border: 1px solid var(--accent);
+    color: var(--accent); background: transparent; cursor: pointer;
+    box-shadow: var(--glow);
+    transition: all 180ms var(--ease-standard);
+  }
+  .headline .cta:hover { background: var(--accent); color: var(--bg); }
+
+  /* Theme switch + replay */
+  .controls { position: absolute; top: 24px; right: 24px; z-index: 15; display: flex; gap: 8px; pointer-events: auto; }
+  .controls button {
+    background: rgb(0 0 0 / 0.5); color: var(--muted);
+    border: 1px solid var(--line-strong);
+    padding: 8px 12px; font-family: var(--font-brand);
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+  }
+  .controls button:hover, .controls button.active { color: var(--accent); border-color: var(--accent); }
+
+  /* Phase subtitle shown during boot sequence */
+  .boot-caption {
+    position: absolute; top: 52%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 11;
+    font-family: var(--font-brand);
+    font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--accent); text-shadow: 0 0 12px rgb(var(--accent-rgb) / 0.5);
+    opacity: 0; transition: opacity 400ms;
+    pointer-events: none;
+    text-align: center;
+  }
+  .boot-caption.show { opacity: 1; }
+  .boot-caption small { display: block; color: var(--muted); font-size: 9px; margin-top: 6px; letter-spacing: 0.25em; text-shadow: none; }
+
+  /* Reticle rings at center (subtle scan frame) */
+  .reticle {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 340px; height: 340px;
+    border: 1px solid var(--accent);
+    opacity: 0; transition: opacity 400ms;
+    pointer-events: none; z-index: 11;
+    box-shadow: 0 0 40px rgb(var(--accent-rgb) / 0.2) inset;
+  }
+  .reticle.show { opacity: 0.3; }
+  .reticle::before, .reticle::after {
+    content: ""; position: absolute; background: var(--accent);
+  }
+  .reticle::before { top: -1px; left: 50%; width: 1px; height: 30px; transform: translateX(-50%); }
+  .reticle::after  { bottom: -1px; left: 50%; width: 1px; height: 30px; transform: translateX(-50%); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="canvas"></canvas>
+
+  <div class="hud">
+    <div class="tl">
+      <span class="accent">sys://oddspot · booting</span>
+      <span id="phaseTag">phase:0 / init</span>
+    </div>
+    <div class="bl">archive://taipei · unverified</div>
+    <div class="br">v0.2.0-alpha</div>
+  </div>
+
+  <div class="reticle" id="reticle"></div>
+  <div class="boot-caption" id="bootCaption"></div>
+
+  <div class="headline" id="headline">
+    <div class="tag">locked on · 25.0330°N, 121.5654°E</div>
+    <h1>附近有個<em>說不出來</em><br>是什麼<em>的地方</em></h1>
+    <p class="lede">scanning 237 登記有案的怪地。廢墟、怪廟、巨型鳳梨、半夜才開的理髮店。</p>
+    <button class="cta">Start Scanning →</button>
+  </div>
+
+  <div class="controls">
+    <button data-theme-btn="terminal">Terminal</button>
+    <button data-theme-btn="blueprint" class="active">Blueprint</button>
+    <button data-theme-btn="caution">Caution</button>
+    <button data-theme-btn="midnight">Midnight</button>
+    <button id="replay" style="margin-left: 8px; color: var(--fg); border-color: var(--muted);">↻ Replay</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script>
+window.addEventListener('error', e => {
+  const d = document.createElement('pre');
+  d.style.cssText = 'position:fixed;top:50px;left:50px;color:#f0f;background:#000;padding:20px;z-index:9999;font-size:11px;max-width:600px;white-space:pre-wrap;';
+  d.textContent = 'ERROR: ' + e.message + '\n' + (e.error && e.error.stack || '');
+  document.body.appendChild(d);
+});
+(function(){
+try {
+
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x050510, 1);
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
+camera.position.set(0, 0, 4);
+
+// Helper — read CSS var → THREE.Color
+function themeColor(varName) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  return new THREE.Color(v);
+}
+
+// Globe group
+const globe = new THREE.Group();
+scene.add(globe);
+
+let accentHex = themeColor('--accent').getHex();
+let wireMat = new THREE.LineBasicMaterial({ color: accentHex, transparent: true, opacity: 0.7 });
+let dotMat = new THREE.PointsMaterial({ color: accentHex, size: 0.012, sizeAttenuation: true, transparent: true, opacity: 0.9 });
+
+// Main wireframe sphere
+const sphereGeo = new THREE.SphereGeometry(1, 32, 24);
+const wireGeo = new THREE.WireframeGeometry(sphereGeo);
+const wireSphere = new THREE.LineSegments(wireGeo, wireMat);
+globe.add(wireSphere);
+
+// Outer "atmosphere" ring
+const ringGeo = new THREE.RingGeometry(1.25, 1.26, 128);
+const ringMat = new THREE.MeshBasicMaterial({ color: accentHex, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+const ring = new THREE.Mesh(ringGeo, ringMat);
+ring.rotation.x = Math.PI * 0.45;
+globe.add(ring);
+
+const ring2 = new THREE.Mesh(new THREE.RingGeometry(1.45, 1.455, 128), new THREE.MeshBasicMaterial({ color: accentHex, transparent: true, opacity: 0.15, side: THREE.DoubleSide }));
+ring2.rotation.x = -Math.PI * 0.3;
+globe.add(ring2);
+
+// Taiwan marker — an orbiting pin at lat 23.8, lng 121.0
+// convert lat/lng → xyz on unit sphere
+function latLngToVec3(lat, lng, r = 1) {
+  const phi = (90 - lat) * (Math.PI / 180);
+  const theta = (lng + 180) * (Math.PI / 180);
+  return new THREE.Vector3(
+    -r * Math.sin(phi) * Math.cos(theta),
+    r * Math.cos(phi),
+    r * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+const taiwanPos = latLngToVec3(23.8, 121.0, 1.02);
+const pinMat = new THREE.MeshBasicMaterial({ color: accentHex });
+const pin = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 12), pinMat);
+pin.position.copy(taiwanPos);
+globe.add(pin);
+
+// Pulsing halo at pin
+const pinHaloGeo = new THREE.RingGeometry(0.04, 0.045, 32);
+const pinHaloMat = new THREE.MeshBasicMaterial({ color: accentHex, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+const pinHalo = new THREE.Mesh(pinHaloGeo, pinHaloMat);
+pinHalo.position.copy(taiwanPos);
+pinHalo.lookAt(0, 0, 0);
+globe.add(pinHalo);
+
+// Random dot stars around
+const starGeo = new THREE.BufferGeometry();
+const starCount = 400;
+const positions = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+  const r = 8 + Math.random() * 12;
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+  positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+  positions[i*3+2] = r * Math.cos(phi);
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.03, transparent: true, opacity: 0.4 }));
+scene.add(stars);
+
+// Resize
+function resize() {
+  const w = canvas.clientWidth || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+resize();
+// re-run after layout settles (handles 0-sized canvas on first call)
+requestAnimationFrame(() => { resize(); });
+setTimeout(resize, 100);
+window.addEventListener('resize', resize);
+
+// Boot sequence phases
+const phases = [
+  { t: 0,    tag: "phase:0 / init",          caption: "// booting", sub: "connecting to archive" },
+  { t: 1200, tag: "phase:1 / scan",          caption: "scanning taiwan", sub: "37,197 km²" },
+  { t: 3000, tag: "phase:2 / zoom",          caption: "zooming to region", sub: "23.8°N, 121.0°E" },
+  { t: 4600, tag: "phase:3 / lock",          caption: "locked on", sub: "taipei basin" },
+  { t: 5400, tag: "phase:4 / ready",         caption: null,       sub: null },
+];
+
+const phaseTagEl = document.getElementById('phaseTag');
+const bootCaption = document.getElementById('bootCaption');
+const reticle = document.getElementById('reticle');
+const headline = document.getElementById('headline');
+
+let startTime = performance.now();
+let animating = true;
+
+function runBoot() {
+  startTime = performance.now();
+  animating = true;
+  headline.classList.remove('show');
+  reticle.classList.remove('show');
+  bootCaption.classList.remove('show');
+}
+
+function applyPhase(elapsed) {
+  // find current phase
+  let current = phases[0];
+  for (const p of phases) if (elapsed >= p.t) current = p;
+  phaseTagEl.textContent = current.tag;
+  if (current.caption) {
+    bootCaption.innerHTML = current.caption + (current.sub ? `<small>${current.sub}</small>` : '');
+    bootCaption.classList.add('show');
+  } else {
+    bootCaption.classList.remove('show');
+  }
+  // Reticle visible in zoom+lock
+  if (elapsed >= 3000 && elapsed < 5400) reticle.classList.add('show');
+  else reticle.classList.remove('show');
+  // Headline after ready
+  if (elapsed >= 5400) headline.classList.add('show');
+}
+
+// Easing
+const easeInOut = t => t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+
+function animate() {
+  requestAnimationFrame(animate);
+  try {
+  const elapsed = performance.now() - startTime;
+  applyPhase(elapsed);
+
+  // Constant slow spin (idle)
+  globe.rotation.y += 0.002;
+
+  // Boot sequence camera/globe orchestration
+  if (elapsed < 1200) {
+    // Phase 0: fade in from far — keep scale=1 so globe is visible on first frame
+    const t = easeOut(Math.min(1, elapsed / 1200));
+    camera.position.z = 8 - 3 * t;
+    globe.scale.setScalar(1);
+  } else if (elapsed < 3000) {
+    // Phase 1: free spin, dwell
+    camera.position.z = 5;
+    globe.scale.setScalar(1);
+  } else if (elapsed < 4600) {
+    // Phase 2: zoom + rotate globe so taiwan faces camera
+    const t = easeInOut(Math.min(1, (elapsed - 3000) / 1600));
+    camera.position.z = 5 - 2.5 * t;
+    // target rotation: rotate so taiwanPos ends up on +Z axis (front of camera)
+    // We need to rotate globe.rotation.y so that taiwanPos lands at (0, y, +z)
+    // The tangent of the spin plus a manual target ensures alignment at t=1
+    const targetY = -Math.atan2(taiwanPos.x, taiwanPos.z);
+    const targetX = Math.atan2(taiwanPos.y, Math.sqrt(taiwanPos.x*taiwanPos.x + taiwanPos.z*taiwanPos.z));
+    globe.rotation.y = THREE.MathUtils.lerp(globe.rotation.y, targetY, t * 0.12);
+    globe.rotation.x = THREE.MathUtils.lerp(globe.rotation.x, targetX, t * 0.12);
+  } else if (elapsed < 5400) {
+    // Phase 3: hold position, slow drift, pin pulse
+    camera.position.z = 2.5;
+  } else if (animating) {
+    // Phase 4: final settle
+    animating = false;
+  }
+
+  // Pin halo pulse
+  const pulseT = (elapsed % 2000) / 2000;
+  pinHalo.scale.setScalar(1 + pulseT * 1.5);
+  pinHalo.material.opacity = 0.6 * (1 - pulseT);
+
+  // Stars slow drift
+  stars.rotation.y += 0.0003;
+
+  renderer.render(scene, camera);
+  } catch(err) {
+    if (!window.__animErr) {
+      window.__animErr = true;
+      const d = document.createElement('pre');
+      d.style.cssText = 'position:fixed;top:50px;left:50px;color:#f0f;background:#000;padding:20px;z-index:9999;font-size:11px;max-width:600px;white-space:pre-wrap;';
+      d.textContent = 'ANIM: ' + err.message + '\n' + (err.stack || '');
+      document.body.appendChild(d);
+    }
+  }
+}
+
+// Theme change updates material colors
+function updateMaterialsForTheme() {
+  const c = themeColor('--accent');
+  wireMat.color = c;
+  ringMat.color = c;
+  ring2.material.color = c;
+  pinMat.color = c;
+  pinHaloMat.color = c;
+}
+
+// Theme switcher
+const buttons = document.querySelectorAll('[data-theme-btn]');
+buttons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const theme = btn.dataset.themeBtn;
+    document.documentElement.setAttribute('data-theme', theme);
+    buttons.forEach(b => b.classList.toggle('active', b === btn));
+    setTimeout(updateMaterialsForTheme, 20);
+  });
+});
+
+document.getElementById('replay').addEventListener('click', runBoot);
+
+runBoot();
+animate();
+
+} catch(err) {
+  const d = document.createElement('pre');
+  d.style.cssText = 'position:fixed;top:50px;left:50px;color:#f0f;background:#000;padding:20px;z-index:9999;font-size:11px;max-width:600px;white-space:pre-wrap;';
+  d.textContent = 'CAUGHT: ' + err.message + '\n' + (err.stack || '');
+  document.body.appendChild(d);
+}
+})();
+</script>
+
+</body>
+</html>

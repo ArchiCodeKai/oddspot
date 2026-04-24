@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Input field</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body {
+    color: var(--foreground);
+    padding: 20px;
+    box-sizing: border-box;
+    font-family: var(--font-brand);
+    display: grid;
+    gap: 12px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .lbl {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+  }
+  input, textarea {
+    background: var(--panel-light);
+    border: 1px solid var(--line);
+    color: var(--foreground);
+    padding: 12px 14px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    border-radius: 2px;
+    outline: none;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  input:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,229,204,0.12);
+  }
+  .focused {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(0,229,204,0.12);
+  }
+</style>
+</head>
+<body>
+  <div class="field">
+    <span class="lbl">Spot name</span>
+    <input value="廢棄軍事營區" />
+  </div>
+  <div class="field">
+    <span class="lbl">Description</span>
+    <input class="focused" placeholder="簡短描述這個地方..." />
+  </div>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Elevation — shadows + glass</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body {
+    color: var(--foreground);
+    padding: 20px;
+    font-family: var(--font-brand);
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    align-items: center;
+  }
+  .cell { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+  .box {
+    width: 100%;
+    height: 80px;
+    border-radius: 2px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .glow { box-shadow: 0 0 24px rgba(0, 229, 204, 0.12); }
+  .lift { box-shadow: 0 16px 48px rgba(4, 12, 10, 0.6), 0 0 32px rgba(0, 229, 204, 0.08); }
+  .glass {
+    background: rgba(9, 19, 16, 0.78);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 229, 204, 0.18);
+  }
+  .tag {
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .spec {
+    font-size: 9px;
+    color: var(--accent);
+    opacity: 0.8;
+    letter-spacing: 0.04em;
+  }
+  /* give glass somewhere to blur against */
+  body::before {
+    content: "";
+    position: absolute;
+    top: 40px;
+    left: 80px;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, rgba(0,229,204,0.2), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .cell { position: relative; z-index: 1; }
+</style>
+</head>
+<body>
+  <div class="cell">
+    <div class="box glow"></div>
+    <span class="tag">shadow-glow</span>
+    <span class="spec">0 0 24px / accent 8%</span>
+  </div>
+  <div class="cell">
+    <div class="box lift"></div>
+    <span class="tag">shadow-lift</span>
+    <span class="spec">0 16 48 / + glow</span>
+  </div>
+  <div class="cell">
+    <div class="box glass"></div>
+    <span class="tag">panel-glass</span>
+    <span class="spec">blur(16) / panel 78%</span>
+  </div>
+</body>
+</html>

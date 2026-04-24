@@ -1,3 +1,5 @@
+<html data-theme="terminal"></html>
+
 import type { Metadata } from "next";
 import { Space_Mono, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";

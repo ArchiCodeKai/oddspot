@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OddSpot · Mobile Kit × 4 Themes</title>
+<link rel="stylesheet" href="../themes.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0a0a0a; min-height: 100vh; }
+  body {
+    font-family: 'Space Mono', monospace;
+    color: #c6e8e0;
+    padding: 40px 32px 80px;
+  }
+
+  h1 {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 32px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    max-width: 1800px;
+    margin: 0 auto;
+  }
+  @media (max-width: 1400px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 700px)  { .grid { grid-template-columns: 1fr; } }
+
+  .theme-col { display: flex; flex-direction: column; gap: 16px; }
+
+  .theme-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--theme-bg);
+    color: var(--theme-accent);
+    border: 1px solid var(--theme-line);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .theme-header .swatch {
+    display: flex; gap: 4px;
+  }
+  .theme-header .swatch span {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  .screen-cluster {
+    display: grid;
+    gap: 12px;
+  }
+  .screen-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: #888;
+    padding-left: 4px;
+  }
+
+  .phone {
+    width: 100%;
+    aspect-ratio: 390 / 780;
+    border-radius: 32px;
+    background: #000;
+    padding: 6px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    position: relative;
+  }
+  .phone-inner {
+    width: 100%; height: 100%;
+    border-radius: 26px;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg);
+  }
+  .notch {
+    position: absolute;
+    top: 12px; left: 50%; transform: translateX(-50%);
+    width: 80px; height: 20px;
+    background: #000;
+    border-radius: 12px;
+    z-index: 100;
+  }
+
+  .root { position: absolute; inset: 0; }
+</style>
+</head>
+<body>
+
+<h1>Mobile UI Kit · across 4 themes</h1>
+<div class="subtitle">Terminal · Blueprint · Caution · Midnight</div>
+
+<div class="grid" id="grid"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="mobile_app/SAMPLE_SPOTS.js"></script>
+<script type="text/babel" src="mobile_app/Primitives.jsx"></script>
+<script type="text/babel" src="mobile_app/OnboardingScreen.jsx"></script>
+<script type="text/babel" src="mobile_app/MapScreen.jsx"></script>
+<script type="text/babel" src="mobile_app/SwipeScreen.jsx"></script>
+<script type="text/babel" src="mobile_app/DetailScreen.jsx"></script>
+<script type="text/babel" src="mobile_app/BottomTabBar.jsx"></script>
+
+<script type="text/babel">
+  const THEMES = [
+    { id: "terminal",  label: "Terminal",  meta: "default · map" },
+    { id: "blueprint", label: "Blueprint", meta: "landing · discovery" },
+    { id: "caution",   label: "Caution",   meta: "admin · warnings" },
+    { id: "midnight",  label: "Midnight",  meta: "focus · night" },
+  ];
+
+  function ThemedColumn({ theme }) {
+    // Render each phone with its own theme scope via data-theme on a wrapper div
+    return (
+      <div className="theme-col" data-theme={theme.id}>
+        <div className="theme-header" style={{
+          "--theme-bg": "var(--bg)",
+          "--theme-accent": "var(--accent)",
+          "--theme-line": "var(--line-strong)",
+        }}>
+          <span>{theme.label}</span>
+          <div className="swatch">
+            <span style={{ background: "var(--bg)" }} />
+            <span style={{ background: "var(--panel-2)" }} />
+            <span style={{ background: "var(--muted)" }} />
+            <span style={{ background: "var(--accent)" }} />
+          </div>
+        </div>
+
+        {[
+          { key: "onboarding", label: "Onboarding", el: <OnboardingScreen onStart={() => {}} /> },
+          { key: "map",        label: "Map",        el: <MapScreen onOpenSpot={() => {}} /> },
+          { key: "swipe",      label: "Swipe",      el: <SwipeScreen onOpenSpot={() => {}} /> },
+          { key: "detail",     label: "Detail",     el: <DetailScreen spotId="1" onBack={() => {}} /> },
+        ].map(s => (
+          <div key={s.key} className="screen-cluster">
+            <div className="screen-label">{s.label}</div>
+            <div className="phone">
+              <div className="phone-inner">
+                <div className="notch" />
+                <div className="root">
+                  {s.el}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function App() {
+    return (
+      <>
+        {THEMES.map(t => <ThemedColumn key={t.id} theme={t} />)}
+      </>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("grid")).render(<App />);
+</script>
+
+</body>
+</html>

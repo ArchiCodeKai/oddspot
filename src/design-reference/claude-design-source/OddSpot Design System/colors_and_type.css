@@ -1,0 +1,341 @@
+/* ============================================================
+   OddSpot Design System — Colors + Typography Tokens
+   ------------------------------------------------------------
+   Lifted directly from the production codebase at:
+     oddspot/src/app/globals.css
+     oddspot/src/lib/constants/categories.ts
+     oddspot/src/lib/constants/status.ts
+
+   Tone: 深色、神秘、探索感。B-grade (低解析度) × 終端機 (CRT)
+         字體 × 台灣在地色調。
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap');
+
+/* ============================================================
+   1 · CORE TOKENS — DARK (default)
+   ============================================================ */
+:root {
+  /* Foundations */
+  --background: #040c0a;           /* 近乎純黑的青苔黑, 主背景 */
+  --foreground: #c6e8e0;           /* 冷綠白, 主文字 */
+  --accent:     #00e5cc;           /* 螢光青, CTA / highlight / glow */
+  --muted:      #6aada0;           /* 次要文字, 5.1:1 AA 通過 */
+
+  --background-rgb: 4 12 10;
+  --foreground-rgb: 198 232 224;
+  --accent-rgb:     0 229 204;
+  --muted-rgb:      106 173 160;
+
+  /* Surfaces */
+  --panel:        #091310;         /* 內容面板 */
+  --panel-light:  #0c1a14;         /* 次層面板 */
+  --panel-rgb:       9 19 16;
+  --panel-light-rgb: 12 26 20;
+
+  /* Glass & lines */
+  --line:          rgb(var(--accent-rgb) / 0.1);
+  --line-strong:   rgb(var(--accent-rgb) / 0.18);
+  --panel-glass:        rgb(var(--panel-rgb) / 0.78);
+  --panel-glass-strong: rgb(var(--panel-rgb) / 0.9);
+  --panel-contrast:     rgb(var(--foreground-rgb) / 0.035);
+
+  /* Elevation */
+  --shadow-glow: 0 0 24px rgb(var(--accent-rgb) / 0.08);
+  --shadow-lift: 0 16px 48px rgb(var(--background-rgb) / 0.24),
+                 0 0 32px rgb(var(--accent-rgb) / 0.06);
+
+  /* Radii — intentionally SMALL.
+     OddSpot uses mostly 2px (terminal) + larger 16–24px only for sheets/cards */
+  --radius-xs: 2px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* Spacing (4pt grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Min hit target (WCAG 2.5.5) */
+  --hit-target: 44px;
+}
+
+/* ============================================================
+   2 · LIGHT THEME
+   ============================================================ */
+:root.light,
+[data-theme="light"] {
+  --background: #f0f7f5;
+  --foreground: #0d2e26;
+  --accent:     #00a896;           /* 較深的青, 淺色底對比 */
+  --muted:      #3a7269;           /* 5.3:1 AA 通過 */
+
+  --background-rgb: 240 247 245;
+  --foreground-rgb: 13 46 38;
+  --accent-rgb:     0 168 150;
+  --muted-rgb:      58 114 105;
+
+  --panel:        #dff0ec;
+  --panel-light:  #e8f5f2;
+  --panel-rgb:       223 240 236;
+  --panel-light-rgb: 232 245 242;
+
+  --line:        rgb(var(--accent-rgb) / 0.15);
+  --line-strong: rgb(var(--accent-rgb) / 0.24);
+  --panel-glass:        rgb(var(--panel-rgb) / 0.78);
+  --panel-glass-strong: rgb(var(--panel-rgb) / 0.9);
+  --panel-contrast:     rgb(var(--foreground-rgb) / 0.04);
+
+  --shadow-glow: 0 0 24px rgb(var(--accent-rgb) / 0.06);
+}
+
+/* ============================================================
+   3 · CATEGORY COLORS (Spot markers / badges)
+   8 distinct hues — pairs with Taiwan "odd spot" taxonomy.
+   ============================================================ */
+:root {
+  --cat-weird-temple:          #f97316; /* 詭異廟宇 — 香火橘 */
+  --cat-abandoned:             #6b7280; /* 廢棄場所 — 混凝灰 */
+  --cat-giant-object:          #3b82f6; /* 巨型物體 — 招牌藍 */
+  --cat-kitsch:                #ec4899; /* 俗豔裝置 — 廉價粉 */
+  --cat-marginal-architecture: #14b8a6; /* 邊緣建築 — 磁磚青 */
+  --cat-urban-legend:          #8b5cf6; /* 都市傳說 — 香紫 */
+  --cat-absurd-landscape:      #22c55e; /* 荒謬景觀 — 塑膠綠 */
+  --cat-odd-shopfront:         #eab308; /* 奇異店面 — 霓虹黃 */
+}
+
+/* ============================================================
+   4 · STATUS COLORS
+   ============================================================ */
+:root {
+  --status-active:      var(--accent);   /* 可探索 */
+  --status-uncertain:   #facc15;         /* 狀況不明 */
+  --status-disappeared: var(--muted);    /* 已消失 */
+  --status-pending:     #60a5fa;         /* 審核中 */
+}
+
+/* ============================================================
+   5 · TYPOGRAPHY TOKENS
+   三字體策略（v2 · Acid/Matrix 方向）：
+     --font-display = VT323          → HERO 標題、brand moment、404、onboarding
+     --font-brand   = JetBrains Mono → UI 標籤、meta、按鈕、長段英文
+     --font-content = Noto Sans TC   → 中文景點名稱、描述、正文
+   ============================================================ */
+:root {
+  --font-display: 'VT323', 'Courier New', ui-monospace, monospace;
+  --font-brand:   'JetBrains Mono', 'Space Mono', ui-monospace, monospace;
+  --font-content: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei',
+                  system-ui, -apple-system, sans-serif;
+  --font-mono:    var(--font-brand);
+
+  /* Display — brand moments (onboarding, 404, hero) */
+  --fs-display-xl: clamp(3.2rem, 12vw, 5rem);  /* 品牌名, OddSpot wordmark */
+  --fs-display-lg: clamp(2.5rem, 8vw, 3.75rem);
+  --fs-display-md: 2rem;
+
+  /* Body scale */
+  --fs-h1: 1.5rem;    /* 24px — spot name */
+  --fs-h2: 1.125rem;  /* 18px — card title */
+  --fs-h3: 1rem;      /* 16px — section */
+  --fs-body: 0.875rem;  /* 14px — default */
+  --fs-sm:   0.8125rem; /* 13px */
+  --fs-xs:   0.75rem;   /* 12px — meta */
+  --fs-2xs:  0.6875rem; /* 11px — en name */
+  --fs-micro: 0.625rem; /* 10px — badges, tab labels */
+
+  /* Tracking — OddSpot leans on extreme tracking for terminal feel */
+  --tracking-brand:   0.4em;   /* onboarding badge */
+  --tracking-wide:    0.22em;  /* brand tags, 404 code */
+  --tracking-label:   0.18em;  /* buttons, section labels */
+  --tracking-caps:    0.08em;  /* uppercase buttons */
+  --tracking-content: 0.04em;  /* Chinese reading */
+  --tracking-tight:  -0.04em;  /* display text */
+
+  /* Line height */
+  --lh-display: 0.9;
+  --lh-tight:   1.1;
+  --lh-body:    1.6;
+  --lh-relaxed: 1.8;
+
+  /* Font weights */
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-bold:    700;
+  --fw-black:   900;
+}
+
+/* ============================================================
+   6 · SEMANTIC TYPE — canonical role map (locked)
+
+   Role                   Font           Use for
+   ─────────────────────  ─────────────  ────────────────────────────
+   .t-en-h1 (display)     VT323          EN brand moment / hero
+                                         → "OddSpot" wordmark, 404
+   .t-en-h2 (section)     VT323          EN section / subtitle
+                                         → "SCANNING_NEARBY.EXE"
+                                         → "237 ODD_SPOTS_FOUND"
+   .t-en-body             JetBrains Mono EN paragraphs, system msgs
+                                         → scanning descriptions
+   .t-tc-h1 (hero)        Noto Sans TC   TC hero title (bold + tracking)
+                                         → "附近現在有什麼怪東西…"
+   .t-tc-body             Noto Sans TC   TC paragraph + inline EN/numbers
+                                         → EN/數字 auto-falls back to
+                                           JetBrains Mono via <code>/<i>
+   ============================================================ */
+body, .type-body {
+  font-family: var(--font-brand);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* ---------- EN H1 / display ---------- */
+.type-display, .t-en-h1 {
+  font-family: var(--font-display);          /* VT323 */
+  font-size: var(--fs-display-xl);           /* clamp 3.2→5rem */
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.01em;
+  line-height: var(--lh-display);
+  text-shadow: 0 0 40px rgb(var(--accent-rgb) / 0.35);
+}
+
+/* ---------- EN H2 / section ---------- */
+.t-en-h2 {
+  font-family: var(--font-display);          /* VT323 */
+  font-size: 3rem;                           /* ~48px default; override inline for 64 */
+  font-weight: var(--fw-regular);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--foreground);
+}
+.t-en-h2--accent { color: var(--accent); text-shadow: 0 0 24px rgb(var(--accent-rgb) / 0.4); }
+
+/* ---------- EN body ---------- */
+.t-en-body {
+  font-family: var(--font-brand);            /* JetBrains Mono */
+  font-size: 0.9375rem;                      /* 15px */
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  color: var(--foreground);
+}
+
+/* ---------- TC H1 / hero ---------- */
+.t-tc-h1 {
+  font-family: var(--font-content);          /* Noto Sans TC */
+  font-size: clamp(2rem, 6vw, 3.5rem);       /* 32→56px */
+  font-weight: var(--fw-bold);               /* 700 */
+  letter-spacing: 0.08em;                    /* 字間呼吸, 與 VT323 並列不違和 */
+  line-height: 1.2;
+  color: var(--foreground);
+  text-shadow: 0 0 30px rgb(var(--accent-rgb) / 0.25);
+}
+
+/* ---------- TC body (inline EN/digit falls back to mono) ---------- */
+.t-tc-body {
+  font-family: var(--font-content);          /* Noto Sans TC */
+  font-size: 0.9375rem;                      /* 15px */
+  line-height: 1.8;
+  letter-spacing: 0.03em;
+  color: var(--foreground);
+}
+/* Use <code> or .t-mono inline to force JetBrains Mono for EN/numbers */
+.t-tc-body code, .t-tc-body .t-mono {
+  font-family: var(--font-brand);
+  font-size: inherit;
+  letter-spacing: 0.02em;
+  background: none; padding: 0;
+}
+.t-tc-body .t-mono-accent { color: var(--accent); }
+
+/* ---------- legacy h1/h2 aliases (kept for existing pages) ---------- */
+.type-h1 {
+  font-family: var(--font-content);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+}
+
+.type-h2 {
+  font-family: var(--font-content);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  line-height: 1.3;
+}
+
+.type-meta {
+  font-family: var(--font-brand);
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+}
+
+.type-brand-tag {
+  font-family: var(--font-brand);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--accent);
+}
+
+.type-section-label {
+  font-family: var(--font-brand);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--muted);
+}
+
+.type-button {
+  font-family: var(--font-brand);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  font-weight: var(--fw-bold);
+}
+
+.type-content {
+  font-family: var(--font-content);
+  font-size: var(--fs-body);
+  letter-spacing: var(--tracking-content);
+  line-height: var(--lh-relaxed);
+}
+
+.type-code {
+  font-family: var(--font-brand);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+/* ============================================================
+   7 · MOTION
+   ============================================================ */
+:root {
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:      cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in:       cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring:   linear(0, 0.5 25%, 0.9 45%, 1.02 55%, 1 75%);
+
+  --dur-fast:   150ms;
+  --dur-base:   200ms;
+  --dur-slow:   320ms;
+  --dur-page:   480ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

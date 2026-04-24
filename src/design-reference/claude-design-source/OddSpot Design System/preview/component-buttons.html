@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Buttons</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body {
+    color: var(--foreground);
+    padding: 20px;
+    box-sizing: border-box;
+    font-family: var(--font-brand);
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    align-items: center;
+  }
+  .cell { display: flex; flex-direction: column; gap: 8px; }
+  .btn {
+    min-height: 44px;
+    padding: 0 20px;
+    font-family: var(--font-brand);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    transition: all 180ms cubic-bezier(0.4,0,0.2,1);
+  }
+  .btn-primary {
+    background: var(--foreground);
+    color: var(--background);
+  }
+  .btn-accent {
+    background: transparent;
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 24px rgba(0, 229, 204, 0.15);
+  }
+  .btn-ghost {
+    background: var(--panel-light);
+    color: var(--muted);
+    border-color: var(--line);
+  }
+  .btn-disabled {
+    background: var(--panel);
+    color: var(--muted);
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .tag {
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+  <div class="cell"><span class="tag">primary</span><button class="btn btn-primary">開始探索</button></div>
+  <div class="cell"><span class="tag">accent / outline</span><button class="btn btn-accent">→ Continue</button></div>
+  <div class="cell"><span class="tag">ghost</span><button class="btn btn-ghost">重設</button></div>
+  <div class="cell"><span class="tag">disabled</span><button class="btn btn-disabled">已送出</button></div>
+</body>
+</html>

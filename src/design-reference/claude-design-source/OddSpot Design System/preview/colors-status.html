@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Status colors</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body {
+    font-family: var(--font-brand);
+    color: var(--foreground);
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .badge {
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 2px;
+    border: 1px solid var(--line);
+    background: rgba(0,229,204,0.06);
+    letter-spacing: 0.04em;
+    font-family: 'Noto Sans TC', sans-serif;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .badge .en {
+    font-family: var(--font-brand);
+    font-size: 9px;
+    opacity: 0.6;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+  <span class="badge" style="color:#00e5cc;">
+    可探索 <span class="en">· active</span>
+  </span>
+  <span class="badge" style="color:#facc15;">
+    狀況不明 <span class="en">· uncertain</span>
+  </span>
+  <span class="badge" style="color:#6aada0;">
+    已消失 <span class="en">· disappeared</span>
+  </span>
+  <span class="badge" style="color:#60a5fa;">
+    審核中 <span class="en">· pending</span>
+  </span>
+</body>
+</html>

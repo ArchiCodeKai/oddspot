@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Category colors</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body {
+    font-family: var(--font-brand);
+    color: var(--foreground);
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .chip {
+    border-radius: 2px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid;
+    font-size: 11px;
+  }
+  .chip .dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.7);
+    flex-shrink: 0;
+  }
+  .chip .label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .chip .zh {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chip .hex {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    opacity: 0.85;
+  }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="chip" style="background:#f9731618; border-color:#f9731640; color:#f97316;">
+      <span class="dot" style="background:#f97316;"></span>
+      <span class="label"><span class="zh">詭異廟宇</span><span class="hex">#F97316</span></span>
+    </div>
+    <div class="chip" style="background:#6b728018; border-color:#6b728040; color:#9ca3af;">
+      <span class="dot" style="background:#6b7280;"></span>
+      <span class="label"><span class="zh">廢棄場所</span><span class="hex">#6B7280</span></span>
+    </div>
+    <div class="chip" style="background:#3b82f618; border-color:#3b82f640; color:#3b82f6;">
+      <span class="dot" style="background:#3b82f6;"></span>
+      <span class="label"><span class="zh">巨型物體</span><span class="hex">#3B82F6</span></span>
+    </div>
+    <div class="chip" style="background:#ec489918; border-color:#ec489940; color:#ec4899;">
+      <span class="dot" style="background:#ec4899;"></span>
+      <span class="label"><span class="zh">俗豔裝置</span><span class="hex">#EC4899</span></span>
+    </div>
+    <div class="chip" style="background:#14b8a618; border-color:#14b8a640; color:#14b8a6;">
+      <span class="dot" style="background:#14b8a6;"></span>
+      <span class="label"><span class="zh">邊緣建築</span><span class="hex">#14B8A6</span></span>
+    </div>
+    <div class="chip" style="background:#8b5cf618; border-color:#8b5cf640; color:#8b5cf6;">
+      <span class="dot" style="background:#8b5cf6;"></span>
+      <span class="label"><span class="zh">都市傳說</span><span class="hex">#8B5CF6</span></span>
+    </div>
+    <div class="chip" style="background:#22c55e18; border-color:#22c55e40; color:#22c55e;">
+      <span class="dot" style="background:#22c55e;"></span>
+      <span class="label"><span class="zh">荒謬景觀</span><span class="hex">#22C55E</span></span>
+    </div>
+    <div class="chip" style="background:#eab30818; border-color:#eab30840; color:#eab308;">
+      <span class="dot" style="background:#eab308;"></span>
+      <span class="label"><span class="zh">奇異店面</span><span class="hex">#EAB308</span></span>
+    </div>
+  </div>
+</body>
+</html>

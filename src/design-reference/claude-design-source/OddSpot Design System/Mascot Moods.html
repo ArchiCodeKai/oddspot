@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="zh-TW" data-theme="terminal">
+<head>
+<meta charset="utf-8">
+<title>OddSpot · Mascot Mood Library</title>
+<link rel="stylesheet" href="themes.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
+  body {
+    font-family: var(--font-brand);
+    color: var(--fg);
+    padding: 40px 32px 80px;
+    min-height: 100vh;
+    transition: background 200ms, color 200ms;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1300px;
+    margin: 0 auto 40px;
+  }
+  .topbar h1 {
+    font-family: var(--font-content);
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .topbar .meta {
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .theme-switch {
+    display: flex; gap: 6px;
+    padding: 6px;
+    background: rgb(0 0 0 / 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line-strong);
+  }
+  .theme-switch button {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid transparent;
+    padding: 6px 10px;
+    font-family: var(--font-brand);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 160ms;
+  }
+  .theme-switch button:hover { color: var(--fg); }
+  .theme-switch button.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgb(var(--accent-rgb) / 0.35);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+
+  .cell {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    transition: border-color 200ms;
+    aspect-ratio: 1 / 0.92;
+  }
+  .cell:hover {
+    border-color: var(--line-strong);
+  }
+
+  .cell .corner {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .cell .num {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+  }
+
+  .mood-canvas {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mood-canvas svg {
+    width: 140px;
+    height: 155px;
+    filter: drop-shadow(0 0 20px rgb(var(--accent-rgb) / 0.35));
+  }
+
+  .mood-label {
+    font-family: var(--font-content);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--fg);
+    margin: 0;
+  }
+  .mood-desc {
+    font-family: var(--font-content);
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    margin: 0;
+    line-height: 1.6;
+    letter-spacing: 0.03em;
+  }
+
+  .usage {
+    font-family: var(--font-brand);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-top: 4px;
+    opacity: 0.8;
+  }
+
+  /* =========================
+     ANIMATION KEYFRAMES
+     ========================= */
+  @keyframes blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.05); }
+  }
+  @keyframes scan-lr {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-6px, -1px); }
+    50% { transform: translate(6px, 0); }
+    75% { transform: translate(2px, 2px); }
+  }
+  @keyframes dizzy {
+    0%   { transform: translate(5px, 0); }
+    25%  { transform: translate(0, 4px); }
+    50%  { transform: translate(-5px, 0); }
+    75%  { transform: translate(0, -4px); }
+    100% { transform: translate(5px, 0); }
+  }
+  @keyframes sleepy-lid {
+    0%, 100% { transform: translateY(-4px); }
+    50% { transform: translateY(-2px); }
+  }
+  @keyframes shocked-pupil {
+    0% { transform: scale(1); }
+    10% { transform: scale(1.4); }
+    100% { transform: scale(1.2); }
+  }
+  @keyframes shocked-shake {
+    0%, 100% { transform: translate(0,0); }
+    20% { transform: translate(-1px, 1px); }
+    40% { transform: translate(1px, -1px); }
+    60% { transform: translate(-1px, -1px); }
+    80% { transform: translate(1px, 1px); }
+  }
+  @keyframes scanline-sweep {
+    0% { transform: translateY(-20px); opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { transform: translateY(20px); opacity: 0; }
+  }
+  @keyframes glitch-jitter {
+    0%, 100% { transform: translate(0,0); }
+    20% { transform: translate(2px, 0); }
+    21% { transform: translate(-2px, 0); }
+    40% { transform: translate(0, 0); }
+    60% { transform: translate(-1px, 1px); }
+    80% { transform: translate(1px, 0); }
+  }
+
+  /* Mood bindings */
+  .mood-blinking .eye-mask { transform-origin: 58px 50px; animation: blink 6s infinite; }
+  .mood-blinking .pupil {}
+
+  .mood-scanning .pupil { animation: scan-lr 4s ease-in-out infinite; transform-origin: center; }
+
+  .mood-dizzy .pupil { animation: dizzy 1.4s ease-in-out infinite; transform-origin: center; }
+
+  .mood-sleepy .lid-droop {
+    fill: var(--accent);
+    opacity: 0.95;
+    animation: sleepy-lid 3s ease-in-out infinite;
+  }
+
+  .mood-shocked .pupil { animation: shocked-pupil 0.4s ease-out forwards, shocked-shake 0.3s infinite; transform-origin: center; transform-box: fill-box; }
+  .mood-shocked .outer-shell { animation: shocked-shake 0.3s infinite; transform-origin: center; }
+
+  .mood-glitched .outer-shell { animation: glitch-jitter 1.2s steps(4) infinite; }
+  .mood-glitched .pupil { animation: glitch-jitter 0.8s steps(4) infinite; }
+  .mood-glitched .scanline { animation: scanline-sweep 2s linear infinite; }
+
+  /* Code toggle */
+  .code-toggle {
+    max-width: 1300px;
+    margin: 40px auto 0;
+    padding: 16px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .code-toggle strong { color: var(--accent); font-family: var(--font-brand); letter-spacing: 0.1em; text-transform: uppercase; font-size: 10px; }
+  .code-toggle code {
+    background: rgb(255 255 255 / 0.04);
+    padding: 2px 6px;
+    font-family: var(--font-brand);
+    color: var(--fg);
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Mascot Mood Library</h1>
+    <div class="meta">6 moods · one eye · many moods</div>
+  </div>
+  <div class="theme-switch">
+    <button data-theme-btn="terminal" class="active">Terminal</button>
+    <button data-theme-btn="blueprint">Blueprint</button>
+    <button data-theme-btn="caution">Caution</button>
+    <button data-theme-btn="midnight">Midnight</button>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- BLINKING (default chrome) -->
+  <div class="cell">
+    <div class="corner">mood / 01</div>
+    <div class="num">default</div>
+    <div class="mood-canvas">
+      <svg viewBox="0 0 120 130" fill="none" class="mood-blinking">
+        <g class="outer-shell">
+          <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </g>
+        <g class="eye-mask">
+          <path d="M34 52 C33 44,45 36,58 36 C69 36,77 41,75 48 C73 56,61 62,49 62 C39 62,34 58,34 52Z" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <g class="pupil">
+            <ellipse cx="56" cy="49" rx="7" ry="9" fill="var(--accent)"/>
+            <circle cx="55" cy="47" r="2" fill="var(--bg)"/>
+          </g>
+        </g>
+      </svg>
+    </div>
+    <p class="mood-label">blinking</p>
+    <p class="mood-desc">6 秒 blink 一次。預設狀態，appears 在 header、chrome、idle。</p>
+    <p class="usage">→ default chrome</p>
+  </div>
+
+  <!-- SCANNING -->
+  <div class="cell">
+    <div class="corner">mood / 02</div>
+    <div class="num">active</div>
+    <div class="mood-canvas">
+      <svg viewBox="0 0 120 130" fill="none" class="mood-scanning">
+        <g class="outer-shell">
+          <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </g>
+        <path d="M34 52 C33 44,45 36,58 36 C69 36,77 41,75 48 C73 56,61 62,49 62 C39 62,34 58,34 52Z" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <g class="pupil" style="transform-box: fill-box;">
+          <ellipse cx="56" cy="49" rx="7" ry="9" fill="var(--accent)"/>
+          <circle cx="55" cy="47" r="2" fill="var(--bg)"/>
+        </g>
+      </svg>
+    </div>
+    <p class="mood-label">scanning</p>
+    <p class="mood-desc">眼球左右上下掃視。使用者正在探索、地圖 idle、搜尋中。</p>
+    <p class="usage">→ map · explore · idle</p>
+  </div>
+
+  <!-- SHOCKED -->
+  <div class="cell">
+    <div class="corner">mood / 03</div>
+    <div class="num">positive</div>
+    <div class="mood-canvas">
+      <svg viewBox="0 0 120 130" fill="none" class="mood-shocked">
+        <g class="outer-shell">
+          <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </g>
+        <path d="M32 52 C31 40,45 32,58 32 C70 32,80 40,78 50 C76 60,62 64,49 64 C37 64,32 60,32 52Z" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <g class="pupil" style="transform-box: fill-box; transform-origin: center;">
+          <ellipse cx="56" cy="49" rx="7" ry="9" fill="var(--accent)"/>
+          <circle cx="55" cy="47" r="2" fill="var(--bg)"/>
+        </g>
+      </svg>
+    </div>
+    <p class="mood-label">shocked</p>
+    <p class="mood-desc">瞳孔瞬間放大 1.4×，外殼微震。發現新景點、解鎖成就。</p>
+    <p class="usage">→ discovery · achievement · random-spot</p>
+  </div>
+
+  <!-- SLEEPY -->
+  <div class="cell">
+    <div class="corner">mood / 04</div>
+    <div class="num">empty</div>
+    <div class="mood-canvas">
+      <svg viewBox="0 0 120 130" fill="none" class="mood-sleepy">
+        <g class="outer-shell">
+          <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </g>
+        <path d="M34 52 C33 44,45 36,58 36 C69 36,77 41,75 48 C73 56,61 62,49 62 C39 62,34 58,34 52Z" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <g class="pupil">
+          <ellipse cx="56" cy="49" rx="7" ry="9" fill="var(--accent)"/>
+          <circle cx="55" cy="47" r="2" fill="var(--bg)"/>
+        </g>
+        <!-- droopy upper lid -->
+        <path class="lid-droop" d="M34 52 C33 44,45 36,58 36 C69 36,77 41,75 48 C73 53,55 54,48 54 C40 54,34 53,34 52Z"/>
+      </svg>
+    </div>
+    <p class="mood-label">sleepy</p>
+    <p class="mood-desc">上眼皮下垂一半，緩慢呼吸。空狀態、沒有結果、半夜。</p>
+    <p class="usage">→ empty · no results · 3am</p>
+  </div>
+
+  <!-- DIZZY -->
+  <div class="cell">
+    <div class="corner">mood / 05</div>
+    <div class="num">error</div>
+    <div class="mood-canvas">
+      <svg viewBox="0 0 120 130" fill="none" class="mood-dizzy">
+        <g class="outer-shell">
+          <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </g>
+        <path d="M34 52 C33 44,45 36,58 36 C69 36,77 41,75 48 C73 56,61 62,49 62 C39 62,34 58,34 52Z" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <g class="pupil" style="transform-box: fill-box;">
+          <ellipse cx="56" cy="49" rx="6" ry="7" fill="var(--accent)"/>
+          <circle cx="55" cy="47" r="1.5" fill="var(--bg)"/>
+        </g>
+        <!-- dizzy stars -->
+        <g opacity="0.75">
+          <text x="22" y="28" font-family="Space Mono" font-size="8" fill="var(--accent)">*</text>
+          <text x="86" y="24" font-family="Space Mono" font-size="10" fill="var(--accent)">*</text>
+          <text x="94" y="70" font-family="Space Mono" font-size="8" fill="var(--accent)">·</text>
+        </g>
+      </svg>
+    </div>
+    <p class="mood-label">dizzy</p>
+    <p class="mood-desc">瞳孔繞八字。錯誤、網路斷線、系統不確定。</p>
+    <p class="usage">→ error · offline · uncertain</p>
+  </div>
+
+  <!-- GLITCHED -->
+  <div class="cell">
+    <div class="corner">mood / 06</div>
+    <div class="num">loading</div>
+    <div class="mood-canvas">
+      <svg viewBox="0 0 120 130" fill="none" class="mood-glitched">
+        <defs>
+          <clipPath id="eyeClip">
+            <path d="M34 52 C33 44,45 36,58 36 C69 36,77 41,75 48 C73 56,61 62,49 62 C39 62,34 58,34 52Z"/>
+          </clipPath>
+        </defs>
+        <g class="outer-shell">
+          <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </g>
+        <path d="M34 52 C33 44,45 36,58 36 C69 36,77 41,75 48 C73 56,61 62,49 62 C39 62,34 58,34 52Z" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <g class="pupil">
+          <ellipse cx="56" cy="49" rx="7" ry="9" fill="var(--accent)"/>
+          <circle cx="55" cy="47" r="2" fill="var(--bg)"/>
+        </g>
+        <!-- scanning bar inside eye -->
+        <g clip-path="url(#eyeClip)">
+          <rect class="scanline" x="30" y="40" width="50" height="2" fill="var(--accent)" opacity="0.9"/>
+        </g>
+      </svg>
+    </div>
+    <p class="mood-label">glitched</p>
+    <p class="mood-desc">CRT 掃描線掠過瞳孔 + 微量抖動。載入中、正在驗證、打聽中。</p>
+    <p class="usage">→ loading · verifying · 打聽中</p>
+  </div>
+
+</div>
+
+<div class="code-toggle">
+  <strong>Usage</strong> — Copy the SVG + attach the matching <code>.mood-*</code> class to the <code>&lt;svg&gt;</code>. All 6 moods are pure SVG + CSS keyframes (no JS). Drop any one into a React component, or reference this file as a sprite source. Animations use <code>var(--accent)</code> and <code>var(--bg)</code> — they automatically re-theme with the rest of the app.
+</div>
+
+<script>
+  const buttons = document.querySelectorAll('[data-theme-btn]');
+  const html = document.documentElement;
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      html.setAttribute('data-theme', btn.dataset.themeBtn);
+      buttons.forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+</script>
+
+</body>
+</html>

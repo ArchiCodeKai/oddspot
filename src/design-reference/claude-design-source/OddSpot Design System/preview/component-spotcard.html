@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spot card</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body {
+    color: var(--foreground);
+    padding: 20px;
+    box-sizing: border-box;
+    font-family: var(--font-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card {
+    width: 280px;
+    border-radius: 24px;
+    overflow: hidden;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 32px rgba(0,229,204,0.06);
+  }
+  .hero {
+    height: 180px;
+    background: linear-gradient(135deg, #4a3828 0%, #2a1f15 100%);
+    position: relative;
+  }
+  .hero::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, transparent 45%, var(--panel) 100%);
+  }
+  .badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    padding: 4px 8px;
+    background: rgba(249,115,22,0.15);
+    color: #f97316;
+    border: 1px solid rgba(249,115,22,0.35);
+    border-radius: 2px;
+    z-index: 1;
+  }
+  .body {
+    padding: 14px 16px 16px;
+    margin-top: -24px;
+    position: relative;
+    z-index: 1;
+  }
+  .name {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .meta {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-top: 6px;
+    display: flex;
+    gap: 10px;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="hero">
+      <span class="badge">weird-temple</span>
+    </div>
+    <div class="body">
+      <div class="name">十八王公廟 · 黑狗分身</div>
+      <div class="meta"><span><span class="status-dot"></span>可探索</span><span>2.4 KM</span><span>25.28, 121.57</span></div>
+    </div>
+  </div>
+</body>
+</html>

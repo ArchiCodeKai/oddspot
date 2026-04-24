@@ -1,0 +1,4 @@
+# 此檔案的唯一用途是讓空資料夾可以被 Git 追蹤。
+# Huashu Design 產出的迭代版本會放到本資料夾的子資料夾中，
+# 例如 v1-dark-mode/、v2-blueprint-variant/。
+# 詳見 ../README.md。

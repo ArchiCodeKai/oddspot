@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Type — font families</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--background); }
+  body {
+    color: var(--foreground);
+    padding: 20px;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .cell { display: flex; flex-direction: column; gap: 8px; }
+  .tag {
+    font-family: var(--font-brand);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+  }
+  .sample.brand {
+    font-family: 'Space Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--foreground);
+    letter-spacing: 0.02em;
+  }
+  .sample.content {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--foreground);
+  }
+  .meta {
+    font-family: var(--font-brand);
+    font-size: 10px;
+    color: var(--muted);
+    opacity: 0.7;
+  }
+  .use {
+    font-family: var(--font-brand);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+  <div class="cell">
+    <span class="tag">font-brand</span>
+    <span class="sample brand">Space Mono · OddSpot 404</span>
+    <span class="meta">Google Fonts · 400 / 700</span>
+    <span class="use">Default everywhere: UI chrome, labels, numbers, English, system tags.</span>
+  </div>
+  <div class="cell">
+    <span class="tag">font-content</span>
+    <span class="sample content">思源黑體 · 廢墟景點</span>
+    <span class="meta">Google Fonts · 400 / 500 / 700</span>
+    <span class="use">Escape hatch for Chinese reading: spot names, descriptions, filters.</span>
+  </div>
+</body>
+</html>
