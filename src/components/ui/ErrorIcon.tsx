@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useId } from "react";
 import gsap from "gsap";
-import { useAppStore } from "@/store/useAppStore";
 
 // SVG path 常數：與 oddspot-icon-preview.html makeErrorTl 完全一致
 const PATH_OPEN   = "M34 56 C33 48,45 40,58 40 C69 40,77 45,75 52 C73 60,61 66,49 66 C39 66,34 62,34 56Z";
@@ -13,8 +12,8 @@ interface ErrorIconProps {
 }
 
 export function ErrorIcon({ size = 160 }: ErrorIconProps) {
-  const theme = useAppStore((s) => s.theme);
-  const isDark = theme === "dark";
+  // 目前所有 AppTheme 皆為深色系
+  const isDark = true;
 
   const stroke   = isDark ? "#00e5cc" : "#0d5c4a";
   const iris     = isDark ? "#00e5cc" : "#0d5c4a";
