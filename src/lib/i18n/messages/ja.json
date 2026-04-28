@@ -1,0 +1,118 @@
+{
+  "meta": {
+    "title": "OddSpot",
+    "description": "台湾の街のうまく説明できない場所を見つける"
+  },
+  "nav": {
+    "brand": "sys://oddspot"
+  },
+  "onboarding": {
+    "badge": "B 級スポット",
+    "tagline": "台湾の街のうまく\n説明できない場所",
+    "cta": "探索を始める",
+    "skip": "スキップ"
+  },
+  "landing": {
+    "systemTag": "scanning taiwan · 8 categories detected",
+    "headline": "B 級<em>スポット</em>",
+    "lede": "独特で、奇妙で、懐かしくて、ちょっと雑なスポット。日常のユーモアと視覚のジャブを探しに、出かけよう。",
+    "cta": "Start Scanning",
+    "ctaMeta": "→ 探索開始 · 登録不要"
+  },
+  "auth": {
+    "login": "ログイン",
+    "loginWithGoogle": "Google でログイン",
+    "loginWithLine": "LINE でログイン",
+    "logout": "ログアウト",
+    "saved": "保存済み",
+    "trip": "今日のルート",
+    "user": "ユーザー"
+  },
+  "map": {
+    "locating": "位置情報取得中"
+  },
+  "spotMeta": {
+    "categories": {
+      "weird-temple": "奇妙な廟",
+      "abandoned": "廃墟",
+      "giant-object": "巨大物体",
+      "kitsch": "キッチュ装置",
+      "marginal-architecture": "辺縁建築",
+      "urban-legend": "都市伝説",
+      "absurd-landscape": "不条理景観",
+      "odd-shopfront": "奇妙な店頭"
+    },
+    "status": {
+      "active": "探索可",
+      "uncertain": "状況不明",
+      "disappeared": "消失",
+      "pending": "審査中"
+    },
+    "difficulty": {
+      "easy": "簡単",
+      "medium": "普通",
+      "hard": "難しい"
+    }
+  },
+  "filter": {
+    "title": "スポット絞り込み",
+    "category": "カテゴリ",
+    "difficulty": "難易度",
+    "status": "状態",
+    "reset": "リセット",
+    "apply": "適用"
+  },
+  "tripPlan": {
+    "title": "今日のルート",
+    "clear": "クリア",
+    "emptyTitle": "まだスポットがありません",
+    "emptyHint": "+ を押して今日のルートに追加",
+    "routeHint": "追加順に並びます。v2 でルート最適化。",
+    "navigate": "Google Maps で開く",
+    "remove": "削除"
+  },
+  "spotDetail": {
+    "back": "マップへ戻る",
+    "legend": "伝説",
+    "recommendedTime": "おすすめ時間帯",
+    "addressPrefix": "📍"
+  },
+  "tabs": {
+    "map": "マップ",
+    "explore": "探索",
+    "submit": "投稿"
+  },
+  "swipe": {
+    "skip": "スキップ",
+    "save": "保存",
+    "filter": "絞り込み",
+    "leftArrow": "左へスワイプ",
+    "rightArrow": "右へスワイプ",
+    "tripLimitReached": "今日のルート上限（5件）に達しました",
+    "tripProgress": "{count}/5 件",
+    "allDoneTitle": "近くのスポットは全て見ました",
+    "allDoneHint": "検索範囲を広げるか絞り込みをリセット",
+    "viewTripCta": "今日のルートを見る（{count} 件）",
+    "viewDetail": "詳細を見る →",
+    "addToTrip": "ルートに追加",
+    "loginToSave": "ログインで保存",
+    "undo": "戻す",
+    "undoLabel": "さっきスキップしたのを戻す",
+    "gestureSkip": "左 · スキップ",
+    "gestureSave": "右 · 保存",
+    "gestureDetail": "上 · 詳細",
+    "difficulty": {
+      "easy": "簡単",
+      "medium": "普通",
+      "hard": "難しい"
+    }
+  },
+  "theme": {
+    "toDark": "ダークモードへ",
+    "toLight": "ライトモードへ"
+  },
+  "lang": {
+    "toggle": "次の言語へ",
+    "label": "日"
+  }
+}

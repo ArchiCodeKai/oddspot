@@ -2,20 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import { getCategoryLabel } from "@/lib/i18n/spotMeta";
+import { CATEGORY_GLYPHS } from "@/lib/constants/categoryGlyphs";
+import { CATEGORY_CODES } from "@/lib/constants/categories";
 import { useSwipeStore } from "@/store/useSwipeStore";
 import type { SpotMapPoint } from "@/types/spots";
-import type { SpotCategory } from "@/lib/constants/categories";
-
-const CATEGORY_COLORS: Record<SpotCategory, string> = {
-  "weird-temple": "#f97316",
-  "abandoned": "#6b7280",
-  "giant-object": "#3b82f6",
-  "kitsch": "#ec4899",
-  "marginal-architecture": "#14b8a6",
-  "urban-legend": "#8b5cf6",
-  "absurd-landscape": "#22c55e",
-  "odd-shopfront": "#eab308",
-};
 
 interface TripPlanSheetProps {
   isOpen: boolean;
@@ -82,8 +72,8 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
         className="fixed bottom-0 left-0 right-0 z-50 px-5 pt-5 pb-10"
         style={{
           background: "var(--panel-glass-strong)",
-          borderTop: "1px solid var(--line)",
-          borderRadius: "20px 20px 0 0",
+          borderTop: "1px solid var(--line-strong)",
+          borderRadius: "12px 12px 0 0",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           boxShadow: "0 -8px 40px rgb(var(--background-rgb) / 0.3)",
@@ -91,8 +81,8 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
       >
         {/* 拖曳把手 */}
         <div
-          className="w-10 h-1 rounded-full mx-auto mb-5"
-          style={{ background: "var(--muted)", opacity: 0.35 }}
+          className="w-10 h-1 mx-auto mb-5"
+          style={{ background: "var(--muted)", opacity: 0.35, borderRadius: 2 }}
         />
 
         <div className="flex items-center justify-between mb-5">
@@ -105,8 +95,13 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
           {tripSpots.length > 0 && (
             <button
               onClick={handleClear}
-              className="text-xs transition-colors"
-              style={{ color: "var(--muted)", cursor: "pointer" }}
+              className="text-xs transition-colors uppercase"
+              style={{
+                color: "var(--muted)",
+                cursor: "pointer",
+                fontFamily: "var(--font-jetbrains-mono), monospace",
+                letterSpacing: "0.12em",
+              }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
               onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted)")}
             >
@@ -127,17 +122,21 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
         ) : (
           <div className="space-y-3 mb-6">
             {tripSpots.map((spot, index) => {
-              const color = CATEGORY_COLORS[spot.category] ?? "#6b7280";
+              const Glyph = CATEGORY_GLYPHS[spot.category];
+              const code = CATEGORY_CODES[spot.category];
               const label = getCategoryLabel(tMeta, spot.category);
               return (
                 <div key={spot.id} className="flex items-center gap-3">
-                  {/* 序號 */}
+                  {/* 序號（v3 sharp corners） */}
                   <span
-                    className="w-5 h-5 rounded-full text-[10px] flex items-center justify-center flex-shrink-0 font-bold"
+                    className="w-6 h-6 text-[10px] flex items-center justify-center flex-shrink-0 font-bold"
                     style={{
-                      background: "var(--panel-light)",
-                      border: "1px solid var(--line)",
-                      color: "var(--muted)",
+                      background: "rgb(var(--accent-rgb) / 0.08)",
+                      border: "1px solid rgb(var(--accent-rgb) / 0.3)",
+                      color: "var(--accent)",
+                      borderRadius: 2,
+                      fontFamily: "var(--font-jetbrains-mono), monospace",
+                      letterSpacing: "0.04em",
                     }}
                   >
                     {index + 1}
@@ -148,8 +147,22 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
                     <p className="text-sm font-medium truncate font-content" style={{ color: "var(--foreground)" }}>
                       {spot.name}
                     </p>
-                    <span className="text-xs font-medium font-content" style={{ color }}>
-                      {label}
+                    <span
+                      className="inline-flex items-center gap-1.5 text-xs font-content"
+                      style={{ color: "var(--accent)", opacity: 0.85 }}
+                    >
+                      <Glyph size={10} />
+                      <span
+                        style={{
+                          fontFamily: "var(--font-jetbrains-mono), monospace",
+                          fontSize: 9,
+                          letterSpacing: "0.08em",
+                          opacity: 0.8,
+                        }}
+                      >
+                        {code}
+                      </span>
+                      <span style={{ fontSize: 11 }}>{label}</span>
                     </span>
                   </div>
 
@@ -180,12 +193,13 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
         <button
           onClick={handleNavigate}
           disabled={tripSpots.length === 0}
-          className="w-full py-3.5 text-sm font-semibold font-content transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full py-3.5 text-sm font-semibold font-content transition-opacity disabled:opacity-40 disabled:cursor-not-allowed uppercase"
           style={{
-            borderRadius: "10px",
+            borderRadius: 2,
             background: tripSpots.length > 0 ? "var(--foreground)" : "var(--panel-light)",
             color: "var(--background)",
             cursor: tripSpots.length > 0 ? "pointer" : "not-allowed",
+            letterSpacing: "0.12em",
           }}
         >
           {t("navigate")}

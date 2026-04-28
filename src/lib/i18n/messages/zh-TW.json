@@ -7,13 +7,22 @@
     "brand": "sys://oddspot"
   },
   "onboarding": {
-    "badge": "B 級景點探勘系統",
+    "badge": "B 級景點探測器",
     "tagline": "發現台灣城市裡那些\n說不清楚的地方",
     "cta": "開始探索",
     "skip": "跳過"
   },
+  "landing": {
+    "systemTag": "scanning taiwan · 8 categories detected",
+    "headline": "B 級<em>景點探測器</em>",
+    "lede": "獨特、獵奇、懷舊或帶點粗糙感的怪怪景點，尋找生活中的幽默感或視覺衝擊，去探險吧。",
+    "cta": "Start Scanning",
+    "ctaMeta": "→ 開始探索 · 不用註冊"
+  },
   "auth": {
     "login": "登入",
+    "loginWithGoogle": "使用 Google 登入",
+    "loginWithLine": "使用 LINE 登入",
     "logout": "登出",
     "saved": "已收藏",
     "trip": "今日行程",
@@ -87,6 +96,11 @@
     "allDoneTitle": "附近景點已全部看完",
     "allDoneHint": "試試擴大搜尋範圍或重設篩選",
     "viewTripCta": "查看今日行程（{count} 個地點）",
+    "undo": "還原",
+    "undoLabel": "把剛剛跳過的找回來",
+    "gestureSkip": "左滑 · 跳過",
+    "gestureSave": "右滑 · 收藏",
+    "gestureDetail": "上滑 · 看詳情",
     "difficulty": {
       "easy": "容易",
       "medium": "普通",

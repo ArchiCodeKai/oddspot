@@ -39,7 +39,7 @@ export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
       <button
         onClick={handleToggleSave}
         disabled={loading}
-        className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
+        className={`flex-1 py-3 rounded-xs text-sm font-medium transition-colors ${
           saved
             ? "bg-white/10 border border-white/20 text-white"
             : "border border-zinc-700 text-zinc-300"
@@ -51,7 +51,7 @@ export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
         href={mapsUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex-1 py-3 rounded-xl bg-white text-zinc-900 text-sm font-semibold text-center"
+        className="flex-1 py-3 rounded-xs bg-white text-zinc-900 text-sm font-semibold text-center"
       >
         導航前往
       </a>

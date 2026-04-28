@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Locale } from "@/lib/i18n";
+import { nextLocale, type Locale } from "@/lib/i18n";
 
 interface LocaleState {
   locale: Locale;
@@ -13,8 +13,8 @@ export const useLocaleStore = create<LocaleState>()(
     (set, get) => ({
       locale: "zh-TW",
       setLocale: (locale) => set({ locale }),
-      toggleLocale: () =>
-        set({ locale: get().locale === "zh-TW" ? "en" : "zh-TW" }),
+      // 循環切換：zh-TW → en → ja → zh-TW
+      toggleLocale: () => set({ locale: nextLocale(get().locale) }),
     }),
     { name: "oddspot-locale" }
   )

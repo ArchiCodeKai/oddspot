@@ -11,7 +11,8 @@ const TAIPEI_CENTER = { lat: 25.0478, lng: 121.5319 };
 
 // invert(1) hue-rotate(180deg) 能保留飽和色的色相（數學上互相抵消），
 // 同時把原本的淺色地圖背景轉為深色，達到黑暗模式效果
-const DARK_MAP_FILTER = "invert(1) hue-rotate(180deg) brightness(0.88) saturate(0.85)";
+// v3 鐵灰背景搭配：brightness 0.92（比舊 0.88 亮一階），saturate 0.92 配薄荷柔光
+const DARK_MAP_FILTER = "invert(1) hue-rotate(180deg) brightness(0.92) saturate(0.92)";
 
 interface MapViewProps {
   spots: SpotMapPoint[];
@@ -81,6 +82,7 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
         {selectedSpot && (
           <SpotPopup
             spot={selectedSpot}
+            userLocation={userLocation}
             onClose={() => setSelectedSpot(null)}
           />
         )}
@@ -89,10 +91,11 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
         {isError && (
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
             <div
-              className="backdrop-blur-md rounded-2xl px-5 py-3 text-center"
+              className="backdrop-blur-md px-5 py-3 text-center"
               style={{
-                background: "var(--panel-glass)",
-                border: "1px solid var(--line)",
+                background: "var(--panel-glass-strong)",
+                border: "1px solid var(--line-strong)",
+                borderRadius: 2,
                 boxShadow: "var(--shadow-glow)",
               }}
             >
@@ -102,8 +105,9 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
               {onRetry && (
                 <button
                   onClick={onRetry}
-                  className="mt-2 text-xs px-3 py-1.5 rounded-lg transition-colors"
+                  className="mt-2 text-xs px-3 py-1.5 transition-colors"
                   style={{
+                    borderRadius: 2,
                     background: "rgb(var(--accent-rgb) / 0.15)",
                     color: "var(--accent)",
                     border: "1px solid rgb(var(--accent-rgb) / 0.3)",
@@ -118,17 +122,37 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
 
         {spots.length === 0 && !selectedSpot && !isError && (
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
-            <div className="bg-zinc-900/80 backdrop-blur-md border border-white/5 rounded-2xl px-5 py-3 text-center">
-              <p className="text-zinc-400 text-sm">附近 {radius}km 內暫無景點</p>
+            <div
+              className="backdrop-blur-md px-5 py-3 text-center"
+              style={{
+                background: "var(--panel-glass-strong)",
+                border: "1px solid var(--line)",
+                borderRadius: 2,
+                boxShadow: "var(--shadow-glow)",
+              }}
+            >
+              <p className="text-sm font-content" style={{ color: "var(--muted)" }}>
+                附近 {radius}km 內暫無景點
+              </p>
               {onExpandRadius ? (
                 <button
                   onClick={onExpandRadius}
-                  className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-white/10 text-zinc-300 hover:bg-white/15 transition-colors"
+                  className="mt-2 text-xs px-3 py-1.5 transition-colors uppercase"
+                  style={{
+                    borderRadius: 2,
+                    background: "rgb(var(--accent-rgb) / 0.1)",
+                    color: "var(--foreground)",
+                    border: "1px solid var(--line-strong)",
+                    fontFamily: "var(--font-jetbrains-mono), monospace",
+                    letterSpacing: "0.12em",
+                  }}
                 >
                   擴大至 {radius === 5 ? 10 : 20}km
                 </button>
               ) : (
-                <p className="text-zinc-600 text-xs mt-0.5">已是最大搜尋範圍</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--muted)", opacity: 0.6 }}>
+                  已是最大搜尋範圍
+                </p>
               )}
             </div>
           </div>

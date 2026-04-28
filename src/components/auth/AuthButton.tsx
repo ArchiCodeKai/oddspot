@@ -30,37 +30,58 @@ export function AuthButton() {
   // 未登入 → 登入按鈕
   if (!user) {
     return (
-      <button
-        onClick={() => signIn("google")}
-        className="flex items-center gap-2 px-4 py-2 text-xs tracking-widest uppercase transition-all"
-        style={{
-          color: "var(--accent)",
-          border: "1px solid var(--line-strong)",
-          borderRadius: "2px",
-          background: "rgb(var(--accent-rgb) / 0.04)",
-          boxShadow: "var(--shadow-glow)",
-          cursor: "pointer",
-          minHeight: 44,
-          backdropFilter: "blur(10px)",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = "rgb(var(--accent-rgb) / 0.6)";
-          e.currentTarget.style.boxShadow = "0 0 18px rgb(var(--accent-rgb) / 0.18)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = "var(--line-strong)";
-          e.currentTarget.style.boxShadow = "var(--shadow-glow)";
-        }}
-      >
-        {/* Google G 圖示 */}
-        <svg width="13" height="13" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-          <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
-          <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.174 0 7.548 0 9s.348 2.826.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-          <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-        </svg>
-        {t("login")}
-      </button>
+      <div className="relative" ref={dropdownRef}>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-2 px-4 py-2 text-xs tracking-widest uppercase transition-all"
+          style={{
+            color: "var(--accent)",
+            border: "1px solid var(--line-strong)",
+            borderRadius: "2px",
+            background: "rgb(var(--accent-rgb) / 0.04)",
+            boxShadow: "var(--shadow-glow)",
+            cursor: "pointer",
+            minHeight: 44,
+            backdropFilter: "blur(10px)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "rgb(var(--accent-rgb) / 0.6)";
+            e.currentTarget.style.boxShadow = "0 0 18px rgb(var(--accent-rgb) / 0.18)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--line-strong)";
+            e.currentTarget.style.boxShadow = "var(--shadow-glow)";
+          }}
+        >
+          {t("login")}
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"
+            style={{
+              color: "var(--muted)",
+              transform: open ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }}
+          >
+            <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        {open && (
+          <div
+            className="absolute right-0 mt-1.5 w-52 z-50 overflow-hidden"
+            style={{
+              background: "var(--panel-glass-strong)",
+              border: "1px solid var(--line)",
+              borderRadius: "2px",
+              boxShadow:
+                "0 16px 48px rgb(var(--background-rgb) / 0.24), 0 0 32px rgb(var(--accent-rgb) / 0.06)",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            <SignInItem provider="google" label={t("loginWithGoogle")} icon={<GoogleIcon />} />
+            <SignInItem provider="line" label={t("loginWithLine")} icon={<LineIcon />} />
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -187,6 +208,50 @@ export function AuthButton() {
         </div>
       )}
     </div>
+  );
+}
+
+function SignInItem({
+  provider, label, icon,
+}: {
+  provider: "google" | "line";
+  label: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={() => signIn(provider)}
+      className="w-full flex items-center gap-3 px-4 py-3 text-xs tracking-wider transition-colors"
+      style={{ color: "var(--foreground)", cursor: "pointer", minHeight: 44 }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "rgb(var(--accent-rgb) / 0.05)")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.174 0 7.548 0 9s.348 2.826.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+  );
+}
+
+function LineIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+      <rect width="24" height="24" rx="4" fill="#06C755" />
+      <path
+        d="M6 7.8h1.6v5.1h2.8v1.4H6V7.8Zm5.2 0h1.6v6.5h-1.6V7.8Zm2.8 0h1.5l2.4 3.6V7.8h1.5v6.5h-1.5l-2.4-3.6v3.6H14V7.8Z"
+        fill="#fff"
+      />
+    </svg>
   );
 }
 

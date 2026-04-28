@@ -2,20 +2,10 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { CATEGORY_VALUES } from "@/lib/constants/categories";
+import { CATEGORY_VALUES, CATEGORY_CODES } from "@/lib/constants/categories";
+import { CATEGORY_GLYPHS } from "@/lib/constants/categoryGlyphs";
 import { getCategoryLabel, getDifficultyLabel, getStatusOptions } from "@/lib/i18n/spotMeta";
 import type { SpotCategory } from "@/lib/constants/categories";
-
-const CATEGORY_COLORS: Record<SpotCategory, string> = {
-  "weird-temple": "#f97316",
-  "abandoned": "#6b7280",
-  "giant-object": "#3b82f6",
-  "kitsch": "#ec4899",
-  "marginal-architecture": "#14b8a6",
-  "urban-legend": "#8b5cf6",
-  "absurd-landscape": "#22c55e",
-  "odd-shopfront": "#eab308",
-};
 
 interface FilterSheetProps {
   isOpen: boolean;
@@ -73,8 +63,8 @@ export function FilterSheet({ isOpen, onClose }: FilterSheetProps) {
         className="fixed bottom-0 left-0 right-0 z-50 px-5 pt-5 pb-10"
         style={{
           background: "var(--panel-glass-strong)",
-          borderTop: "1px solid var(--line)",
-          borderRadius: "20px 20px 0 0",
+          borderTop: "1px solid var(--line-strong)",
+          borderRadius: "12px 12px 0 0",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           boxShadow: "0 -8px 40px rgb(var(--background-rgb) / 0.3)",
@@ -82,8 +72,8 @@ export function FilterSheet({ isOpen, onClose }: FilterSheetProps) {
       >
         {/* 拖曳把手 */}
         <div
-          className="w-10 h-1 rounded-full mx-auto mb-5"
-          style={{ background: "var(--muted)", opacity: 0.35 }}
+          className="w-10 h-1 mx-auto mb-5"
+          style={{ background: "var(--muted)", opacity: 0.35, borderRadius: 2 }}
         />
 
         <h3
@@ -93,25 +83,51 @@ export function FilterSheet({ isOpen, onClose }: FilterSheetProps) {
           {t("title")}
         </h3>
 
-        {/* 景點類型 */}
+        {/* 景點類型 — v3 monochrome：glyph + 2-letter code 識別 */}
         <SectionLabel>{t("category")}</SectionLabel>
         <div className="flex flex-wrap gap-2 mb-6">
           {categoryOptions.map((cat) => {
-            const color = CATEGORY_COLORS[cat.value];
+            const Glyph = CATEGORY_GLYPHS[cat.value];
+            const code = CATEGORY_CODES[cat.value];
             const isSelected = selectedCategories.includes(cat.value);
             return (
               <button
                 key={cat.value}
                 onClick={() => toggleCategory(cat.value)}
-                className="text-xs px-3 py-1.5 rounded-full font-medium transition-all font-content"
+                className="text-xs transition-all font-content"
                 style={{
-                  background: isSelected ? color : `${color}1a`,
-                  color: isSelected ? "#fff" : color,
-                  border: `1px solid ${color}40`,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 10px 6px 8px",
+                  borderRadius: 2,
+                  background: isSelected
+                    ? "rgb(var(--accent-rgb) / 0.18)"
+                    : "rgb(var(--accent-rgb) / 0.04)",
+                  color: isSelected ? "var(--accent)" : "var(--muted)",
+                  border: isSelected
+                    ? "1px solid rgb(var(--accent-rgb) / 0.6)"
+                    : "1px solid var(--line)",
                   cursor: "pointer",
+                  letterSpacing: "0.04em",
+                  fontWeight: 500,
+                  boxShadow: isSelected
+                    ? "0 0 12px rgb(var(--accent-rgb) / 0.18)"
+                    : "none",
                 }}
               >
-                {cat.label}
+                <Glyph size={12} />
+                <span
+                  style={{
+                    fontFamily: "var(--font-jetbrains-mono), monospace",
+                    fontSize: 9,
+                    letterSpacing: "0.08em",
+                    opacity: 0.85,
+                  }}
+                >
+                  {code}
+                </span>
+                <span>{cat.label}</span>
               </button>
             );
           })}
@@ -155,13 +171,14 @@ export function FilterSheet({ isOpen, onClose }: FilterSheetProps) {
         <div className="flex gap-3">
           <button
             onClick={handleReset}
-            className="flex-1 py-3 text-sm font-medium transition-colors font-content"
+            className="flex-1 py-3 text-sm font-medium transition-colors font-content uppercase"
             style={{
-              borderRadius: "10px",
+              borderRadius: 2,
               border: "1px solid var(--line-strong)",
               color: "var(--foreground)",
               background: "transparent",
               cursor: "pointer",
+              letterSpacing: "0.12em",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--panel-light)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -170,12 +187,13 @@ export function FilterSheet({ isOpen, onClose }: FilterSheetProps) {
           </button>
           <button
             onClick={handleApply}
-            className="flex-1 py-3 text-sm font-semibold font-content"
+            className="flex-1 py-3 text-sm font-semibold font-content uppercase"
             style={{
-              borderRadius: "10px",
+              borderRadius: 2,
               background: "var(--foreground)",
               color: "var(--background)",
               cursor: "pointer",
+              letterSpacing: "0.12em",
             }}
           >
             {t("apply")}
@@ -191,7 +209,11 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p
       className="text-xs uppercase tracking-widest mb-3"
-      style={{ color: "var(--muted)", fontFamily: "var(--font-space-mono), monospace" }}
+      style={{
+        color: "var(--muted)",
+        fontFamily: "var(--font-jetbrains-mono), monospace",
+        letterSpacing: "0.18em",
+      }}
     >
       {children}
     </p>
@@ -212,7 +234,7 @@ function ToggleButton({
       onClick={onClick}
       className="flex-1 py-2 text-sm font-medium transition-all font-content"
       style={{
-        borderRadius: "10px",
+        borderRadius: 2,
         background: selected ? "var(--foreground)" : "var(--panel-light)",
         color: selected ? "var(--background)" : "var(--muted)",
         border: selected ? "1px solid transparent" : "1px solid var(--line)",

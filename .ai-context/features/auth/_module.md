@@ -1,8 +1,14 @@
 # 認證模組（Step 5）
 
-## 狀態：待實作
+## 狀態：部分完成
 
-預計在 Step 5 實作，目前 schema 已預先補好必要欄位。
+目前已完成 NextAuth v5 基礎串接、Google / LINE OAuth provider、登入 UI、Guest saved spots 同步 API 與前端觸發。
+
+部署前仍需確認：
+- Google Cloud OAuth redirect URI
+- LINE Developers Login Channel redirect URI
+- Vercel Production / Preview 環境變數
+- Prisma migrations 與 PostgreSQL provider 一致性
 
 ## NextAuth 5 架構
 
@@ -14,13 +20,10 @@
 
 ## 待實作清單
 
-1. 安裝 `@auth/prisma-adapter`
-2. 建立 `src/auth.ts`（NextAuth 設定）
-3. 建立 `src/app/api/auth/[...nextauth]/route.ts`
-4. 設定 Google / GitHub OAuth provider
-5. 建立 `src/middleware.ts`（保護 /profile 路由）
-6. Landing page 加入 server-side auth check（已登入 → 導向 /map）
-7. 建立 `/api/saved/sync`（Guest saves 同步）
+1. 建立 `src/middleware.ts`（保護需登入路由，如 /profile）
+2. Landing page 加入 server-side auth check（已登入 → 導向 /map）
+3. 確認 LINE / Google OAuth 在 Production domain 的 callback 正常
+4. 確認 `/api/saved/sync` 在部署資料庫上可正常寫入 SavedSpot
 
 ## Guest → 登入的 Sync 流程
 
@@ -35,10 +38,23 @@
 ## 環境變數（待填入）
 
 ```
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=
+AUTH_SECRET=
 AUTH_GOOGLE_ID=
 AUTH_GOOGLE_SECRET=
-AUTH_GITHUB_ID=
-AUTH_GITHUB_SECRET=
+AUTH_LINE_ID=
+AUTH_LINE_SECRET=
+```
+
+## OAuth Callback URL
+
+本地開發：
+```
+http://localhost:3000/api/auth/callback/google
+http://localhost:3000/api/auth/callback/line
+```
+
+Vercel 部署後：
+```
+https://your-domain.vercel.app/api/auth/callback/google
+https://your-domain.vercel.app/api/auth/callback/line
 ```

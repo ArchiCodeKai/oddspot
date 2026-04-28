@@ -7,13 +7,22 @@
     "brand": "sys://oddspot"
   },
   "onboarding": {
-    "badge": "B-Grade Spot Explorer",
+    "badge": "Quirky Attractions",
     "tagline": "Discovering the unexplainable\ncorners of Taiwan's cities",
     "cta": "Start Exploring",
     "skip": "Skip"
   },
+  "landing": {
+    "systemTag": "scanning taiwan · 8 categories detected",
+    "headline": "<em>Quirky</em> Attractions",
+    "lede": "Unique, bizarre, nostalgic, or a bit rough around the edges — the quirky spots that bring a touch of humor or visual jolt to your day. Go explore.",
+    "cta": "Start Scanning",
+    "ctaMeta": "→ Explore now · No sign-up"
+  },
   "auth": {
     "login": "Login",
+    "loginWithGoogle": "Continue with Google",
+    "loginWithLine": "Continue with LINE",
     "logout": "Logout",
     "saved": "Saved",
     "trip": "Today's Trip",
@@ -87,6 +96,11 @@
     "viewDetail": "View Full Details →",
     "addToTrip": "Add to Trip",
     "loginToSave": "Login to save spots",
+    "undo": "Undo",
+    "undoLabel": "Restore last skipped spot",
+    "gestureSkip": "Left · skip",
+    "gestureSave": "Right · save",
+    "gestureDetail": "Up · detail",
     "difficulty": {
       "easy": "Easy",
       "medium": "Medium",

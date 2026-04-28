@@ -24,6 +24,11 @@ export function LoginPromptModal() {
     await signIn("google");
   };
 
+  const handleLineLogin = async () => {
+    close();
+    await signIn("line");
+  };
+
   return (
     <>
       <style>{`
@@ -32,7 +37,7 @@ export function LoginPromptModal() {
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .modal-card { animation: modal-in 0.22s ease forwards; }
-        .google-btn {
+        .oauth-btn {
           display: flex;
           align-items: center;
           gap: 12px;
@@ -48,7 +53,15 @@ export function LoginPromptModal() {
           color: #1f2937;
           font-weight: 600;
         }
-        .google-btn:hover { background: #f3f4f6; }
+        .oauth-btn:hover { filter: brightness(0.96); }
+        .google-btn {
+          background: #fff;
+          color: #1f2937;
+        }
+        .line-btn {
+          background: #06C755;
+          color: #fff;
+        }
       `}</style>
 
       {/* 背景 overlay */}
@@ -139,13 +152,13 @@ export function LoginPromptModal() {
             className="text-xs text-center leading-relaxed mb-7"
             style={{ color: "var(--muted)" }}
           >
-            使用 Google 帳號登入，即可收藏景點、規劃行程。
+            使用 Google 或 LINE 登入，即可收藏景點、規劃行程。
             <br />
             無須另外註冊。
           </p>
 
-          {/* Google 登入按鈕 */}
-          <button className="google-btn" onClick={handleGoogleLogin}>
+          {/* OAuth 登入按鈕 */}
+          <button className="oauth-btn google-btn" onClick={handleGoogleLogin}>
             {/* Google G logo */}
             <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
               <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
@@ -154,6 +167,16 @@ export function LoginPromptModal() {
               <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
             </svg>
             使用 Google 帳號登入
+          </button>
+          <button className="oauth-btn line-btn mt-3" onClick={handleLineLogin}>
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <rect width="24" height="24" rx="4" fill="#06C755" />
+              <path
+                d="M6 7.8h1.6v5.1h2.8v1.4H6V7.8Zm5.2 0h1.6v6.5h-1.6V7.8Zm2.8 0h1.5l2.4 3.6V7.8h1.5v6.5h-1.5l-2.4-3.6v3.6H14V7.8Z"
+                fill="#fff"
+              />
+            </svg>
+            使用 LINE 帳號登入
           </button>
 
           {/* 取消 */}

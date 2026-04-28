@@ -8,11 +8,10 @@ export function ThemeProvider() {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "light") {
-      root.classList.add("light");
-    } else {
-      root.classList.remove("light");
-    }
+    // v3：用 data-theme 屬性切換 4 主題（terminal / blueprint / caution / midnight）
+    root.setAttribute("data-theme", theme);
+    // 清掉舊 .light class（migration safety）
+    root.classList.remove("light");
   }, [theme]);
 
   return null;

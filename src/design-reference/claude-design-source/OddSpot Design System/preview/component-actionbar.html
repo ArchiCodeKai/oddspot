@@ -1,60 +1,364 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
 <meta charset="utf-8">
-<title>Swipe action bar</title>
-<link rel="stylesheet" href="../colors_and_type.css">
+<title>Swipe action bar · 4 themes</title>
+<link rel="stylesheet" href="../themes.css">
 <style>
-  html, body { margin: 0; padding: 0; background: var(--background); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    color: var(--foreground);
-    padding: 24px;
-    box-sizing: border-box;
+    background: var(--bg-deep);
+    color: var(--fg);
+    padding: 28px;
     font-family: var(--font-brand);
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
-  .bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    gap: 28px;
-    padding: 12px 20px;
-    background: rgba(9, 19, 16, 0.9);
-    backdrop-filter: blur(18px);
-    border: 1px solid rgba(0, 229, 204, 0.18);
-    border-radius: 2px;
-    box-shadow: 0 0 24px rgba(0, 229, 204, 0.1);
+
+  .header { margin-bottom: 22px; }
+  .header h1 {
+    font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+    margin: 0 0 6px; font-weight: 700; color: var(--fg);
   }
-  .fab {
-    width: 52px;
-    height: 52px;
-    border-radius: 2px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--panel-light);
-    border: 1px solid var(--line-strong);
+  .header p {
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); margin: 0; line-height: 1.6;
+  }
+  .header .legend {
+    margin-top: 10px; font-size: 10px; color: var(--muted);
+    letter-spacing: 0.04em; line-height: 1.7; text-transform: none;
+    max-width: 700px;
+  }
+  .header .legend b { color: var(--fg); font-weight: 700; }
+
+  .theme-block {
+    margin-bottom: 22px;
+    padding: 28px 24px 32px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    text-align: center;
+  }
+  .theme-label {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 22px;
+  }
+  .theme-name {
+    font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
+  }
+  .theme-rule { flex: 1; height: 1px; background: var(--line); }
+  .theme-meta {
+    font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
     color: var(--muted);
-    cursor: pointer;
   }
-  .fab.skip { color: #9ca3af; }
-  .fab.trip { color: var(--accent); background: rgba(0,229,204,0.08); border-color: rgba(0,229,204,0.4); box-shadow: 0 0 12px rgba(0,229,204,0.2); }
-  .fab.save { color: #ec4899; }
+  .theme-swatch {
+    display: inline-block; width: 10px; height: 10px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgb(var(--accent-rgb) / 0.6);
+    border-radius: 1px;
+  }
+
+  /* ── Action bar ── */
+  .bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 32px;
+    padding: 14px 32px;
+    background: var(--panel-glass);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-xs);
+    box-shadow:
+      0 12px 32px rgb(0 0 0 / 0.45),
+      0 0 24px rgb(var(--accent-rgb) / 0.12);
+  }
+
+  .fab {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    color: var(--fg);
+    cursor: pointer;
+    position: relative;
+    transition: border-color 220ms, box-shadow 220ms, color 220ms;
+  }
+  .fab:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 14px rgb(var(--accent-rgb) / 0.35);
+  }
+  .fab svg { transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1); }
+
+  .fab.is-primary {
+    background: rgb(var(--accent-rgb) / 0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 16px rgb(var(--accent-rgb) / 0.3);
+  }
+
+  .label {
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 6px;
+    font-family: var(--font-brand);
+  }
+
+  .fab-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ═════════ SKIP — neon flicker rotate-cross ═════════ */
+  .fab.skip.firing svg { animation: skipBurst 1100ms cubic-bezier(0.4, 0, 0.2, 1); }
+  .fab.skip.firing { animation: skipFlicker 1100ms steps(1, end); }
+  @keyframes skipBurst {
+    0%   { transform: rotate(0deg) scale(1); }
+    18%  { transform: rotate(180deg) scale(1.35); }
+    35%  { transform: rotate(360deg) scale(1.45); }
+    55%  { transform: rotate(720deg) scale(1.35); }
+    80%  { transform: rotate(720deg) scale(1.1); }
+    100% { transform: rotate(720deg) scale(1); }
+  }
+  @keyframes skipFlicker {
+    0%   { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 24px rgb(var(--accent-rgb) / 0.6); filter: brightness(1.2); }
+    14%  { filter: brightness(1.6); }
+    28%  { color: var(--accent); filter: brightness(0.5); box-shadow: 0 0 4px rgb(var(--accent-rgb) / 0.1); }    /* dim */
+    34%  { filter: brightness(1.5); box-shadow: 0 0 22px rgb(var(--accent-rgb) / 0.55); }                       /* spark */
+    42%  { filter: brightness(0.4); color: rgb(var(--accent-rgb) / 0.3); }                                       /* dim */
+    50%  { filter: brightness(1.2); }                                                                            /* spark */
+    62%  { filter: brightness(0.55); color: rgb(var(--accent-rgb) / 0.4); }
+    78%  { filter: brightness(1); color: var(--accent); box-shadow: 0 0 14px rgb(var(--accent-rgb) / 0.3); }
+    100% { filter: brightness(1); color: var(--fg); border-color: var(--line-strong); box-shadow: none; }
+  }
+
+  /* ═════════ TRIP — orbital spin-back ═════════ */
+  .fab.trip.firing svg { animation: tripOrbit 1000ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .fab.trip.firing::after {
+    content: "";
+    position: absolute; inset: -6px;
+    border: 1px dashed var(--accent);
+    border-radius: 50%;
+    animation: tripRing 1000ms cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+  @keyframes tripOrbit {
+    0%   { transform: rotate(0deg) scale(1); }
+    35%  { transform: rotate(135deg) scale(1.3); }
+    55%  { transform: rotate(135deg) scale(1.3); }
+    80%  { transform: rotate(45deg)  scale(1.15); }
+    100% { transform: rotate(0deg) scale(1); }
+  }
+  @keyframes tripRing {
+    0%   { transform: scale(0.6) rotate(0deg);  opacity: 0; }
+    25%  { transform: scale(1) rotate(120deg);  opacity: 1; }
+    100% { transform: scale(1.6) rotate(360deg); opacity: 0; }
+  }
+
+  /* ═════════ SAVE — heartbeat with bloom ═════════ */
+  .fab.save.firing svg { animation: heartBeat 1100ms cubic-bezier(0.4, 0, 0.2, 1); }
+  .fab.save.firing { animation: heartBloom 1100ms; }
+  .fab.save.firing::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(var(--accent-rgb) / 0.45), transparent 70%);
+    animation: heartHalo 1100ms;
+    pointer-events: none;
+  }
+  /* particles emitted on save */
+  .fab.save.firing .particle {
+    animation-name: particleFly;
+    animation-duration: 900ms;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation-fill-mode: forwards;
+  }
+  .particle {
+    position: absolute;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    top: 50%; left: 50%;
+    margin: -2.5px 0 0 -2.5px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .particle:nth-child(1) { --tx:  28px; --ty: -32px; }
+  .particle:nth-child(2) { --tx: -32px; --ty: -22px; }
+  .particle:nth-child(3) { --tx:  34px; --ty:  18px; }
+  .particle:nth-child(4) { --tx: -22px; --ty:  30px; }
+  .particle:nth-child(5) { --tx:   2px; --ty: -38px; }
+  .particle:nth-child(6) { --tx:  -2px; --ty:  36px; }
+
+  @keyframes heartBeat {
+    0%   { transform: scale(1); }
+    18%  { transform: scale(1.45); }
+    32%  { transform: scale(1.0); }
+    48%  { transform: scale(1.55); }
+    62%  { transform: scale(1.1); }
+    78%  { transform: scale(1.25); }
+    100% { transform: scale(1.15); }
+  }
+  @keyframes heartBloom {
+    0%   { box-shadow: 0 0 14px rgb(var(--accent-rgb) / 0.3); border-color: var(--line-strong); }
+    20%  { box-shadow: 0 0 22px rgb(var(--accent-rgb) / 0.6); border-color: var(--accent); }
+    50%  { box-shadow: 0 0 36px rgb(var(--accent-rgb) / 0.7), 0 0 64px rgb(var(--accent-rgb) / 0.3); }
+    100% { box-shadow: 0 0 14px rgb(var(--accent-rgb) / 0.3); border-color: var(--accent); }
+  }
+  @keyframes heartHalo {
+    0%   { transform: scale(0.4); opacity: 0; }
+    25%  { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+  }
+  @keyframes particleFly {
+    0%   { transform: translate(0, 0) scale(0); opacity: 0; }
+    25%  { transform: translate(calc(var(--tx) * 0.3), calc(var(--ty) * 0.3)) scale(1.2); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+  }
+
+  .fab.save.is-saved { color: var(--accent); border-color: var(--accent); }
+  .fab.save.is-saved svg { animation: heartIdlePulse 2400ms ease-in-out infinite; }
+  @keyframes heartIdlePulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.1); }
+  }
 </style>
 </head>
 <body>
-  <div class="bar">
-    <div class="fab skip" title="skip">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+
+  <div class="header">
+    <h1>Swipe action bar · 3 actions × 4 themes</h1>
+    <p>tap to fire · skip / trip / save</p>
+    <p class="legend">
+      點按試試 — <b>Skip</b>: 旋轉兩圈 + 霓虹熄滅式閃爍。
+      <b>Trip</b>: 軌道旋轉 + 虛線環擴散，旋過頭再彈回。
+      <b>Save</b>: 心跳脈動 + 光暈擴散 + 6 顆粒子四散。
+      所有動畫都用各主題 accent，自動換色。
+    </p>
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="theme-block" data-theme="terminal">
+    <div class="theme-label">
+      <span class="theme-swatch"></span><span class="theme-name">terminal</span>
+      <span class="theme-rule"></span><span class="theme-meta">gunmetal · mint</span>
     </div>
-    <div class="fab trip" title="add to trip">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </div>
-    <div class="fab save" title="save">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z"/></svg>
+    <div class="bar">
+      <div class="fab-wrap">
+        <button class="fab skip" data-action="skip" aria-label="skip">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <span class="label">skip</span>
+      </div>
+      <div class="fab-wrap">
+        <button class="fab trip is-primary" data-action="trip" aria-label="add to trip">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <span class="label">add to trip</span>
+      </div>
+      <div class="fab-wrap">
+        <button class="fab save" data-action="save" aria-label="save">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+          <span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span>
+        </button>
+        <span class="label">save</span>
+      </div>
     </div>
   </div>
+
+  <!-- BLUEPRINT -->
+  <div class="theme-block" data-theme="blueprint">
+    <div class="theme-label">
+      <span class="theme-swatch"></span><span class="theme-name">blueprint</span>
+      <span class="theme-rule"></span><span class="theme-meta">slate · electric</span>
+    </div>
+    <div class="bar">
+      <div class="fab-wrap">
+        <button class="fab skip" data-action="skip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <span class="label">skip</span>
+      </div>
+      <div class="fab-wrap">
+        <button class="fab trip is-primary" data-action="trip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <span class="label">add to trip</span>
+      </div>
+      <div class="fab-wrap">
+        <button class="fab save" data-action="save"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+          <span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span>
+        </button>
+        <span class="label">save</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAUTION -->
+  <div class="theme-block" data-theme="caution">
+    <div class="theme-label">
+      <span class="theme-swatch"></span><span class="theme-name">caution</span>
+      <span class="theme-rule"></span><span class="theme-meta">warm · hazard</span>
+    </div>
+    <div class="bar">
+      <div class="fab-wrap">
+        <button class="fab skip" data-action="skip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <span class="label">skip</span>
+      </div>
+      <div class="fab-wrap">
+        <button class="fab trip is-primary" data-action="trip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <span class="label">add to trip</span>
+      </div>
+      <div class="fab-wrap">
+        <button class="fab save" data-action="save"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+          <span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span>
+        </button>
+        <span class="label">save</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDNIGHT -->
+  <div class="theme-block" data-theme="midnight">
+    <div class="theme-label">
+      <span class="theme-swatch"></span><span class="theme-name">midnight</span>
+      <span class="theme-rule"></span><span class="theme-meta">monochrome · grey</span>
+    </div>
+    <div class="bar">
+      <div class="fab-wrap">
+        <button class="fab skip" data-action="skip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <span class="label">skip</span>
+      </div>
+      <div class="fab-wrap">
+        <button class="fab trip is-primary" data-action="trip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <span class="label">add to trip</span>
+      </div>
+      <div class="fab-wrap">
+        <button class="fab save" data-action="save"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+          <span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span><span class="particle"></span>
+        </button>
+        <span class="label">save</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+  document.querySelectorAll('.fab').forEach(fab => {
+    fab.addEventListener('click', () => {
+      // toggle 'is-saved' for save
+      if (fab.dataset.action === 'save') {
+        fab.classList.toggle('is-saved');
+      }
+      // restart firing
+      fab.classList.remove('firing');
+      void fab.offsetWidth;
+      fab.classList.add('firing');
+      setTimeout(() => fab.classList.remove('firing'), 1200);
+    });
+  });
+</script>
+
 </body>
 </html>

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { AdvancedMarker } from "@vis.gl/react-google-maps";
-import { CATEGORY_COLORS } from "@/lib/constants/categories";
+import { CATEGORY_GLYPHS } from "@/lib/constants/categoryGlyphs";
 import type { SpotCategory } from "@/lib/constants/categories";
 import type { SpotMapPoint } from "@/types/spots";
 import { cursorState } from "@/lib/cursor-state";
@@ -14,25 +14,26 @@ interface SpotMarkerProps {
   onClick: (spot: SpotMapPoint) => void;
 }
 
-// 依 zoom 決定點的視覺大小（以 scale 驅動，避免 layout repaint）
-function getDotScale(zoom: number, isSelected: boolean): number {
-  if (zoom <= 11) return isSelected ? 0.7 : 0.45;
-  if (zoom <= 13) return isSelected ? 1.1 : 0.8;
-  return isSelected ? 1.35 : 1;
+// 依 zoom 決定 pin 視覺尺寸（v3：放大讓 glyph 看得清）
+function getPinScale(zoom: number, isSelected: boolean): number {
+  if (zoom <= 11) return isSelected ? 0.85 : 0.6;
+  if (zoom <= 13) return isSelected ? 1.1 : 0.85;
+  return isSelected ? 1.25 : 1;
 }
 
 // zoom < 12 時顯示呼吸脈衝（表示「有東西藏在這裡」）
 const PULSE_VARIANTS = {
   animate: {
-    scale: [1, 2.6],
-    opacity: [0.5, 0],
+    scale: [1, 2.4],
+    opacity: [0.4, 0],
   },
 };
 
 export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps) {
-  const color = CATEGORY_COLORS[spot.category as SpotCategory] ?? "#6b7280";
+  // v3 monochrome：pin 一律 accent 色，類別靠 glyph 形狀識別
+  const Glyph = CATEGORY_GLYPHS[spot.category as SpotCategory];
   const showPulse = zoom <= 11 && !isSelected;
-  const dotScale = getDotScale(zoom, isSelected);
+  const pinScale = getPinScale(zoom, isSelected);
 
   const handleClick = () => {
     onClick(spot);
@@ -66,8 +67,8 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
           cursor: "pointer",
         }}
       >
-        {/* 相對容器：讓 pulse ring 和 dot 疊放 */}
-        <div style={{ position: "relative", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {/* 相對容器：pulse ring 與 pin 疊放 */}
+        <div style={{ position: "relative", width: 28, height: 34, display: "flex", alignItems: "center", justifyContent: "center" }}>
 
           {/* 呼吸脈衝環（低縮放時） */}
           {showPulse && (
@@ -82,33 +83,61 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
               }}
               style={{
                 position: "absolute",
-                width: 16,
-                height: 16,
+                width: 14,
+                height: 14,
                 borderRadius: "50%",
-                backgroundColor: color,
+                background: "rgb(var(--accent-rgb))",
                 pointerEvents: "none",
               }}
             />
           )}
 
-          {/* 主點：縮放時 spring 過渡 */}
+          {/* 主 pin：teardrop 輪廓 + glyph，用 accent 一色 */}
           <motion.div
-            animate={{ scale: dotScale }}
+            animate={{ scale: pinScale }}
             transition={{ type: "spring", stiffness: 280, damping: 26 }}
             style={{
-              width: 16,
-              height: 16,
-              borderRadius: "50%",
-              backgroundColor: color,
-              border: `2px solid ${isSelected ? "#fff" : "rgba(255,255,255,0.7)"}`,
-              boxShadow: isSelected
-                ? `0 0 0 3px ${color}55, 0 0 12px ${color}66`
-                : zoom >= 14
-                ? `0 0 6px ${color}44, 0 1px 4px rgba(0,0,0,0.3)`
-                : "0 1px 3px rgba(0,0,0,0.25)",
-              transition: "border-color 0.15s, box-shadow 0.15s",
+              position: "relative",
+              width: 28,
+              height: 34,
+              filter: isSelected
+                ? "drop-shadow(0 0 10px rgb(var(--accent-rgb) / 0.9))"
+                : "drop-shadow(0 0 5px rgb(var(--accent-rgb) / 0.45))",
+              transition: "filter 0.15s",
             }}
-          />
+          >
+            <svg
+              width="28"
+              height="34"
+              viewBox="0 0 28 34"
+              fill="none"
+              style={{ display: "block" }}
+            >
+              <path
+                d="M14 2 C20 2, 25 7, 25 13 C25 20, 14 32, 14 32 C14 32, 3 20, 3 13 C3 7, 8 2, 14 2 Z"
+                fill="rgb(var(--background-rgb))"
+                stroke={isSelected ? "rgb(var(--accent-rgb))" : "rgb(var(--accent-rgb) / 0.85)"}
+                strokeWidth={isSelected ? 1.8 : 1.5}
+              />
+            </svg>
+            {/* glyph 疊在 pin 圓頭中心 */}
+            <div
+              style={{
+                position: "absolute",
+                top: 4,
+                left: 5,
+                width: 18,
+                height: 18,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "rgb(var(--accent-rgb))",
+                pointerEvents: "none",
+              }}
+            >
+              <Glyph size={12} />
+            </div>
+          </motion.div>
         </div>
       </div>
     </AdvancedMarker>

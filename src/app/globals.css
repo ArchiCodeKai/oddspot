@@ -2,52 +2,111 @@
 @import "./themes.css";
 
 
-:root {
-  --background: #040c0a;
-  --foreground: #c6e8e0;
-  --accent: #00e5cc;
-  --background-rgb: 4 12 10;
-  --foreground-rgb: 198 232 224;
-  --accent-rgb: 0 229 204;
+/* v3 Acid/Y2K Evolution — 4 主題系統，用 [data-theme="..."] 切換
+   ThemeProvider 在 React mount 後寫入 data-theme 屬性
+   為了 SSR / FOUC：layout.tsx 的 init script 也會在 hydrate 前寫入正確 data-theme
 
-  /* #6aada0 on #040c0a ≈ 5.1:1（通過 WCAG AA） */
-  --muted: #6aada0;
-  --muted-rgb: 106 173 160;
+   Terminal 同時 match `:root`（沒設 data-theme 時的 fallback） */
 
-  --panel: #091310;
-  --panel-light: #0c1a14;
-  --panel-rgb: 9 19 16;
-  --panel-light-rgb: 12 26 20;
-  --line: rgb(var(--accent-rgb) / 0.1);
-  --line-strong: rgb(var(--accent-rgb) / 0.18);
-  --panel-glass: rgb(var(--panel-rgb) / 0.78);
+/* === TERMINAL（預設）— 鐵灰 + 柔薄荷 === */
+:root,
+:root[data-theme="terminal"] {
+  --background: #14201c;
+  --foreground: #d6efe7;
+  --accent: #5fd9c0;
+  --background-rgb: 20 32 28;
+  --foreground-rgb: 214 239 231;
+  --accent-rgb: 95 217 192;
+
+  --muted: #7da99e;
+  --muted-rgb: 125 169 158;
+
+  --panel: #1a2823;
+  --panel-light: #213129;
+  --panel-rgb: 26 40 35;
+  --panel-light-rgb: 33 49 41;
+  --bg-deep: #0c1714;
+  --line: rgb(var(--accent-rgb) / 0.14);
+  --line-strong: rgb(var(--accent-rgb) / 0.32);
+  --panel-glass: rgb(var(--panel-rgb) / 0.72);
   --panel-glass-strong: rgb(var(--panel-rgb) / 0.9);
   --panel-contrast: rgb(var(--foreground-rgb) / 0.035);
-  --shadow-glow: 0 0 24px rgb(var(--accent-rgb) / 0.08);
+  --shadow-glow: 0 0 24px rgb(var(--accent-rgb) / 0.1);
 }
 
-:root.light {
-  --background: #f0f7f5;
-  --foreground: #0d2e26;
-  --accent: #00a896;
-  --background-rgb: 240 247 245;
-  --foreground-rgb: 13 46 38;
-  --accent-rgb: 0 168 150;
+/* === BLUEPRINT — slate + electric blue === */
+:root[data-theme="blueprint"] {
+  --background: #161a22;
+  --foreground: #e6e8ee;
+  --accent: #4f7dff;
+  --background-rgb: 22 26 34;
+  --foreground-rgb: 230 232 238;
+  --accent-rgb: 79 125 255;
 
-  /* #3a7269 on #f0f7f5 ≈ 5.3:1（通過 WCAG AA） */
-  --muted: #3a7269;
-  --muted-rgb: 58 114 105;
+  --muted: #8a93a3;
+  --muted-rgb: 138 147 163;
 
-  --panel: #dff0ec;
-  --panel-light: #e8f5f2;
-  --panel-rgb: 223 240 236;
-  --panel-light-rgb: 232 245 242;
-  --line: rgb(var(--accent-rgb) / 0.15);
-  --line-strong: rgb(var(--accent-rgb) / 0.24);
-  --panel-glass: rgb(var(--panel-rgb) / 0.78);
+  --panel: #1d2230;
+  --panel-light: #252b3a;
+  --panel-rgb: 29 34 48;
+  --panel-light-rgb: 37 43 58;
+  --bg-deep: #0f1219;
+  --line: rgb(var(--accent-rgb) / 0.16);
+  --line-strong: rgb(var(--accent-rgb) / 0.45);
+  --panel-glass: rgb(var(--panel-rgb) / 0.74);
   --panel-glass-strong: rgb(var(--panel-rgb) / 0.9);
   --panel-contrast: rgb(var(--foreground-rgb) / 0.04);
-  --shadow-glow: 0 0 24px rgb(var(--accent-rgb) / 0.06);
+  --shadow-glow: 0 0 28px rgb(var(--accent-rgb) / 0.18);
+}
+
+/* === CAUTION — warm gunmetal + hazard yellow === */
+:root[data-theme="caution"] {
+  --background: #1d1a14;
+  --foreground: #f0ead6;
+  --accent: #ffd24a;
+  --background-rgb: 29 26 20;
+  --foreground-rgb: 240 234 214;
+  --accent-rgb: 255 210 74;
+
+  --muted: #9b937f;
+  --muted-rgb: 155 147 127;
+
+  --panel: #23201a;
+  --panel-light: #2c2920;
+  --panel-rgb: 35 32 26;
+  --panel-light-rgb: 44 41 32;
+  --bg-deep: #14110b;
+  --line: rgb(var(--accent-rgb) / 0.16);
+  --line-strong: rgb(var(--accent-rgb) / 0.42);
+  --panel-glass: rgb(var(--panel-rgb) / 0.74);
+  --panel-glass-strong: rgb(var(--panel-rgb) / 0.9);
+  --panel-contrast: rgb(var(--foreground-rgb) / 0.04);
+  --shadow-glow: 0 0 28px rgb(var(--accent-rgb) / 0.16);
+}
+
+/* === MIDNIGHT — neutral grey monochrome === */
+:root[data-theme="midnight"] {
+  --background: #18181a;
+  --foreground: #f4f4f6;
+  --accent: #d6d6dc;
+  --background-rgb: 24 24 26;
+  --foreground-rgb: 244 244 246;
+  --accent-rgb: 214 214 220;
+
+  --muted: #8e8e94;
+  --muted-rgb: 142 142 148;
+
+  --panel: #202024;
+  --panel-light: #28282d;
+  --panel-rgb: 32 32 36;
+  --panel-light-rgb: 40 40 45;
+  --bg-deep: #101012;
+  --line: rgb(var(--accent-rgb) / 0.10);
+  --line-strong: rgb(var(--accent-rgb) / 0.26);
+  --panel-glass: rgb(var(--panel-rgb) / 0.74);
+  --panel-glass-strong: rgb(var(--panel-rgb) / 0.9);
+  --panel-contrast: rgb(var(--foreground-rgb) / 0.04);
+  --shadow-glow: 0 0 24px rgb(var(--accent-rgb) / 0.10);
 }
 
 @theme inline {

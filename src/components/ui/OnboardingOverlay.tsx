@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Mascot } from "./Mascot";
 
 const LS_KEY = "oddspot-onboarded";
 
@@ -50,20 +51,11 @@ export function OnboardingOverlay() {
       <style>{`
         @keyframes ob-in  { from { opacity: 0; } to { opacity: 1; } }
         @keyframes ob-out { from { opacity: 1; } to { opacity: 0; } }
-        @keyframes ob-eye-pulse {
-          0%, 100% { filter: drop-shadow(0 0 10px var(--accent)) drop-shadow(0 0 30px rgb(var(--accent-rgb) / 0.5)); }
-          50%       { filter: drop-shadow(0 0 20px var(--accent)) drop-shadow(0 0 55px rgb(var(--accent-rgb) / 0.75)); }
-        }
-        @keyframes ob-eye-blink {
-          0%, 90%, 100% { transform: scaleY(1); }
-          93%, 97%      { transform: scaleY(0.05); }
-        }
         @keyframes ob-up {
           from { opacity: 0; transform: translateY(18px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .ob-eye   { animation: ob-eye-pulse 2.8s ease-in-out infinite; }
-        .ob-blink { animation: ob-eye-blink 6s ease-in-out infinite; transform-origin: 55px 44px; }
+        .ob-mascot-wrap { animation: os-eye-scan 2.8s ease-in-out infinite; }
         .ob-t1 { animation: ob-up 0.6s ease 0.25s both; }
         .ob-t2 { animation: ob-up 0.6s ease 0.45s both; }
         .ob-t3 { animation: ob-up 0.6s ease 0.65s both; }
@@ -94,7 +86,7 @@ export function OnboardingOverlay() {
         }
         .ob-skip:hover { color: rgb(var(--accent-rgb) / 0.55); }
         @media (prefers-reduced-motion: reduce) {
-          .ob-eye, .ob-blink { animation: none; }
+          .ob-mascot-wrap { animation: none; }
           .ob-t1, .ob-t2, .ob-t3, .ob-t4, .ob-t5 { animation: none; opacity: 1; transform: none; }
         }
       `}</style>
@@ -116,19 +108,9 @@ export function OnboardingOverlay() {
           textAlign: "center", padding: "0 32px", maxWidth: 420, width: "100%",
         }}
       >
-        {/* 吉祥物眼睛 */}
-        <div className="ob-eye" style={{ marginBottom: 36 }}>
-          <svg width="120" height="145" viewBox="0 0 110 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <g className="ob-blink">
-              <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
-                stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeLinejoin="round" strokeLinecap="round"/>
-              <path d="M33 50 C32 40,44 30,58 30 C69 30,78 36,76 43 C74 52,62 59,50 58 C39 58,33 56,33 50Z"
-                stroke="var(--accent)" strokeWidth="1.8" fill="none" strokeLinejoin="round" strokeLinecap="round"/>
-              <path d="M57 36 C62 36,66 40,65 45 C64 51,59 55,54 54 C49 54,47 50,48 45 C49 41,52 36,57 36Z" fill="var(--accent)"/>
-              <path d="M55 42 C58 42,60 44,59 47 C58 50,55 51,53 50 C51 49,50 47,51 45 C52 43,53 42,55 42Z" fill="rgb(var(--background-rgb) / 0.78)"/>
-              <ellipse cx="61" cy="40" rx="1.6" ry="1.2" fill="#fff" opacity="0.82"/>
-            </g>
-          </svg>
+        {/* 吉祥物眼睛（v3：交給 Mascot 元件管理 mood） */}
+        <div className="ob-mascot-wrap" style={{ marginBottom: 36 }}>
+          <Mascot mood="blinking" size={120} />
         </div>
 
         {/* 品牌標記（Space Mono） */}

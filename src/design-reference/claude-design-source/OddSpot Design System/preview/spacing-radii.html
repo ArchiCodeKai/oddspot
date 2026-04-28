@@ -2,45 +2,173 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Radii</title>
-<link rel="stylesheet" href="../colors_and_type.css">
+<title>Radii · 4 themes</title>
+<link rel="stylesheet" href="../themes.css">
 <style>
-  html, body { margin: 0; padding: 0; background: var(--background); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    color: var(--foreground);
-    padding: 20px;
+    background: var(--bg-deep);
+    color: var(--fg);
+    padding: 28px;
     font-family: var(--font-brand);
-    box-sizing: border-box;
+  }
+
+  .header { margin-bottom: 22px; }
+  .header h1 {
+    font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+    margin: 0 0 6px; font-weight: 700; color: var(--fg);
+  }
+  .header p {
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); margin: 0; line-height: 1.6;
+  }
+  .header .legend {
+    margin-top: 10px; font-size: 10px; color: var(--muted);
+    letter-spacing: 0.04em; line-height: 1.7; text-transform: none;
+    max-width: 640px;
+  }
+  .header .legend b { color: var(--fg); font-weight: 700; }
+
+  .theme-block {
+    margin-bottom: 22px;
+    padding: 20px 22px 24px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+  }
+  .theme-label {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .theme-name {
+    font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
+  }
+  .theme-rule { flex: 1; height: 1px; background: var(--line); }
+  .theme-meta {
+    font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .swatch {
+    display: inline-block; width: 10px; height: 10px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgb(var(--accent-rgb) / 0.6);
+    border-radius: 1px;
+  }
+
+  .row {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 12px;
     align-items: end;
   }
-  .cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .cell {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
   .box {
     width: 100%;
     aspect-ratio: 1 / 1;
     background: var(--panel);
     border: 1px solid var(--line-strong);
+    box-shadow: 0 0 14px rgb(var(--accent-rgb) / 0.08);
   }
   .tag {
-    font-size: 9px;
-    text-transform: uppercase;
+    font-size: 9px; text-transform: uppercase;
     letter-spacing: 0.22em;
-    color: var(--muted);
+    color: var(--fg);
+    font-weight: 700;
   }
   .val {
-    font-size: 10px;
-    color: var(--accent);
+    font-size: 9px; color: var(--accent);
     letter-spacing: 0.04em;
+  }
+  .use {
+    font-size: 8px; color: var(--muted);
+    letter-spacing: 0.06em;
+    text-align: center;
   }
 </style>
 </head>
 <body>
-  <div class="cell"><div class="box" style="border-radius:2px;"></div><span class="tag">xs</span><span class="val">2px</span></div>
-  <div class="cell"><div class="box" style="border-radius:8px;"></div><span class="tag">sm</span><span class="val">8px</span></div>
-  <div class="cell"><div class="box" style="border-radius:14px;"></div><span class="tag">md</span><span class="val">14px</span></div>
-  <div class="cell"><div class="box" style="border-radius:20px;"></div><span class="tag">lg</span><span class="val">20px</span></div>
-  <div class="cell"><div class="box" style="border-radius:24px;"></div><span class="tag">xl</span><span class="val">24px</span></div>
+  <div class="header">
+    <h1>Border radii · 5 levels × 4 themes</h1>
+    <p>radius tokens · xs → xl</p>
+    <p class="legend">
+      圓角等級決定元件的「個性」。<b>xs (2px)</b> 像終端機介面，幾乎是直角，用於 pin、badge、輸入框邊條；
+      <b>sm (8px)</b> 是平衡選項，適合按鈕、tag；
+      <b>md (14px)</b> 用於卡片、面板；
+      <b>lg (20px)</b> 用於 bottom sheet、大型容器；
+      <b>xl (24px)</b> 是最圓潤的選項，給全屏 modal、頭像。OddSpot 系統偏好 xs–md，保持「考古檔案」的銳利感。
+    </p>
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="theme-block" data-theme="terminal">
+    <div class="theme-label">
+      <span class="swatch"></span>
+      <span class="theme-name">terminal</span>
+      <span class="theme-rule"></span>
+      <span class="theme-meta">gunmetal · mint</span>
+    </div>
+    <div class="row">
+      <div class="cell"><div class="box" style="border-radius:2px;"></div><span class="tag">xs</span><span class="val">2px</span><span class="use">pin · badge</span></div>
+      <div class="cell"><div class="box" style="border-radius:8px;"></div><span class="tag">sm</span><span class="val">8px</span><span class="use">button · tag</span></div>
+      <div class="cell"><div class="box" style="border-radius:14px;"></div><span class="tag">md</span><span class="val">14px</span><span class="use">card · panel</span></div>
+      <div class="cell"><div class="box" style="border-radius:20px;"></div><span class="tag">lg</span><span class="val">20px</span><span class="use">sheet</span></div>
+      <div class="cell"><div class="box" style="border-radius:24px;"></div><span class="tag">xl</span><span class="val">24px</span><span class="use">modal · avatar</span></div>
+    </div>
+  </div>
+
+  <!-- BLUEPRINT -->
+  <div class="theme-block" data-theme="blueprint">
+    <div class="theme-label">
+      <span class="swatch"></span>
+      <span class="theme-name">blueprint</span>
+      <span class="theme-rule"></span>
+      <span class="theme-meta">slate · electric</span>
+    </div>
+    <div class="row">
+      <div class="cell"><div class="box" style="border-radius:2px;"></div><span class="tag">xs</span><span class="val">2px</span><span class="use">pin · badge</span></div>
+      <div class="cell"><div class="box" style="border-radius:8px;"></div><span class="tag">sm</span><span class="val">8px</span><span class="use">button · tag</span></div>
+      <div class="cell"><div class="box" style="border-radius:14px;"></div><span class="tag">md</span><span class="val">14px</span><span class="use">card · panel</span></div>
+      <div class="cell"><div class="box" style="border-radius:20px;"></div><span class="tag">lg</span><span class="val">20px</span><span class="use">sheet</span></div>
+      <div class="cell"><div class="box" style="border-radius:24px;"></div><span class="tag">xl</span><span class="val">24px</span><span class="use">modal · avatar</span></div>
+    </div>
+  </div>
+
+  <!-- CAUTION -->
+  <div class="theme-block" data-theme="caution">
+    <div class="theme-label">
+      <span class="swatch"></span>
+      <span class="theme-name">caution</span>
+      <span class="theme-rule"></span>
+      <span class="theme-meta">warm · hazard</span>
+    </div>
+    <div class="row">
+      <div class="cell"><div class="box" style="border-radius:2px;"></div><span class="tag">xs</span><span class="val">2px</span><span class="use">pin · badge</span></div>
+      <div class="cell"><div class="box" style="border-radius:8px;"></div><span class="tag">sm</span><span class="val">8px</span><span class="use">button · tag</span></div>
+      <div class="cell"><div class="box" style="border-radius:14px;"></div><span class="tag">md</span><span class="val">14px</span><span class="use">card · panel</span></div>
+      <div class="cell"><div class="box" style="border-radius:20px;"></div><span class="tag">lg</span><span class="val">20px</span><span class="use">sheet</span></div>
+      <div class="cell"><div class="box" style="border-radius:24px;"></div><span class="tag">xl</span><span class="val">24px</span><span class="use">modal · avatar</span></div>
+    </div>
+  </div>
+
+  <!-- MIDNIGHT -->
+  <div class="theme-block" data-theme="midnight">
+    <div class="theme-label">
+      <span class="swatch"></span>
+      <span class="theme-name">midnight</span>
+      <span class="theme-rule"></span>
+      <span class="theme-meta">monochrome · grey</span>
+    </div>
+    <div class="row">
+      <div class="cell"><div class="box" style="border-radius:2px;"></div><span class="tag">xs</span><span class="val">2px</span><span class="use">pin · badge</span></div>
+      <div class="cell"><div class="box" style="border-radius:8px;"></div><span class="tag">sm</span><span class="val">8px</span><span class="use">button · tag</span></div>
+      <div class="cell"><div class="box" style="border-radius:14px;"></div><span class="tag">md</span><span class="val">14px</span><span class="use">card · panel</span></div>
+      <div class="cell"><div class="box" style="border-radius:20px;"></div><span class="tag">lg</span><span class="val">20px</span><span class="use">sheet</span></div>
+      <div class="cell"><div class="box" style="border-radius:24px;"></div><span class="tag">xl</span><span class="val">24px</span><span class="use">modal · avatar</span></div>
+    </div>
+  </div>
 </body>
 </html>

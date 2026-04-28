@@ -6,6 +6,7 @@
 - [ ] 註冊 Vercel 帳號
 - [ ] 設定 Neon PostgreSQL 資料庫
 - [ ] 設定 Google OAuth 憑證
+- [ ] 設定 LINE Login Channel 憑證
 - [ ] 準備景點圖片
 - [ ] 部署到 Vercel
 - [ ] 執行資料庫遷移
@@ -78,6 +79,32 @@ postgresql://username:password@ep-xxx-xxx.ap-southeast-1.aws.neon.tech/neondb?ss
 
 ---
 
+## 🔐 步驟 2.5：設定 LINE Login（10 分鐘）
+
+### 2.5.1 建立 LINE Login Channel
+1. 前往 https://developers.line.biz/console/
+2. 建立或選擇 Provider
+3. 建立 Channel，類型選「LINE Login」
+4. App name 使用 `OddSpot`
+
+### 2.5.2 設定 Callback URL
+在 LINE Login Channel 的 Callback URL 加入：
+```
+http://localhost:3000/api/auth/callback/line
+```
+
+部署後再加入正式網址：
+```
+https://oddspot-xxx.vercel.app/api/auth/callback/line
+```
+
+### 2.5.3 取得憑證
+複製以下兩個值，等等填入 Vercel Environment Variables：
+- Channel ID → `AUTH_LINE_ID`
+- Channel secret → `AUTH_LINE_SECRET`
+
+---
+
 ## 🚀 步驟 3：部署到 Vercel（5 分鐘）
 
 ### 3.1 註冊 Vercel
@@ -104,6 +131,8 @@ DATABASE_URL=postgresql://username:password@ep-xxx.neon.tech/neondb?sslmode=requ
 AUTH_SECRET=先隨便填一個32字元的字串，等等會改
 AUTH_GOOGLE_ID=剛剛 Google 給的 Client ID
 AUTH_GOOGLE_SECRET=剛剛 Google 給的 Client Secret
+AUTH_LINE_ID=剛剛 LINE 給的 Channel ID
+AUTH_LINE_SECRET=剛剛 LINE 給的 Channel secret
 
 # Google Maps API Key
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=你的 Maps API Key（如果還沒有就先留空）
@@ -140,9 +169,20 @@ https://oddspot-xxx.vercel.app
    （記得改成你的 Vercel 網址）
 4. 點擊「儲存」
 
+### 4.2 加入 LINE 正式網址
+1. 回到 LINE Developers Console → LINE Login Channel
+2. 在 Callback URL 加入：
+   ```
+   https://oddspot-xxx.vercel.app/api/auth/callback/line
+   ```
+   （記得改成你的 Vercel 網址）
+3. 點擊「Update」
+
 ---
 
 ## 🗃️ 步驟 5：執行線上資料庫遷移
+
+目前 Prisma schema 與 migration 已對齊 PostgreSQL。部署前請確認 `DATABASE_URL` 指向 Neon PostgreSQL，不要使用舊的 SQLite `file:...` 連線字串。
 
 ### 5.1 在本地連接線上資料庫
 1. 建立一個臨時環境變數檔 `.env.production.local`：
@@ -194,6 +234,7 @@ npx prisma studio
    - [ ] 點擊標記顯示彈出視窗
    - [ ] 景點詳情頁顯示正常
    - [ ] 右上角點擊「登入」→ Google OAuth 正常
+   - [ ] 右上角點擊「登入」→ LINE OAuth 正常
    - [ ] 登入後點擊收藏 → 重新整理後收藏狀態保留
    - [ ] 滑卡片模式正常
 

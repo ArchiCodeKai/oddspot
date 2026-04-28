@@ -1,6 +1,8 @@
-import { redirect } from "next/navigation";
+import { LandingExperience } from "@/components/landing/LandingExperience";
 
-// Option A：首頁直接進 App（地圖），吉祥物眼睛在 OnboardingOverlay 展示
+// Landing：首次訪問播 Globe Intro boot 序列 (~6s) → dissolve 到 Acid Landing 版面
+// 回訪者透過 localStorage 跳過 boot，直接進 idle state
+// CTA 「Start Scanning」點擊後 push 到 /map
 export default function RootPage() {
-  redirect("/map");
+  return <LandingExperience />;
 }

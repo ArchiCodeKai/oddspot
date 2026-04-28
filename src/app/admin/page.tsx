@@ -123,7 +123,7 @@ export default function AdminPage() {
           return (
             <div
               key={spot.id}
-              className="bg-zinc-900 rounded-xl p-4 mb-3 border border-zinc-800"
+              className="bg-zinc-900 rounded-xs p-4 mb-3 border border-zinc-800"
             >
               <div className="flex gap-3">
                 {coverImage && (
@@ -131,7 +131,7 @@ export default function AdminPage() {
                   <img
                     src={coverImage}
                     alt={spot.name}
-                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-zinc-800"
+                    className="w-16 h-16 rounded-xs object-cover flex-shrink-0 bg-zinc-800"
                   />
                 )}
                 <div className="flex-1 min-w-0">
@@ -168,14 +168,14 @@ export default function AdminPage() {
                 <button
                   onClick={() => handleAction(spot.id, "approve")}
                   disabled={processing === spot.id}
-                  className="flex-1 py-2 text-sm bg-white text-zinc-900 rounded-lg font-medium disabled:opacity-50"
+                  className="flex-1 py-2 text-sm bg-white text-zinc-900 rounded-xs font-medium disabled:opacity-50"
                 >
                   {processing === spot.id ? "處理中..." : "通過"}
                 </button>
                 <button
                   onClick={() => handleAction(spot.id, "reject")}
                   disabled={processing === spot.id}
-                  className="flex-1 py-2 text-sm border border-zinc-700 text-zinc-400 rounded-lg disabled:opacity-50"
+                  className="flex-1 py-2 text-sm border border-zinc-700 text-zinc-400 rounded-xs disabled:opacity-50"
                 >
                   拒絕刪除
                 </button>

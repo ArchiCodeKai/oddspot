@@ -1,87 +1,107 @@
-/* OddSpot — Theme system (v2)
-   4 themes share the same token names; switch via <html data-theme="...">
-   Category colors and type scale remain constant across themes. */
+/* OddSpot — Theme system (v3)
+   4 themes share token names; switch via <html data-theme="...">
+   v3 重大調整：
+   - 底色從純黑 → 鐵灰，降低賽博龐克感（FUTURE.md note）
+   - 類別色彩移除（資訊層改用 monochrome accent + glyph + 2-letter code）
+   - 字體優先順序 JetBrains Mono → Space Mono fallback
+   - 新增 --panel-glass、--status-* tokens、調整 radius scale */
 
-/* === Default === TERMINAL (legacy, black + mint) */
+/* === TERMINAL — gunmetal + mint（預設）=== */
 :root,
 [data-theme="terminal"] {
-  --bg:          #040c0a;
-  --bg-deep:     #020604;
-  --fg:          #c6e8e0;
-  --muted:       #6aada0;
-  --panel:       #091310;
-  --panel-2:     #0c1a14;
-  --accent:      #00e5cc;
-  --accent-rgb:  0 229 204;
-  --line:        rgb(0 229 204 / 0.10);
-  --line-strong: rgb(0 229 204 / 0.18);
+  --bg:          #14201c;
+  --bg-deep:     #0c1714;
+  --fg:          #d6efe7;
+  --muted:       #7da99e;
+  --panel:       #1a2823;
+  --panel-2:     #213129;
+  --panel-glass: rgb(20 32 28 / 0.72);
+  --accent:      #5fd9c0;
+  --accent-rgb:  95 217 192;
+  --line:        rgb(95 217 192 / 0.14);
+  --line-strong: rgb(95 217 192 / 0.32);
   --grain-opacity: 0.04;
-  --glow: 0 0 24px rgb(var(--accent-rgb) / 0.25);
+  --glow: 0 0 24px rgb(var(--accent-rgb) / 0.28);
 }
 
-/* === BLUEPRINT === black + cool grey + electric blue (Acid / Y2K) */
+/* === BLUEPRINT — slate + electric blue === */
 [data-theme="blueprint"] {
-  --bg:          #060709;
-  --bg-deep:     #000000;
+  --bg:          #161a22;
+  --bg-deep:     #0f1219;
   --fg:          #e6e8ee;
-  --muted:       #7b8391;
-  --panel:       #0d1015;
-  --panel-2:     #14181f;
-  --accent:      #2d5bff;
-  --accent-rgb:  45 91 255;
+  --muted:       #8a93a3;
+  --panel:       #1d2230;
+  --panel-2:     #252b3a;
+  --panel-glass: rgb(22 26 34 / 0.74);
+  --accent:      #4f7dff;
+  --accent-rgb:  79 125 255;
   --line:        rgb(255 255 255 / 0.08);
-  --line-strong: rgb(45 91 255 / 0.45);
+  --line-strong: rgb(79 125 255 / 0.45);
   --grain-opacity: 0.06;
-  --glow: 0 0 28px rgb(var(--accent-rgb) / 0.35);
+  --glow: 0 0 28px rgb(var(--accent-rgb) / 0.32);
 }
 
-/* === CAUTION === black + warm grey + hazard yellow */
+/* === CAUTION — warm gunmetal + hazard yellow === */
 [data-theme="caution"] {
-  --bg:          #0a0906;
-  --bg-deep:     #000000;
+  --bg:          #1d1a14;
+  --bg-deep:     #14110b;
   --fg:          #f0ead6;
-  --muted:       #8a8370;
-  --panel:       #15130d;
-  --panel-2:     #1c1a14;
-  --accent:      #ffd60a;
-  --accent-rgb:  255 214 10;
+  --muted:       #9b937f;
+  --panel:       #23201a;
+  --panel-2:     #2c2920;
+  --panel-glass: rgb(29 26 20 / 0.74);
+  --accent:      #ffd24a;
+  --accent-rgb:  255 210 74;
   --line:        rgb(255 255 255 / 0.07);
-  --line-strong: rgb(255 214 10 / 0.4);
+  --line-strong: rgb(255 210 74 / 0.42);
   --grain-opacity: 0.07;
-  --glow: 0 0 28px rgb(var(--accent-rgb) / 0.3);
+  --glow: 0 0 28px rgb(var(--accent-rgb) / 0.28);
 }
 
-/* === MIDNIGHT === pure monochrome — the wireframe extremum */
+/* === MIDNIGHT — neutral grey monochrome === */
 [data-theme="midnight"] {
-  --bg:          #000000;
-  --bg-deep:     #000000;
-  --fg:          #ffffff;
-  --muted:       #7a7a7a;
-  --panel:       #0a0a0a;
-  --panel-2:     #111111;
-  --accent:      #ffffff;
-  --accent-rgb:  255 255 255;
-  --line:        rgb(255 255 255 / 0.12);
-  --line-strong: rgb(255 255 255 / 0.28);
+  --bg:          #18181a;
+  --bg-deep:     #101012;
+  --fg:          #f4f4f6;
+  --muted:       #8e8e94;
+  --panel:       #202024;
+  --panel-2:     #28282d;
+  --panel-glass: rgb(24 24 26 / 0.74);
+  --accent:      #d6d6dc;
+  --accent-rgb:  214 214 220;
+  --line:        rgb(255 255 255 / 0.10);
+  --line-strong: rgb(255 255 255 / 0.26);
   --grain-opacity: 0.08;
-  --glow: 0 0 24px rgb(var(--accent-rgb) / 0.18);
+  --glow: 0 0 24px rgb(var(--accent-rgb) / 0.16);
 }
 
 /* Type + tokens stable across themes */
 :root {
-  --font-brand:   'Space Mono', monospace;
+  /* v3 字體優先序：JetBrains Mono > Space Mono */
+  --font-brand:   'JetBrains Mono', 'Space Mono', monospace;
   --font-content: 'Noto Sans TC', sans-serif;
+
+  /* Radius scale — v3 規格（terminal/instrument feel） */
   --radius-xs: 2px;
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
   --radius-xl: 24px;
+
+  /* Easing — 集中管理，散落各檔的應該逐一替換 */
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out:      cubic-bezier(0.32, 0.72, 0, 1);
   --ease-in:       cubic-bezier(0.4, 0, 1, 1);
+
+  /* Status — 跨主題穩定（資訊層）但去飽和 */
+  --status-active:      #6fcf97;
+  --status-uncertain:   #f2c94c;
+  --status-disappeared: #828282;
+  --status-pending:     #6fa8ff;
 }
 
-/* Category colors — theme-invariant (information layer) */
+/* Category colors — v2 legacy（v3 已移到 monochrome glyph 系統）
+   保留 token 給尚未遷移的元件最後一里使用，遷移完成後可刪除 */
 :root {
   --cat-temple:     #f97316;
   --cat-abandoned:  #6b7280;
@@ -98,4 +118,91 @@ html, body { background: var(--bg); color: var(--fg); }
 @keyframes ob-blink {
   0%, 92%, 100% { transform: scaleY(1); }
   95% { transform: scaleY(0.05); }
+}
+
+/* =========================================================
+   Typography — locked role system (v2 Acid/Matrix)
+   Five canonical roles; call by class. Font stacks use
+   next/font variables set in layout.tsx.
+   ========================================================= */
+
+/* EN H1 / display — brand moment, hero, 404 */
+.t-en-h1,
+.type-display {
+  font-family: var(--font-vt323), 'VT323', 'Courier New', ui-monospace, monospace;
+  font-size: clamp(3.2rem, 12vw, 5rem);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 0.9;
+  text-shadow: 0 0 40px rgb(var(--accent-rgb) / 0.35);
+}
+
+/* EN H2 / section — "SCANNING_NEARBY.EXE", "237 ODD_SPOTS_FOUND" */
+.t-en-h2 {
+  font-family: var(--font-vt323), 'VT323', 'Courier New', ui-monospace, monospace;
+  font-size: 3rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--fg);
+}
+.t-en-h2--accent {
+  color: var(--accent);
+  text-shadow: 0 0 24px rgb(var(--accent-rgb) / 0.4);
+}
+
+/* EN body — JetBrains Mono, 英文內文 / log / meta */
+.t-en-body {
+  font-family: var(--font-jetbrains-mono), 'JetBrains Mono', 'Space Mono', ui-monospace, monospace;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  color: var(--fg);
+}
+
+/* TC H1 / hero — Noto 700 + letter-spacing 呼吸感 */
+.t-tc-h1 {
+  font-family: var(--font-noto-sans-tc), 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  color: var(--fg);
+  text-shadow: 0 0 30px rgb(var(--accent-rgb) / 0.25);
+}
+
+/* TC body — Noto Sans TC 正文，內嵌英文/數字自動切回 JetBrains Mono */
+.t-tc-body {
+  font-family: var(--font-noto-sans-tc), 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  letter-spacing: 0.03em;
+  color: var(--fg);
+}
+.t-tc-body code,
+.t-tc-body .t-mono {
+  font-family: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, monospace;
+  font-size: inherit;
+  letter-spacing: 0.02em;
+  background: none;
+  padding: 0;
+}
+.t-tc-body .t-mono-accent { color: var(--accent); }
+
+/* =========================================================
+   Scene atmosphere keyframes (used by SceneBg / AcidLanding)
+   ========================================================= */
+@keyframes os-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(1.3); }
+}
+
+@keyframes os-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes os-eye-scan {
+  0%, 100% { filter: drop-shadow(0 0 14px rgb(var(--accent-rgb) / 0.45)); }
+  50%      { filter: drop-shadow(0 0 24px rgb(var(--accent-rgb) / 0.75)); }
 }

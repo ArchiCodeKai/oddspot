@@ -2,52 +2,165 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Spacing scale</title>
-<link rel="stylesheet" href="../colors_and_type.css">
+<title>Spacing scale · 4 themes</title>
+<link rel="stylesheet" href="../themes.css">
 <style>
-  html, body { margin: 0; padding: 0; background: var(--background); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    color: var(--foreground);
-    padding: 20px;
+    background: var(--bg-deep);
+    color: var(--fg);
+    padding: 28px;
     font-family: var(--font-brand);
-    box-sizing: border-box;
-    display: grid;
-    gap: 6px;
   }
+
+  .header { margin-bottom: 22px; }
+  .header h1 {
+    font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+    margin: 0 0 6px; font-weight: 700; color: var(--fg);
+  }
+  .header p {
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); margin: 0; line-height: 1.6;
+  }
+  .header .legend {
+    margin-top: 10px; font-size: 10px; color: var(--muted);
+    letter-spacing: 0.04em; line-height: 1.7; text-transform: none;
+    max-width: 640px;
+  }
+  .header .legend b { color: var(--fg); font-weight: 700; }
+
+  .theme-block {
+    margin-bottom: 22px;
+    padding: 20px 22px 22px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+  }
+  .theme-label {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px;
+  }
+  .theme-name {
+    font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
+  }
+  .theme-rule { flex: 1; height: 1px; background: var(--line); }
+  .theme-meta {
+    font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .swatch {
+    display: inline-block; width: 10px; height: 10px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgb(var(--accent-rgb) / 0.6);
+    border-radius: 1px;
+  }
+
   .row {
     display: grid;
-    grid-template-columns: 40px auto 1fr;
+    grid-template-columns: 50px 56px 1fr 130px;
     align-items: center;
     gap: 14px;
+    padding: 5px 0;
   }
   .tag {
-    font-size: 10px;
-    letter-spacing: 0.22em;
-    color: var(--muted);
-    text-transform: uppercase;
+    font-size: 10px; letter-spacing: 0.22em;
+    color: var(--fg); text-transform: uppercase; font-weight: 700;
   }
   .px {
-    font-size: 10px;
-    color: var(--accent);
+    font-size: 9px; color: var(--accent);
     letter-spacing: 0.04em;
-    min-width: 40px;
   }
   .bar {
     height: 10px;
     background: var(--accent);
-    border-radius: 2px;
-    opacity: 0.85;
+    border-radius: 1px;
+    box-shadow: 0 0 8px rgb(var(--accent-rgb) / 0.45);
+  }
+  .use {
+    font-size: 9px; color: var(--muted);
+    letter-spacing: 0.06em;
+    text-align: right;
   }
 </style>
 </head>
 <body>
-  <div class="row"><span class="tag">1</span><span class="px">4px</span><div class="bar" style="width:4px;"></div></div>
-  <div class="row"><span class="tag">2</span><span class="px">8px</span><div class="bar" style="width:8px;"></div></div>
-  <div class="row"><span class="tag">3</span><span class="px">12px</span><div class="bar" style="width:12px;"></div></div>
-  <div class="row"><span class="tag">4</span><span class="px">16px</span><div class="bar" style="width:16px;"></div></div>
-  <div class="row"><span class="tag">5</span><span class="px">20px</span><div class="bar" style="width:20px;"></div></div>
-  <div class="row"><span class="tag">6</span><span class="px">24px</span><div class="bar" style="width:24px;"></div></div>
-  <div class="row"><span class="tag">8</span><span class="px">32px</span><div class="bar" style="width:32px;"></div></div>
-  <div class="row"><span class="tag">12</span><span class="px">48px</span><div class="bar" style="width:48px;"></div></div>
+  <div class="header">
+    <h1>Spacing scale · 8 steps × 4 themes</h1>
+    <p>token-based spacing · 4–48px</p>
+    <p class="legend">
+      所有間距（margin / padding / gap）必須走這個 scale，不允許 7px、13px 之類的隨機值。
+      <b>1–2 (4–8px)</b> 用於元件內部，例如 icon 與文字、badge 內邊距；
+      <b>3–4 (12–16px)</b> 是元件之間的標準間距；
+      <b>5–6 (20–24px)</b> 區塊與卡片間；
+      <b>8–12 (32–48px)</b> 大段落、頁面 padding。
+      用同一把尺，整個介面就會自動對齊、有節奏感。
+    </p>
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="theme-block" data-theme="terminal">
+    <div class="theme-label">
+      <span class="swatch"></span><span class="theme-name">terminal</span>
+      <span class="theme-rule"></span><span class="theme-meta">gunmetal · mint</span>
+    </div>
+    <div class="row"><span class="tag">1</span><span class="px">4px</span><div class="bar" style="width:4px;"></div><span class="use">icon · text gap</span></div>
+    <div class="row"><span class="tag">2</span><span class="px">8px</span><div class="bar" style="width:8px;"></div><span class="use">badge padding</span></div>
+    <div class="row"><span class="tag">3</span><span class="px">12px</span><div class="bar" style="width:12px;"></div><span class="use">button padding</span></div>
+    <div class="row"><span class="tag">4</span><span class="px">16px</span><div class="bar" style="width:16px;"></div><span class="use">component gap</span></div>
+    <div class="row"><span class="tag">5</span><span class="px">20px</span><div class="bar" style="width:20px;"></div><span class="use">card padding</span></div>
+    <div class="row"><span class="tag">6</span><span class="px">24px</span><div class="bar" style="width:24px;"></div><span class="use">section gap</span></div>
+    <div class="row"><span class="tag">8</span><span class="px">32px</span><div class="bar" style="width:32px;"></div><span class="use">block gap</span></div>
+    <div class="row"><span class="tag">12</span><span class="px">48px</span><div class="bar" style="width:48px;"></div><span class="use">page padding</span></div>
+  </div>
+
+  <!-- BLUEPRINT -->
+  <div class="theme-block" data-theme="blueprint">
+    <div class="theme-label">
+      <span class="swatch"></span><span class="theme-name">blueprint</span>
+      <span class="theme-rule"></span><span class="theme-meta">slate · electric</span>
+    </div>
+    <div class="row"><span class="tag">1</span><span class="px">4px</span><div class="bar" style="width:4px;"></div><span class="use">icon · text gap</span></div>
+    <div class="row"><span class="tag">2</span><span class="px">8px</span><div class="bar" style="width:8px;"></div><span class="use">badge padding</span></div>
+    <div class="row"><span class="tag">3</span><span class="px">12px</span><div class="bar" style="width:12px;"></div><span class="use">button padding</span></div>
+    <div class="row"><span class="tag">4</span><span class="px">16px</span><div class="bar" style="width:16px;"></div><span class="use">component gap</span></div>
+    <div class="row"><span class="tag">5</span><span class="px">20px</span><div class="bar" style="width:20px;"></div><span class="use">card padding</span></div>
+    <div class="row"><span class="tag">6</span><span class="px">24px</span><div class="bar" style="width:24px;"></div><span class="use">section gap</span></div>
+    <div class="row"><span class="tag">8</span><span class="px">32px</span><div class="bar" style="width:32px;"></div><span class="use">block gap</span></div>
+    <div class="row"><span class="tag">12</span><span class="px">48px</span><div class="bar" style="width:48px;"></div><span class="use">page padding</span></div>
+  </div>
+
+  <!-- CAUTION -->
+  <div class="theme-block" data-theme="caution">
+    <div class="theme-label">
+      <span class="swatch"></span><span class="theme-name">caution</span>
+      <span class="theme-rule"></span><span class="theme-meta">warm · hazard</span>
+    </div>
+    <div class="row"><span class="tag">1</span><span class="px">4px</span><div class="bar" style="width:4px;"></div><span class="use">icon · text gap</span></div>
+    <div class="row"><span class="tag">2</span><span class="px">8px</span><div class="bar" style="width:8px;"></div><span class="use">badge padding</span></div>
+    <div class="row"><span class="tag">3</span><span class="px">12px</span><div class="bar" style="width:12px;"></div><span class="use">button padding</span></div>
+    <div class="row"><span class="tag">4</span><span class="px">16px</span><div class="bar" style="width:16px;"></div><span class="use">component gap</span></div>
+    <div class="row"><span class="tag">5</span><span class="px">20px</span><div class="bar" style="width:20px;"></div><span class="use">card padding</span></div>
+    <div class="row"><span class="tag">6</span><span class="px">24px</span><div class="bar" style="width:24px;"></div><span class="use">section gap</span></div>
+    <div class="row"><span class="tag">8</span><span class="px">32px</span><div class="bar" style="width:32px;"></div><span class="use">block gap</span></div>
+    <div class="row"><span class="tag">12</span><span class="px">48px</span><div class="bar" style="width:48px;"></div><span class="use">page padding</span></div>
+  </div>
+
+  <!-- MIDNIGHT -->
+  <div class="theme-block" data-theme="midnight">
+    <div class="theme-label">
+      <span class="swatch"></span><span class="theme-name">midnight</span>
+      <span class="theme-rule"></span><span class="theme-meta">monochrome · grey</span>
+    </div>
+    <div class="row"><span class="tag">1</span><span class="px">4px</span><div class="bar" style="width:4px;"></div><span class="use">icon · text gap</span></div>
+    <div class="row"><span class="tag">2</span><span class="px">8px</span><div class="bar" style="width:8px;"></div><span class="use">badge padding</span></div>
+    <div class="row"><span class="tag">3</span><span class="px">12px</span><div class="bar" style="width:12px;"></div><span class="use">button padding</span></div>
+    <div class="row"><span class="tag">4</span><span class="px">16px</span><div class="bar" style="width:16px;"></div><span class="use">component gap</span></div>
+    <div class="row"><span class="tag">5</span><span class="px">20px</span><div class="bar" style="width:20px;"></div><span class="use">card padding</span></div>
+    <div class="row"><span class="tag">6</span><span class="px">24px</span><div class="bar" style="width:24px;"></div><span class="use">section gap</span></div>
+    <div class="row"><span class="tag">8</span><span class="px">32px</span><div class="bar" style="width:32px;"></div><span class="use">block gap</span></div>
+    <div class="row"><span class="tag">12</span><span class="px">48px</span><div class="bar" style="width:48px;"></div><span class="use">page padding</span></div>
+  </div>
 </body>
 </html>

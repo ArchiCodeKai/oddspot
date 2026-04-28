@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="zh-TW" data-theme="terminal">
+<head>
+<meta charset="utf-8">
+<title>OddSpot · Acid Landing (v4 · 3D)</title>
+<link rel="stylesheet" href="themes.css">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; }
+  body {
+    font-family: var(--font-brand);
+    color: var(--fg);
+    background: var(--bg);
+    min-height: 100vh;
+    position: relative;
+    transition: background 300ms var(--ease-standard), color 300ms var(--ease-standard);
+  }
+
+  /* ── Film grain + scanlines ──────────────────── */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='200' height='200' filter='url(%23n)' opacity='0.9'/></svg>");
+    mix-blend-mode: overlay;
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 998;
+    background: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgb(var(--accent-rgb) / 0.025) 3px, rgb(var(--accent-rgb) / 0.025) 4px);
+  }
+
+  /* ── Theme + page-router ──────────────────────── */
+  .theme-switch {
+    position: fixed; bottom: 78px; right: 20px; z-index: 100;
+    display: flex; gap: 6px; padding: 6px;
+    background: rgb(0 0 0 / 0.45); backdrop-filter: blur(12px);
+    border: 1px solid var(--line-strong); border-radius: 2px;
+  }
+  .theme-switch button {
+    background: transparent; color: var(--muted);
+    border: 1px solid transparent; padding: 6px 10px;
+    font-family: var(--font-brand); font-size: 9px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    cursor: pointer; transition: all 160ms;
+  }
+  .theme-switch button:hover { color: var(--fg); }
+  .theme-switch button.active {
+    color: var(--accent); border-color: var(--accent);
+    box-shadow: 0 0 12px rgb(var(--accent-rgb) / 0.35);
+  }
+
+  /* ── Global 3D canvas (Three.js fills viewport) ──────── */
+  #three-canvas {
+    position: fixed; inset: 0; z-index: 1;
+    pointer-events: none;
+  }
+
+  /* ── Page-stage ──────────── */
+  .page {
+    position: fixed; inset: 0; z-index: 2;
+    transition: transform 900ms cubic-bezier(0.65, 0, 0.35, 1),
+                opacity 600ms ease;
+  }
+  .page-landing { z-index: 3; opacity: 0; pointer-events: none; transition: opacity 800ms ease; }
+  .page-map     { z-index: 4; transform: translateY(100%); opacity: 0; pointer-events: none; }
+  body.show-landing .page-landing { opacity: 1; pointer-events: auto; }
+  body.show-map .page-landing { opacity: 0; transform: translateY(-6%); pointer-events: none; }
+  body.show-map .page-map     { transform: translateY(0); opacity: 1; pointer-events: auto; }
+
+  /* ── Intro overlay (initial big globe + enter hotspot) ──── */
+  .intro-overlay {
+    position: fixed; inset: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    pointer-events: none;
+    transition: opacity 700ms ease;
+  }
+  body.intro-done .intro-overlay { opacity: 0; pointer-events: none; }
+  .intro-hotspot {
+    position: absolute; left: 50%; top: 22%; transform: translate(-50%, -50%);
+    width: 64px; height: 64px;
+    pointer-events: auto; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .intro-hotspot::before {
+    content: ""; position: absolute; inset: 0;
+    border: 1px solid var(--accent); border-radius: 50%;
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  .intro-hotspot::after {
+    content: ""; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 24px var(--accent), 0 0 48px var(--accent);
+  }
+  .intro-label {
+    position: absolute; left: 50%; top: calc(22% + 56px); transform: translateX(-50%);
+    font-family: var(--font-brand); font-size: 11px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--accent); white-space: nowrap;
+    text-shadow: 0 0 12px var(--accent);
+  }
+  .intro-meta {
+    position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%);
+    font-family: var(--font-brand); font-size: 10px;
+    letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--muted); text-align: center; line-height: 1.8;
+  }
+  .intro-meta .accent { color: var(--accent); }
+
+  /* ── HUDs ──────────────────────────────────── */
+  .hud {
+    position: fixed; z-index: 50;
+    font-family: var(--font-brand); font-size: 10px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    display: flex; gap: 18px; align-items: center;
+    background: rgb(0 0 0 / 0.4); backdrop-filter: blur(12px);
+    padding: 10px 16px; border: 1px solid var(--line);
+  }
+  .hud-tl { top: 20px; left: 20px; }
+  .hud-tr { top: 20px; right: 20px; }
+  .hud .accent { color: var(--accent); }
+  .hud .muted  { color: var(--muted); }
+  .hud .fg     { color: var(--fg); }
+
+  /* ── Eye mascot ─────────────────────────────── */
+  .eye-container {
+    position: fixed; top: 14%; right: 7%; z-index: 6;
+    cursor: pointer;
+    transition: filter 200ms;
+  }
+  .eye-container:hover { filter: drop-shadow(0 0 18px rgb(var(--accent-rgb) / 0.7)); }
+  @keyframes eye-blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    94%, 96%      { transform: scaleY(0.05); }
+  }
+  @keyframes eye-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+  }
+  .eye-bob   { animation: eye-bob 4s ease-in-out infinite; }
+  #eye-svg .eye-lid-grp { animation: eye-blink 5.5s infinite; transform-origin: 56px 49px; }
+  /* Explode: 16 fragments fly out, eye reassembles */
+  .eye-fragment {
+    position: absolute; left: 50%; top: 50%; width: 10px; height: 10px;
+    background: var(--accent); border-radius: 1px;
+    transform: translate(-50%, -50%) scale(0);
+    pointer-events: none;
+    box-shadow: 0 0 10px var(--accent);
+  }
+  .eye-fragment.go { animation: frag-fly 700ms cubic-bezier(0.4,0,0.2,1) forwards; }
+  @keyframes frag-fly {
+    0%   { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; }
+    30%  { transform: translate(calc(-50% + var(--fx) * 0.5), calc(-50% + var(--fy) * 0.5)) scale(1.4) rotate(120deg); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--fx)), calc(-50% + var(--fy))) scale(0) rotate(360deg); opacity: 0; }
+  }
+  .eye-svg-inner.exploding { animation: eye-shake 700ms; opacity: 0; }
+  @keyframes eye-shake {
+    0%, 60% { opacity: 1; transform: scale(1); }
+    65%     { opacity: 0; transform: scale(1.6); }
+    100%    { opacity: 0; transform: scale(0); }
+  }
+  .eye-svg-inner.reassemble { animation: eye-reassemble 500ms 700ms cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  @keyframes eye-reassemble {
+    0%   { opacity: 0; transform: scale(0) rotate(-180deg); }
+    60%  { opacity: 1; transform: scale(1.18) rotate(15deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0); }
+  }
+
+  /* ── Headline (left, lower-mid) ─────────────── */
+  .headline {
+    position: fixed; bottom: 22%; left: 6%; right: 50%;
+    max-width: 560px; z-index: 10;
+  }
+  .system-tag {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-family: var(--font-brand); font-size: 11px;
+    letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 28px;
+  }
+  .system-tag::before {
+    content: ""; width: 8px; height: 8px;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.35; }
+  }
+  h1 {
+    font-family: var(--font-content), "Noto Sans TC", sans-serif;
+    font-size: clamp(40px, 7vw, 84px);
+    font-weight: 700; line-height: 1.02; margin: 0 0 28px;
+    letter-spacing: -0.02em; color: var(--fg);
+  }
+  h1 em {
+    font-style: normal; color: var(--accent);
+    text-shadow: 0 0 32px rgb(var(--accent-rgb) / 0.45);
+  }
+  .lede {
+    font-family: var(--font-content), "Noto Sans TC", sans-serif;
+    font-size: 15px; line-height: 1.75;
+    color: var(--muted); margin: 0 0 36px;
+    max-width: 380px; letter-spacing: 0.04em;
+  }
+  .cta-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .cta {
+    font-family: var(--font-brand); font-size: 12px;
+    font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 16px 28px; border: 1px solid var(--accent);
+    color: var(--accent); background: transparent;
+    cursor: pointer; box-shadow: var(--glow);
+    transition: all 180ms var(--ease-standard);
+    display: inline-flex; align-items: center; gap: 12px;
+  }
+  .cta:hover { background: var(--accent); color: var(--bg); }
+  .cta-meta {
+    font-family: var(--font-brand); font-size: 10px;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted);
+  }
+
+  /* ── Acid stickers ──────────────────────────── */
+  .stickers { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
+  .sticker { position: absolute; color: var(--fg); }
+  .sticker .label {
+    font-family: var(--font-brand); font-size: 9px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted); white-space: nowrap; margin-top: 4px;
+  }
+  .sticker.accent { color: var(--accent); }
+  .s-barcode  { top: 9%;   left: 4%;   transform: rotate(-6deg); }
+  .s-checker  { top: 14%;  left: 32%;  transform: rotate(-12deg); }
+  .s-error    { bottom: 18%; left: 4%; transform: rotate(-3deg); }
+  .s-star     { bottom: 22%; left: 36%; transform: rotate(2deg);  }
+  .s-deal     { bottom: 16%; right: 5%; transform: rotate(5deg);  }
+
+  /* ── Marquee ────────────────────────────────── */
+  .marquee {
+    position: fixed; bottom: 48px; left: 0; right: 0;
+    overflow: hidden; padding: 8px 0;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    background: rgb(0 0 0 / 0.3); backdrop-filter: blur(8px);
+    z-index: 5;
+  }
+  .marquee-track {
+    display: flex; gap: 40px; white-space: nowrap;
+    animation: slide 30s linear infinite;
+    font-family: var(--font-brand); font-size: 11px;
+    letter-spacing: 0.25em; text-transform: uppercase; color: var(--fg);
+  }
+  @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .marquee-track .dot { color: var(--accent); }
+
+  .bottom-strip {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
+    display: flex; justify-content: space-between;
+    padding: 14px 24px; border-top: 1px solid var(--line);
+    background: rgb(0 0 0 / 0.45); backdrop-filter: blur(12px);
+    font-family: var(--font-brand); font-size: 10px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted); flex-wrap: wrap; gap: 12px;
+  }
+  .bottom-strip .seg { display: flex; gap: 20px; }
+
+  /* ── Wormhole HUD label (the 3D mesh lives in canvas) ───── */
+  .portal-label {
+    position: fixed; left: 38%; top: calc(18% + 230px);
+    transform: translateX(-50%);
+    font-family: var(--font-brand); font-size: 10px;
+    letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--muted); white-space: nowrap;
+    z-index: 10; pointer-events: none;
+    text-shadow: 0 0 6px var(--bg);
+  }
+  .portal-hit {
+    position: fixed; left: 38%; top: 18%;
+    transform: translateX(-50%);
+    width: 220px; height: 220px;
+    z-index: 11; cursor: pointer;
+  }
+
+  /* ── Map page ───────────────────────────────── */
+  .map-stage {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .map-topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 28px; border-bottom: 1px solid var(--line);
+    background: rgb(0 0 0 / 0.55); backdrop-filter: blur(12px);
+    font-family: var(--font-brand); font-size: 10px;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted);
+  }
+  .map-topbar .left { display: flex; gap: 28px; align-items: center; }
+  .map-topbar .accent { color: var(--accent); }
+  .back-btn {
+    font-family: var(--font-brand); font-size: 10px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--accent); background: transparent;
+    border: 1px solid var(--accent); padding: 8px 14px; cursor: pointer;
+    transition: all 160ms;
+  }
+  .back-btn:hover { background: var(--accent); color: var(--bg); }
+  .map-canvas {
+    flex: 1; position: relative;
+    background:
+      linear-gradient(rgb(var(--accent-rgb) / 0.08) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(90deg, rgb(var(--accent-rgb) / 0.08) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(rgb(var(--accent-rgb) / 0.04) 1px, transparent 1px) 0 0 / 8px 8px,
+      linear-gradient(90deg, rgb(var(--accent-rgb) / 0.04) 1px, transparent 1px) 0 0 / 8px 8px;
+  }
+  .map-pin {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    cursor: pointer;
+  }
+  .map-pin .dot {
+    width: 14px; height: 14px;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--accent);
+    margin: 0 auto;
+  }
+  .map-pin .ring {
+    position: absolute; left: 50%; top: 50%;
+    width: 14px; height: 14px;
+    margin: -7px 0 0 -7px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    animation: pin-pulse 2s ease-out infinite;
+    pointer-events: none;
+  }
+  @keyframes pin-pulse {
+    0%   { transform: scale(1); opacity: 0.7; }
+    100% { transform: scale(3.5); opacity: 0; }
+  }
+  .map-pin .info {
+    position: absolute; left: 50%; bottom: calc(100% + 4px);
+    transform: translateX(-50%);
+    background: var(--bg); border: 1px solid var(--accent);
+    padding: 4px 8px; white-space: nowrap;
+    font-family: var(--font-brand); font-size: 9px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); box-shadow: 0 0 10px rgb(var(--accent-rgb) / 0.4);
+  }
+  .map-crosshair {
+    position: absolute; left: 50%; top: 50%;
+    width: 1px; height: 1px;
+    pointer-events: none;
+  }
+  .map-crosshair::before, .map-crosshair::after {
+    content: ""; position: absolute;
+    background: var(--accent); opacity: 0.5;
+  }
+  .map-crosshair::before { left: -40px; top: 0; width: 80px; height: 1px; }
+  .map-crosshair::after  { left: 0; top: -40px; width: 1px; height: 80px; }
+  .map-meta {
+    position: absolute; bottom: 24px; left: 28px;
+    font-family: var(--font-brand); font-size: 10px;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted);
+    border: 1px solid var(--line); padding: 10px 14px;
+    background: rgb(0 0 0 / 0.5); backdrop-filter: blur(8px);
+  }
+  .map-meta .accent { color: var(--accent); }
+  .map-corner {
+    position: absolute;
+    width: 32px; height: 32px;
+    border-color: var(--accent); border-style: solid; border-width: 0;
+    opacity: 0.8;
+  }
+  .mc-tl { top: 24px; left: 24px; border-top-width: 1px; border-left-width: 1px; }
+  .mc-tr { top: 24px; right: 24px; border-top-width: 1px; border-right-width: 1px; }
+  .mc-bl { bottom: 24px; left: 24px; border-bottom-width: 1px; border-left-width: 1px; }
+  .mc-br { bottom: 24px; right: 24px; border-bottom-width: 1px; border-right-width: 1px; }
+
+  /* ── Responsive ─────────────────────────────── */
+  @media (max-width: 980px) {
+    .portal-hit, .portal-label { left: 50%; top: 8%; transform: translateX(-50%); width: 140px; height: 140px; }
+    .portal-label { top: calc(8% + 150px); }
+    .eye-container { top: 14%; right: 5%; transform: scale(0.85); transform-origin: top right; }
+    .hud-tr { display: none; }
+    .s-checker, .s-star { display: none; }
+    .headline { right: 6%; bottom: 26%; }
+    h1 { font-size: clamp(32px, 8vw, 56px); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Three.js global canvas ── -->
+<canvas id="three-canvas"></canvas>
+
+<!-- ── INTRO overlay (initial state: huge centered globe) ── -->
+<div class="intro-overlay" id="intro-overlay">
+  <div class="intro-hotspot" id="intro-hotspot" role="button" aria-label="enter"></div>
+  <div class="intro-label">▼ tap to enter ▼</div>
+  <div class="intro-meta">
+    <span class="accent">sys://oddspot</span> · global intro · v0.2.0-alpha<br>
+    awaiting user input · phase: 0 / boot
+  </div>
+</div>
+
+<!-- ── Theme switcher ─────────────────────────────── -->
+<div class="theme-switch">
+  <button data-theme-btn="terminal" class="active">Terminal</button>
+  <button data-theme-btn="blueprint">Blueprint</button>
+  <button data-theme-btn="caution">Caution</button>
+  <button data-theme-btn="midnight">Midnight</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 1 — LANDING
+     ═══════════════════════════════════════════════ -->
+<div class="page page-landing" id="page-landing">
+
+  <div class="hud hud-tl">
+    <span class="accent">sys://oddspot</span>
+    <span class="muted">v0.2.0-alpha</span>
+    <span class="muted">phase:∞ / idle</span>
+  </div>
+
+  <div class="hud hud-tr">
+    <span class="muted">lat 25.0330°N</span>
+    <span class="muted">lng 121.5654°E</span>
+    <span class="fg" id="clock">--:--:--</span>
+  </div>
+
+  <!-- Wormhole hit-area + label (3D mesh is on the canvas) -->
+  <div class="portal-hit" id="portal-hit" role="button" aria-label="language toggle"></div>
+  <div class="portal-label" id="portal-label">lang : tw</div>
+
+  <!-- Eye mascot -->
+  <div class="eye-container eye-bob" id="eye-container">
+    <div class="eye-svg-inner" id="eye-svg-inner">
+      <svg width="60" height="68" viewBox="0 0 120 130" fill="none" id="eye-svg">
+        <path d="M55 8 C70 4,90 18,92 40 C94 56,90 72,82 86 C78 94,76 104,78 112 C79 117,82 120,84 116 C86 112,84 106,80 102 C74 98,60 110,48 116 C38 122,24 118,18 106 C12 94,14 76,18 62 C22 48,30 18,55 8Z"
+          stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"
+          style="filter: drop-shadow(0 0 12px rgb(var(--accent-rgb) / 0.5));"/>
+        <g class="eye-lid-grp">
+          <path d="M34 52 C33 44,45 36,58 36 C69 36,77 41,75 48 C73 56,61 62,49 62 C39 62,34 58,34 52Z"
+            stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <g id="eyeball">
+            <ellipse cx="56" cy="49" rx="7" ry="9" fill="var(--accent)"/>
+            <circle cx="55" cy="47" r="2" fill="var(--bg)"/>
+          </g>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Stickers -->
+  <div class="stickers">
+    <div class="sticker s-barcode">
+      <svg width="90" height="36" viewBox="0 0 90 36">
+        <g fill="currentColor">
+          <rect x="0"  y="0" width="2" height="28"/><rect x="4"  y="0" width="1" height="28"/>
+          <rect x="7"  y="0" width="3" height="28"/><rect x="12" y="0" width="1" height="28"/>
+          <rect x="15" y="0" width="2" height="28"/><rect x="19" y="0" width="1" height="28"/>
+          <rect x="22" y="0" width="4" height="28"/><rect x="28" y="0" width="1" height="28"/>
+          <rect x="31" y="0" width="2" height="28"/><rect x="35" y="0" width="3" height="28"/>
+          <rect x="40" y="0" width="1" height="28"/><rect x="43" y="0" width="2" height="28"/>
+          <rect x="47" y="0" width="1" height="28"/><rect x="50" y="0" width="3" height="28"/>
+          <rect x="55" y="0" width="2" height="28"/><rect x="59" y="0" width="1" height="28"/>
+          <rect x="62" y="0" width="2" height="28"/><rect x="66" y="0" width="4" height="28"/>
+        </g>
+        <text x="0" y="35" font-family="var(--font-brand)" font-size="7" fill="currentColor" letter-spacing="1">N25°03'13.2"</text>
+      </svg>
+    </div>
+
+    <div class="sticker s-checker accent">
+      <svg width="140" height="60" viewBox="0 0 140 60">
+        <defs>
+          <pattern id="ck" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+            <rect width="5" height="5" fill="currentColor"/>
+            <rect x="5" y="5" width="5" height="5" fill="currentColor"/>
+          </pattern>
+        </defs>
+        <path d="M0 50 Q35 10 70 30 T140 20 V60 H0 Z" fill="url(#ck)" opacity="0.85"/>
+      </svg>
+      <div class="label">HARD FORM / 001</div>
+    </div>
+
+    <div class="sticker s-error">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2 L22 20 L2 20 Z"/>
+        <line x1="12" y1="9" x2="12" y2="14"/>
+        <circle cx="12" cy="17" r="0.8" fill="currentColor"/>
+      </svg>
+      <div class="label">ERR_NO_LEGEND / archive 1998-08-13</div>
+    </div>
+
+    <div class="sticker s-star accent">
+      <svg width="34" height="34" viewBox="0 0 44 44" fill="currentColor">
+        <path d="M22 0 L25 18 L44 22 L25 26 L22 44 L19 26 L0 22 L19 18 Z"/>
+      </svg>
+    </div>
+
+    <div class="sticker s-deal">
+      <div style="border: 2px solid currentColor; padding: 8px 14px; color: var(--fg);">
+        <div style="font-size: 18px; font-family: var(--font-brand); font-weight: 700; letter-spacing: 0.04em;">DEAL WITH IT</div>
+        <div class="label" style="margin-top: 4px;">It works. Make it raw.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Headline -->
+  <div class="headline">
+    <span class="system-tag">scanning taiwan · 8 categories detected</span>
+    <h1>B 級<em>景點探測器</em></h1>
+    <p class="lede">獨特、獵奇、懷舊或帶點粗糙感的怪怪景點，尋找生活中的幽默感或視覺衝擊，去探險吧。</p>
+    <div class="cta-row">
+      <button class="cta" id="cta-initiate">
+        Start Scanning
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <span class="cta-meta">→ 開始探索 · 不用註冊</span>
+    </div>
+  </div>
+
+  <!-- Marquee -->
+  <div class="marquee">
+    <div class="marquee-track">
+      <span>archive://taipei</span><span class="dot">●</span>
+      <span>237 spots indexed</span><span class="dot">●</span>
+      <span>12 disappeared this year</span><span class="dot">●</span>
+      <span>softly catastrophic</span><span class="dot">●</span>
+      <span>made in taiwan · since 1998-08-13</span><span class="dot">●</span>
+      <span>err_no_weird_found → scan()</span><span class="dot">●</span>
+      <span>archive://taipei</span><span class="dot">●</span>
+      <span>237 spots indexed</span><span class="dot">●</span>
+      <span>12 disappeared this year</span><span class="dot">●</span>
+      <span>softly catastrophic</span><span class="dot">●</span>
+      <span>made in taiwan · since 1998-08-13</span><span class="dot">●</span>
+      <span>err_no_weird_found → scan()</span><span class="dot">●</span>
+    </div>
+  </div>
+
+  <div class="bottom-strip">
+    <div class="seg">
+      <span>© OddSpot / archive</span>
+      <span>v0.2.0-alpha</span>
+    </div>
+    <div class="seg">
+      <span>/map</span>
+      <span>/swipe</span>
+      <span>/submit</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAGE 2 — MAP (placeholder)
+     ═══════════════════════════════════════════════ -->
+<div class="page page-map" id="page-map">
+  <div class="map-stage">
+    <div class="map-topbar">
+      <div class="left">
+        <span class="accent">sys://oddspot/map</span>
+        <span>scanning · taipei sector</span>
+        <span>237 spots</span>
+      </div>
+      <button class="back-btn" id="back-btn">← back to landing</button>
+    </div>
+    <div class="map-canvas" id="map-canvas">
+      <span class="map-corner mc-tl"></span>
+      <span class="map-corner mc-tr"></span>
+      <span class="map-corner mc-bl"></span>
+      <span class="map-corner mc-br"></span>
+      <span class="map-crosshair"></span>
+
+      <!-- pins -->
+      <div class="map-pin" style="left: 22%; top: 38%;">
+        <div class="info">熱海大旅社</div>
+        <span class="ring"></span><div class="dot"></div>
+      </div>
+      <div class="map-pin" style="left: 48%; top: 28%;">
+        <div class="info">幽浮加油站</div>
+        <span class="ring"></span><div class="dot"></div>
+      </div>
+      <div class="map-pin" style="left: 36%; top: 58%;">
+        <div class="info">魔鬼洞</div>
+        <span class="ring"></span><div class="dot"></div>
+      </div>
+      <div class="map-pin" style="left: 64%; top: 48%;">
+        <div class="info">水泥神像</div>
+        <span class="ring"></span><div class="dot"></div>
+      </div>
+      <div class="map-pin" style="left: 72%; top: 64%;">
+        <div class="info">廢墟卡拉ok</div>
+        <span class="ring"></span><div class="dot"></div>
+      </div>
+      <div class="map-pin" style="left: 30%; top: 72%;">
+        <div class="info">阿姨的水族箱</div>
+        <span class="ring"></span><div class="dot"></div>
+      </div>
+      <div class="map-pin" style="left: 56%; top: 78%;">
+        <div class="info">時光封印館</div>
+        <span class="ring"></span><div class="dot"></div>
+      </div>
+      <div class="map-pin" style="left: 14%; top: 60%;">
+        <div class="info">電線桿森林</div>
+        <span class="ring"></span><div class="dot"></div>
+      </div>
+
+      <div class="map-meta">
+        <span class="accent">cursor</span> 25.0330°N · 121.5654°E ／ <span class="accent">7</span> spots in viewport ／ zoom 14
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script>
+  // ─────────────────────────────────────────────────────
+  //   Theme handling
+  // ─────────────────────────────────────────────────────
+  const html = document.documentElement;
+  const themeButtons = document.querySelectorAll('[data-theme-btn]');
+  const THEME_ORDER = ['terminal', 'blueprint', 'caution', 'midnight'];
+  const saved = localStorage.getItem('oddspot-theme') || 'terminal';
+  html.setAttribute('data-theme', saved);
+  function setTheme(theme) {
+    html.setAttribute('data-theme', theme);
+    localStorage.setItem('oddspot-theme', theme);
+    themeButtons.forEach(b => b.classList.toggle('active', b.dataset.themeBtn === theme));
+    // notify three.js to re-read accent color
+    if (window.__readAccent) window.__readAccent();
+  }
+  setTheme(saved);
+  themeButtons.forEach(btn => btn.addEventListener('click', () => setTheme(btn.dataset.themeBtn)));
+
+  function readAccentColor() {
+    const v = getComputedStyle(html).getPropertyValue('--accent').trim();
+    return new THREE.Color(v || '#00e5cc');
+  }
+
+  // ─────────────────────────────────────────────────────
+  //   Clock
+  // ─────────────────────────────────────────────────────
+  const clockEl = document.getElementById('clock');
+  setInterval(() => {
+    const d = new Date();
+    const p = n => String(n).padStart(2,'0');
+    clockEl.textContent = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }, 250);
+
+  // ─────────────────────────────────────────────────────
+  //   THREE.js setup (single fullscreen scene)
+  //   Two object-groups: globe (right side) + wormhole (top-left)
+  // ─────────────────────────────────────────────────────
+  const canvas = document.getElementById('three-canvas');
+  const scene = new THREE.Scene();
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+  camera.position.set(0, 0, 8);  // boot start: zoomed out
+
+  // Map screen px → camera-plane world units at the globe's depth.
+  // IMPORTANT: always use the IDLE camera distance (2.5), not the live
+  // camera.position.z — because positionGroups() runs at boot when camera
+  // is still at z=8, which would put everything way too far from origin.
+  const IDLE_CAMERA_Z = 2.5;
+  function screenToWorld(xPx, yPx) {
+    const distance = IDLE_CAMERA_Z;
+    const ndcX = (xPx / window.innerWidth) * 2 - 1;
+    const ndcY = -((yPx / window.innerHeight) * 2 - 1);
+    const vFov = (camera.fov * Math.PI) / 180;
+    const halfH = Math.tan(vFov / 2) * distance;
+    const halfW = halfH * camera.aspect;
+    return { x: ndcX * halfW, y: ndcY * halfH };
+  }
+
+  // ── Stars (mimics drei Points) ─────────────────────
+  const starsGeo = new THREE.BufferGeometry();
+  const starCount = 600;
+  const starPos = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i++) {
+    const r = 12 + Math.random() * 30;
+    const t = Math.random() * Math.PI * 2;
+    const p = Math.acos(2 * Math.random() - 1);
+    starPos[i*3]   = r * Math.sin(p) * Math.cos(t);
+    starPos[i*3+1] = r * Math.sin(p) * Math.sin(t);
+    starPos[i*3+2] = r * Math.cos(p);
+  }
+  starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  const stars = new THREE.Points(starsGeo, new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.04, transparent: true, opacity: 0.45, sizeAttenuation: true
+  }));
+  scene.add(stars);
+
+  // ─────────────────────────────────────────────────────
+  //   GLOBE (port from src/components/landing/GlobeScene.tsx)
+  // ─────────────────────────────────────────────────────
+  const globeGroup = new THREE.Group();
+  scene.add(globeGroup);
+
+  const sphereGeom  = new THREE.SphereGeometry(1, 32, 24);
+  const wireGeom    = new THREE.WireframeGeometry(sphereGeom);
+  const wireMat     = new THREE.LineBasicMaterial({ color: readAccentColor(), transparent: true, opacity: 0.7 });
+  const wireSphere  = new THREE.LineSegments(wireGeom, wireMat);
+  globeGroup.add(wireSphere);
+
+  // Tilted ring orbits — match codebase rotations [Math.PI*0.45, 0, 0] and [-Math.PI*0.3, 0, 0]
+  const ringMatA = new THREE.MeshBasicMaterial({ color: readAccentColor(), transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+  const ringA = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.27, 128), ringMatA);
+  ringA.rotation.x = Math.PI * 0.45;
+  globeGroup.add(ringA);
+
+  const ringMatB = new THREE.MeshBasicMaterial({ color: readAccentColor(), transparent: true, opacity: 0.18, side: THREE.DoubleSide });
+  const ringB = new THREE.Mesh(new THREE.RingGeometry(1.45, 1.46, 128), ringMatB);
+  ringB.rotation.x = -Math.PI * 0.3;
+  globeGroup.add(ringB);
+
+  // Taiwan satellite dot
+  function latLngToVec3(lat, lng, r = 1) {
+    const phi = (90 - lat) * (Math.PI / 180);
+    const theta = (lng + 180) * (Math.PI / 180);
+    return new THREE.Vector3(
+      -r * Math.sin(phi) * Math.cos(theta),
+      r * Math.cos(phi),
+      r * Math.sin(phi) * Math.sin(theta),
+    );
+  }
+  const TAIWAN_POS = latLngToVec3(23.8, 121.0, 1.02);
+  const taiwanDotMat = new THREE.MeshBasicMaterial({ color: readAccentColor() });
+  const taiwanDot = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 12), taiwanDotMat);
+  taiwanDot.position.copy(TAIWAN_POS);
+  globeGroup.add(taiwanDot);
+
+  // Halo around Taiwan dot
+  const haloMat = new THREE.MeshBasicMaterial({ color: readAccentColor(), transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+  const halo = new THREE.Mesh(new THREE.RingGeometry(0.04, 0.045, 32), haloMat);
+  halo.position.copy(TAIWAN_POS);
+  halo.lookAt(0, 0, 0);
+  globeGroup.add(halo);
+
+  // ─────────────────────────────────────────────────────
+  //   WORMHOLE — Einstein-Rosen bridge (port from WormholeR3F.tsx)
+  //   Two flat discs + funnel + thin throat, built via LatheGeometry
+  // ─────────────────────────────────────────────────────
+  const wormholeGroup = new THREE.Group();
+  scene.add(wormholeGroup);
+
+  // tiltGroup: static tilt; spinGroup: only Y-axis self-rotation
+  // Tilt matches reference image — looking ~down into the funnel from upper-left
+  const wormholeTilt = new THREE.Group();
+  wormholeTilt.rotation.x = 0.55;    // ≈ 32° forward — see top of bell + into throat
+  wormholeTilt.rotation.z = -0.22;   // slight left lean
+  wormholeGroup.add(wormholeTilt);
+
+  const wormholeSpin = new THREE.Group();
+  wormholeTilt.add(wormholeSpin);
+
+  // Build a symmetric wormhole profile inspired by the reference image:
+  //   ── flat-ish bell mouths (top + bottom)
+  //   ── short funnel curve transitioning into…
+  //   ── a STRAIGHT cylindrical throat that holds its radius for a bit
+  //
+  //   y ∈ [−H, +H], where:
+  //     ±H ........... outer mouth lip
+  //     ±throatStartY  point where curve flattens into cylinder
+  //     0 ............ middle of cylindrical throat
+  function buildWormholePoints() {
+    const points = [];
+    const FUNNEL_SEG  = 8;          // sparser → fewer wireframe lines
+    const THROAT_SEG  = 4;
+    const mouthOuter  = 1.05;       // outer lip (wide, flatter bell)
+    const mouthInner  = 0.78;       // inner lip of disc
+    const throatR     = 0.26;       // cylinder radius (thicker than before)
+    const halfH       = 0.95;
+    const throatStartY = 0.30;      // |y| where curve flattens
+    const N = 1.6;                  // gentler curve exponent → bell is wider
+
+    // ── bottom mouth: flat disc (outer → inner) at y = -halfH ──
+    points.push(new THREE.Vector2(mouthOuter, -halfH));
+    points.push(new THREE.Vector2(mouthInner, -halfH));
+
+    // ── bottom funnel: from (mouthInner, -halfH) → (throatR, -throatStartY)
+    for (let i = 1; i <= FUNNEL_SEG; i++) {
+      const k = i / FUNNEL_SEG;
+      const y = -halfH + (halfH - throatStartY) * k;
+      const ay = 1 - k;
+      const r = throatR + (mouthInner - throatR) * Math.pow(ay, N);
+      points.push(new THREE.Vector2(r, y));
+    }
+
+    // ── cylindrical throat (constant radius, both halves)
+    for (let i = 1; i <= THROAT_SEG; i++) {
+      const k = i / THROAT_SEG;
+      const y = -throatStartY + (throatStartY * 2) * k;
+      points.push(new THREE.Vector2(throatR, y));
+    }
+
+    // ── top funnel: from (throatR, +throatStartY) → (mouthInner, +halfH)
+    for (let i = 1; i <= FUNNEL_SEG; i++) {
+      const k = i / FUNNEL_SEG;
+      const y = throatStartY + (halfH - throatStartY) * k;
+      const ay = k;
+      const r = throatR + (mouthInner - throatR) * Math.pow(ay, N);
+      points.push(new THREE.Vector2(r, y));
+    }
+
+    // ── top mouth: flat disc (inner → outer) at y = +halfH
+    points.push(new THREE.Vector2(mouthOuter, halfH));
+    return points;
+  }
+  const wormholeProfile = buildWormholePoints();
+  // Sparser circumferential segmentation → fewer longitude lines in wireframe
+  const latheGeom = new THREE.LatheGeometry(wormholeProfile, 24);
+  const wormholeWireGeom = new THREE.WireframeGeometry(latheGeom);
+
+  const wormholeWireMat = new THREE.LineBasicMaterial({ color: readAccentColor(), transparent: true, opacity: 0.75 });
+  const wormholeWire = new THREE.LineSegments(wormholeWireGeom, wormholeWireMat);
+  wormholeSpin.add(wormholeWire);
+
+  const wormholeFillMat = new THREE.MeshBasicMaterial({
+    color: readAccentColor(), transparent: true, opacity: 0.08,
+    side: THREE.DoubleSide, depthWrite: false,
+  });
+  const wormholeFill = new THREE.Mesh(latheGeom, wormholeFillMat);
+  wormholeSpin.add(wormholeFill);
+
+  // Stars on lathe surface
+  const SPARK_N = 60;
+  const sparkGeo = new THREE.BufferGeometry();
+  const sparkPos = new Float32Array(SPARK_N * 3);
+  for (let i = 0; i < SPARK_N; i++) {
+    const seg = wormholeProfile[Math.floor(Math.random() * wormholeProfile.length)];
+    const theta = Math.random() * Math.PI * 2;
+    sparkPos[i*3]   = seg.x * Math.cos(theta);
+    sparkPos[i*3+1] = seg.y;
+    sparkPos[i*3+2] = seg.x * Math.sin(theta);
+  }
+  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+  const sparks = new THREE.Points(sparkGeo, new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.025, transparent: true, opacity: 0.9, sizeAttenuation: true,
+  }));
+  wormholeSpin.add(sparks);
+
+  // Throat-center glowing core
+  const coreMat = new THREE.MeshBasicMaterial({ color: readAccentColor() });
+  const coreSphere = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), coreMat);
+  wormholeSpin.add(coreSphere);
+
+  // ─── Char-orbit: HTML labels rendered as 3D text via canvas-textures ──
+  // Each char = a sprite with a CanvasTexture, positioned on a circle in
+  // the wormhole's tilted plane → the chars appear to orbit the funnel axis.
+  const CHAR_POOLS = {
+    "zh-TW": ["中","景","點","ㄅ","ㄆ","ㄇ","ㄉ","ㄊ","ㄋ","ㄒ","ㄓ","ㄔ","ㄕ","ㄖ","ㄗ"],
+    "en":    ["A","C","E","K","M","R","S","T","Z","ə","ʃ","θ","ŋ","æ","ʒ","#","@","/"],
+    "ja":    ["あ","い","う","え","お","か","き","く","け","こ","さ","し","駅","空","ヲ","ヴ","(´･ω･`)"],
+  };
+  const LANG_ORDER = ["zh-TW", "en", "ja"];
+  const LANG_LABELS = { "zh-TW": "lang : tw", "en": "lang : en", "ja": "lang : jp" };
+  let curLangIdx = 0;
+
+  const CHAR_COUNT = 14;
+  // Char ring sits just outside the top mouth (mouthOuter=1.05) at y = halfH
+  const CHAR_R = 1.22;
+  const CHAR_Y = 0.95;
+  const charSprites = [];
+
+  function makeCharTexture(ch, accent) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = accent;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 18;
+    ctx.font = 'bold 80px "Noto Sans TC", "Noto Sans JP", JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(ch, 64, 68);
+    return new THREE.CanvasTexture(c);
+  }
+
+  function rebuildCharOrbit() {
+    charSprites.forEach(s => { wormholeSpin.remove(s); s.material.map.dispose(); s.material.dispose(); });
+    charSprites.length = 0;
+    const pool = CHAR_POOLS[LANG_ORDER[curLangIdx]];
+    const accentHex = '#' + readAccentColor().getHexString();
+    for (let i = 0; i < CHAR_COUNT; i++) {
+      const ch = pool[i % pool.length];
+      const tex = makeCharTexture(ch, accentHex);
+      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.set(0.28, 0.28, 1);
+      sprite.userData.angle = (i / CHAR_COUNT) * Math.PI * 2;
+      wormholeSpin.add(sprite);
+      charSprites.push(sprite);
+    }
+    document.getElementById('portal-label').textContent = LANG_LABELS[LANG_ORDER[curLangIdx]];
+  }
+  rebuildCharOrbit();
+
+  // ─────────────────────────────────────────────────────
+  //   Re-read accent color on theme change
+  // ─────────────────────────────────────────────────────
+  window.__readAccent = () => {
+    const c = readAccentColor();
+    wireMat.color.copy(c);
+    ringMatA.color.copy(c);
+    ringMatB.color.copy(c);
+    taiwanDotMat.color.copy(c);
+    haloMat.color.copy(c);
+    coreMat.color.copy(c);
+    torusRings.forEach(({ mesh }) => mesh.material.color.copy(c));
+    wormholeWireMat.color.copy(c);
+    wormholeFillMat.color.copy(c);
+    rebuildCharOrbit();
+  };
+
+  // ─────────────────────────────────────────────────────
+  //   Layout: position globe + wormhole groups in world space
+  //   based on screen anchor positions.
+  // ─────────────────────────────────────────────────────
+  function positionGroups() {
+    // World-units-per-pixel at IDLE camera depth (used for both placement & sizing)
+    const vFov = (camera.fov * Math.PI) / 180;
+    const halfH = Math.tan(vFov / 2) * IDLE_CAMERA_Z;
+    const pxPerUnit = window.innerHeight / (halfH * 2);
+
+    // GLOBE — anchored further right (~74% width) for lighter visual weight
+    const globeAnchor = screenToWorld(window.innerWidth * 0.74, window.innerHeight * 0.50);
+    globeGroup.userData.targetPos = { x: globeAnchor.x, y: globeAnchor.y };
+
+    // WORMHOLE — anchored to the HTML hit-area
+    const portalEl = document.getElementById('portal-hit');
+    const r = portalEl.getBoundingClientRect();
+    const wh = screenToWorld(r.left + r.width / 2, r.top + r.height / 2);
+    wormholeGroup.position.set(wh.x, wh.y, 0);
+
+    // Scale wormhole so its OUTER torus (r=1.40 in local space) fits the
+    // ~220 px hit area. Outer diameter should be 220 px → radius 110 px.
+    const wantedRadiusUnits = 110 / pxPerUnit;     // 110 px → world units
+    const baseRadius = 1.40;
+    wormholeGroup.scale.setScalar(wantedRadiusUnits / baseRadius);
+  }
+
+  // ─────────────────────────────────────────────────────
+  //   Resize
+  // ─────────────────────────────────────────────────────
+  function resize() {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    positionGroups();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ─────────────────────────────────────────────────────
+  //   Animation
+  // ─────────────────────────────────────────────────────
+  // Phases: 'intro' = big centered globe waiting for click; then boot+dissolve.
+  let phase = 'intro';
+  let t0 = performance.now();
+  let entryT0 = null;          // set when user clicks intro hotspot
+  const BOOT_DURATION = 1400;
+  const DISSOLVE_DURATION = 1200;
+
+  function tick(now) {
+    const elapsed = now - t0;
+    requestAnimationFrame(tick);
+
+    // ── Globe rotation (continuous Y) ─────────
+    globeGroup.rotation.y += 0.002;
+
+    // ── Phase logic ──
+    let dissolveEase = 0;
+    const gtgt = globeGroup.userData.targetPos || { x: 0, y: 0 };
+    if (phase === 'intro') {
+      // Big centered globe, slow rotation, camera at z=4.2 for a bigger sphere
+      camera.position.z = 4.2;
+      globeGroup.position.x = 0; globeGroup.position.y = 0;
+      globeGroup.scale.setScalar(1.25);
+      wormholeGroup.visible = false;
+    } else {
+      // 'entering' phase: timeline driven by entryT0
+      const entryElapsed = now - entryT0;
+      let bootT = Math.min(1, entryElapsed / BOOT_DURATION);
+      let bootEase = 1 - Math.pow(1 - bootT, 3);
+      let dissolveT = Math.max(0, Math.min(1, (entryElapsed - BOOT_DURATION) / DISSOLVE_DURATION));
+      dissolveEase = dissolveT < 0.5 ? 2 * dissolveT * dissolveT : 1 - Math.pow(-2 * dissolveT + 2, 2) / 2;
+
+      camera.position.z = 4.2 - 1.7 * bootEase;   // 4.2 → 2.5
+      globeGroup.position.x = gtgt.x * dissolveEase;
+      globeGroup.position.y = gtgt.y * dissolveEase;
+      // Globe shrinks more aggressively → 1.25 → 0.62 (was 0.72) for lighter weight
+      const scale = 1.25 - dissolveEase * 0.63;
+      globeGroup.scale.setScalar(scale);
+      wormholeGroup.visible = dissolveT > 0.05;
+
+      // Reveal landing UI after boot completes
+      if (bootT >= 1 && !document.body.classList.contains('show-landing')) {
+        document.body.classList.add('show-landing');
+      }
+      if (dissolveT >= 0.6 && !document.body.classList.contains('intro-done')) {
+        document.body.classList.add('intro-done');
+      }
+    }
+
+    // ── Wormhole self-rotation (Y axis = funnel axis) ──
+    wormholeSpin.rotation.y += 0.006;
+    coreSphere.rotation.y += 0.02;
+
+    // ── Char sprites orbit around the TOP mouth of the wormhole ──
+    // (lathe Y axis is up; chars sit at y = CHAR_Y, on a circle in the XZ plane)
+    const orbitSpeed = 0.006;
+    charSprites.forEach((s) => {
+      s.userData.angle += orbitSpeed;
+      const a = s.userData.angle;
+      s.position.x = Math.cos(a) * CHAR_R;
+      s.position.z = Math.sin(a) * CHAR_R;
+      s.position.y = CHAR_Y;
+    });
+
+    // ── Halo pulse ──
+    const pulseT = (elapsed % 2000) / 2000;
+    halo.scale.setScalar(1 + pulseT * 1.5);
+    haloMat.opacity = 0.6 * (1 - pulseT);
+
+    // ── Stars slow drift ──
+    stars.rotation.y += 0.0003;
+
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(tick);
+
+  // ─────────────────────────────────────────────────────
+  //   Eye mascot — eyeball follows mouse + click → explode + theme cycle
+  // ─────────────────────────────────────────────────────
+  const eyeball = document.getElementById('eyeball');
+  const eyeSvg = document.getElementById('eye-svg');
+  window.addEventListener('mousemove', (e) => {
+    if (!eyeball || !eyeSvg) return;
+    const rect = eyeSvg.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height * 0.42;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const dist = Math.min(6, Math.hypot(dx, dy) / 50);
+    const ang = Math.atan2(dy, dx);
+    eyeball.style.transform = `translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px)`;
+    eyeball.style.transition = 'transform 120ms ease-out';
+  });
+
+  const eyeContainer = document.getElementById('eye-container');
+  const eyeInner     = document.getElementById('eye-svg-inner');
+  let exploding = false;
+  eyeContainer.addEventListener('click', () => {
+    if (exploding) return;
+    exploding = true;
+
+    // 1. spawn 16 fragments
+    const FRAGS = 16;
+    for (let i = 0; i < FRAGS; i++) {
+      const f = document.createElement('span');
+      f.className = 'eye-fragment';
+      const ang = (i / FRAGS) * Math.PI * 2 + Math.random() * 0.4;
+      const dist = 80 + Math.random() * 60;
+      f.style.setProperty('--fx', `${Math.cos(ang) * dist}px`);
+      f.style.setProperty('--fy', `${Math.sin(ang) * dist}px`);
+      eyeContainer.appendChild(f);
+      requestAnimationFrame(() => f.classList.add('go'));
+      setTimeout(() => f.remove(), 800);
+    }
+
+    eyeInner.classList.remove('reassemble');
+    eyeInner.classList.add('exploding');
+
+    // 2. mid-explosion → swap theme
+    setTimeout(() => {
+      const cur = html.getAttribute('data-theme');
+      const next = THEME_ORDER[(THEME_ORDER.indexOf(cur) + 1) % THEME_ORDER.length];
+      setTheme(next);
+    }, 500);
+
+    // 3. reassemble
+    setTimeout(() => {
+      eyeInner.classList.remove('exploding');
+      eyeInner.classList.add('reassemble');
+    }, 700);
+
+    setTimeout(() => {
+      eyeInner.classList.remove('reassemble');
+      exploding = false;
+    }, 1300);
+  });
+
+  // ─────────────────────────────────────────────────────
+  //   Wormhole click → cycle language
+  //   Visual: throb + rebuild char texture set
+  // ─────────────────────────────────────────────────────
+  document.getElementById('portal-hit').addEventListener('click', () => {
+    curLangIdx = (curLangIdx + 1) % LANG_ORDER.length;
+    rebuildCharOrbit();
+    // brief throb
+    const target = wormholeGroup.scale.x;
+    let throbT = 0;
+    const throb = () => {
+      throbT += 0.06;
+      const k = 1 + Math.sin(throbT * Math.PI) * 0.18;
+      wormholeGroup.scale.setScalar(target * k);
+      if (throbT < 1) requestAnimationFrame(throb);
+      else wormholeGroup.scale.setScalar(target);
+    };
+    throb();
+  });
+
+  // ─────────────────────────────────────────────────────
+  //   Page transitions: CTA → map ; back → landing
+  // ─────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────
+  //   INTRO hotspot → start boot+dissolve sequence
+  // ─────────────────────────────────────────────────────
+  document.getElementById('intro-hotspot').addEventListener('click', () => {
+    if (phase !== 'intro') return;
+    phase = 'entering';
+    entryT0 = performance.now();
+    document.getElementById('intro-overlay').style.opacity = '0';
+  });
+
+  document.getElementById('cta-initiate').addEventListener('click', () => {
+    document.body.classList.add('show-map');
+    // animate globe flying right + off-screen
+    globeGroup.userData.flying = true;
+    let flyT = 0;
+    const baseX = globeGroup.position.x;
+    const fly = () => {
+      flyT += 0.02;
+      const k = Math.min(1, flyT);
+      globeGroup.position.x = baseX + k * 4;
+      globeGroup.scale.setScalar((1 - 0.28) * (1 - k * 0.6));
+      if (flyT < 1) requestAnimationFrame(fly);
+    };
+    fly();
+  });
+  document.getElementById('back-btn').addEventListener('click', () => {
+    document.body.classList.remove('show-map');
+    let flyT = 0;
+    const startX = globeGroup.position.x;
+    const targetX = (globeGroup.userData.targetPos?.x ?? 0);
+    const fly = () => {
+      flyT += 0.02;
+      const k = Math.min(1, flyT);
+      globeGroup.position.x = startX + (targetX - startX) * k;
+      const s = (1 - 0.28) * (0.4 + 0.6 * k);
+      globeGroup.scale.setScalar(s);
+      if (flyT < 1) requestAnimationFrame(fly);
+    };
+    fly();
+  });
+</script>
+
+</body>
+</html>

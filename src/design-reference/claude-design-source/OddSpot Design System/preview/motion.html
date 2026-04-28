@@ -2,47 +2,99 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Motion tokens</title>
-<link rel="stylesheet" href="../colors_and_type.css">
+<title>Motion easings · 4 themes</title>
+<link rel="stylesheet" href="../themes.css">
 <style>
-  html, body { margin: 0; padding: 0; background: var(--background); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    color: var(--foreground);
-    padding: 20px;
-    box-sizing: border-box;
+    background: var(--bg-deep);
+    color: var(--fg);
+    padding: 28px;
     font-family: var(--font-brand);
-    display: grid;
-    gap: 10px;
   }
+
+  .header { margin-bottom: 22px; }
+  .header h1 {
+    font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+    margin: 0 0 6px; font-weight: 700; color: var(--fg);
+  }
+  .header p {
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); margin: 0; line-height: 1.6;
+  }
+  .header .legend {
+    margin-top: 10px; font-size: 10px; color: var(--muted);
+    letter-spacing: 0.04em; line-height: 1.7; text-transform: none;
+    max-width: 640px;
+  }
+  .header .legend b { color: var(--fg); font-weight: 700; }
+
+  .theme-block {
+    margin-bottom: 22px;
+    padding: 20px 22px 22px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+  }
+  .theme-label {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px;
+  }
+  .theme-name {
+    font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
+  }
+  .theme-rule { flex: 1; height: 1px; background: var(--line); }
+  .theme-meta {
+    font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .swatch {
+    display: inline-block; width: 10px; height: 10px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgb(var(--accent-rgb) / 0.6);
+    border-radius: 1px;
+  }
+
   .row {
     display: grid;
-    grid-template-columns: 120px 1fr auto;
+    grid-template-columns: 150px 1fr 110px;
     gap: 14px;
     align-items: center;
-    padding-bottom: 10px;
+    padding: 8px 0;
     border-bottom: 1px solid var(--line);
   }
   .row:last-child { border: 0; }
   .tag {
     font-size: 9px;
     letter-spacing: 0.22em;
-    color: var(--muted);
+    color: var(--fg);
     text-transform: uppercase;
+    font-weight: 700;
+  }
+  .tag .use {
+    display: block;
+    font-size: 8px; font-weight: 400;
+    color: var(--muted); letter-spacing: 0.08em;
+    margin-top: 3px; text-transform: none;
   }
   .track {
     height: 6px;
-    background: var(--panel-light);
+    background: var(--panel);
+    border: 1px solid var(--line);
     border-radius: 2px;
     position: relative;
     overflow: hidden;
   }
   .ball {
     position: absolute;
+    top: 0;
     width: 16px;
-    height: 6px;
-    border-radius: 2px;
+    height: 4px;
+    border-radius: 1px;
     background: var(--accent);
-    box-shadow: 0 0 12px var(--accent);
+    box-shadow: 0 0 10px rgb(var(--accent-rgb) / 0.7);
     animation-duration: 2s;
     animation-iteration-count: infinite;
     animation-direction: alternate;
@@ -50,16 +102,85 @@
   .e1 { animation-name: run; animation-timing-function: cubic-bezier(0.4,0,0.2,1); }
   .e2 { animation-name: run; animation-timing-function: cubic-bezier(0.32,0.72,0,1); }
   .e3 { animation-name: run; animation-timing-function: cubic-bezier(0.4,0,1,1); }
+  .e4 { animation-name: run; animation-timing-function: cubic-bezier(0.68,-0.55,0.27,1.55); }
   @keyframes run {
     from { left: 0; }
     to { left: calc(100% - 16px); }
   }
-  .spec { font-size: 9px; color: var(--accent); letter-spacing: 0.04em; }
+  .spec {
+    font-size: 9px; color: var(--accent);
+    letter-spacing: 0.04em;
+    font-family: var(--font-brand);
+    text-align: right;
+  }
 </style>
 </head>
 <body>
-  <div class="row"><span class="tag">ease-standard</span><div class="track"><div class="ball e1"></div></div><span class="spec">0.4, 0, 0.2, 1</span></div>
-  <div class="row"><span class="tag">ease-out</span><div class="track"><div class="ball e2"></div></div><span class="spec">0.32, 0.72, 0, 1</span></div>
-  <div class="row"><span class="tag">ease-in</span><div class="track"><div class="ball e3"></div></div><span class="spec">0.4, 0, 1, 1</span></div>
+  <div class="header">
+    <h1>Motion easings · 4 curves × 4 themes</h1>
+    <p>animation timing tokens</p>
+    <p class="legend">
+      動畫的「個性」由 easing curve 決定。<b>standard</b> 用於大部分轉場（sheet 升起、tab 切換）；
+      <b>out</b> 模擬慣性煞車，適合進場（pin 從地圖跳出）；
+      <b>in</b> 是加速消失，適合退場（卡片飛走）；
+      <b>spring</b> 帶 overshoot，用於慶祝感的 micro-interaction（按下收藏、解鎖）。
+    </p>
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="theme-block" data-theme="terminal">
+    <div class="theme-label">
+      <span class="swatch"></span>
+      <span class="theme-name">terminal</span>
+      <span class="theme-rule"></span>
+      <span class="theme-meta">gunmetal · mint</span>
+    </div>
+    <div class="row"><span class="tag">ease / standard<span class="use">sheet, tab, modal</span></span><div class="track"><div class="ball e1"></div></div><span class="spec">0.4, 0, 0.2, 1</span></div>
+    <div class="row"><span class="tag">ease / out<span class="use">enter, pin pop</span></span><div class="track"><div class="ball e2"></div></div><span class="spec">0.32, 0.72, 0, 1</span></div>
+    <div class="row"><span class="tag">ease / in<span class="use">exit, swipe away</span></span><div class="track"><div class="ball e3"></div></div><span class="spec">0.4, 0, 1, 1</span></div>
+    <div class="row"><span class="tag">ease / spring<span class="use">save, unlock</span></span><div class="track"><div class="ball e4"></div></div><span class="spec">overshoot</span></div>
+  </div>
+
+  <!-- BLUEPRINT -->
+  <div class="theme-block" data-theme="blueprint">
+    <div class="theme-label">
+      <span class="swatch"></span>
+      <span class="theme-name">blueprint</span>
+      <span class="theme-rule"></span>
+      <span class="theme-meta">slate · electric</span>
+    </div>
+    <div class="row"><span class="tag">ease / standard<span class="use">sheet, tab, modal</span></span><div class="track"><div class="ball e1"></div></div><span class="spec">0.4, 0, 0.2, 1</span></div>
+    <div class="row"><span class="tag">ease / out<span class="use">enter, pin pop</span></span><div class="track"><div class="ball e2"></div></div><span class="spec">0.32, 0.72, 0, 1</span></div>
+    <div class="row"><span class="tag">ease / in<span class="use">exit, swipe away</span></span><div class="track"><div class="ball e3"></div></div><span class="spec">0.4, 0, 1, 1</span></div>
+    <div class="row"><span class="tag">ease / spring<span class="use">save, unlock</span></span><div class="track"><div class="ball e4"></div></div><span class="spec">overshoot</span></div>
+  </div>
+
+  <!-- CAUTION -->
+  <div class="theme-block" data-theme="caution">
+    <div class="theme-label">
+      <span class="swatch"></span>
+      <span class="theme-name">caution</span>
+      <span class="theme-rule"></span>
+      <span class="theme-meta">warm · hazard</span>
+    </div>
+    <div class="row"><span class="tag">ease / standard<span class="use">sheet, tab, modal</span></span><div class="track"><div class="ball e1"></div></div><span class="spec">0.4, 0, 0.2, 1</span></div>
+    <div class="row"><span class="tag">ease / out<span class="use">enter, pin pop</span></span><div class="track"><div class="ball e2"></div></div><span class="spec">0.32, 0.72, 0, 1</span></div>
+    <div class="row"><span class="tag">ease / in<span class="use">exit, swipe away</span></span><div class="track"><div class="ball e3"></div></div><span class="spec">0.4, 0, 1, 1</span></div>
+    <div class="row"><span class="tag">ease / spring<span class="use">save, unlock</span></span><div class="track"><div class="ball e4"></div></div><span class="spec">overshoot</span></div>
+  </div>
+
+  <!-- MIDNIGHT -->
+  <div class="theme-block" data-theme="midnight">
+    <div class="theme-label">
+      <span class="swatch"></span>
+      <span class="theme-name">midnight</span>
+      <span class="theme-rule"></span>
+      <span class="theme-meta">monochrome · grey</span>
+    </div>
+    <div class="row"><span class="tag">ease / standard<span class="use">sheet, tab, modal</span></span><div class="track"><div class="ball e1"></div></div><span class="spec">0.4, 0, 0.2, 1</span></div>
+    <div class="row"><span class="tag">ease / out<span class="use">enter, pin pop</span></span><div class="track"><div class="ball e2"></div></div><span class="spec">0.32, 0.72, 0, 1</span></div>
+    <div class="row"><span class="tag">ease / in<span class="use">exit, swipe away</span></span><div class="track"><div class="ball e3"></div></div><span class="spec">0.4, 0, 1, 1</span></div>
+    <div class="row"><span class="tag">ease / spring<span class="use">save, unlock</span></span><div class="track"><div class="ball e4"></div></div><span class="spec">overshoot</span></div>
+  </div>
 </body>
 </html>

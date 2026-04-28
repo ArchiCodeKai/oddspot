@@ -4,120 +4,97 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { cursorState } from "@/lib/cursor-state";
 
-// 游標系統：
-//   - 自定義箭頭游標 SVG（深色模式：螢光綠；淺色模式：深灰黑）
-//   - Canvas 虛線軌跡：quadraticCurveTo 平滑貝茲曲線 + setLineDash
-//     → 靜態虛線，忠實跟隨游標路徑，無流動/延遲動畫
-//     → 深色模式：accent 色（螢光綠）；淺色模式：鐵灰色
+// v3 Acid 游標軌跡：
+//   - SVG <line> 線段陣列（不是 Canvas、不是 polyline）
+//   - 40-point ring buffer：FIFO，最舊的會被擠出
+//   - 線性 opacity 衰減（i/N）：新端最亮、舊端淡出
+//   - 1px stroke、無 gradient、無 glow、無 smoothing
+//   - 設計檔哲學："raw pixel path is more Acid"
 //   - 觸控設備完全跳過
+//
+// 同時維護 cursorState.trail 供 MapClickEffect 讀取（保持向後相容）
 
-const TRAIL_LIFE  = 650;   // ms：軌跡存活時間
-const DOT_SPACING = 10;    // px：路徑取樣點間距
-const DASH_W      = 9;     // px：每節虛線長度
-const GAP_W       = 5;     // px：虛線間距
-const LINE_W      = 2.4;   // px：線段寬度
-const ALPHA_PEAK  = 0.78;  // 軌跡峰值透明度
-const CURSOR_GAP  = 16;    // px：游標尖端附近不畫
+const TRAIL_LENGTH    = 40;   // ring buffer 大小
+const DOT_SPACING     = 10;   // px：路徑取樣點間距
+const STROKE_WIDTH    = 1;    // px：v3 規格 1px raw line
+const CURSOR_GAP      = 14;   // px：游標尖端附近不畫
+const IDLE_DRAIN_MS   = 120;  // 停止移動超過此時間後，每幀 drain 一個點
+const TRAIL_LIFE_MS   = 700;  // 給 cursorState.trail 用（MapClickEffect 仍依時間清理）
 
-// 淺色模式顏色（hardcoded）
-const LIGHT_TRAIL_RGB  = { r: 80,  g: 80,  b: 80  }; // 鐵灰色軌跡
-const LIGHT_CURSOR_STROKE = "#2a2a2a";                 // 深灰黑游標描邊
-const LIGHT_CURSOR_FILL   = "#f0f0f0";                 // 淺灰游標填色
+const LIGHT_TRAIL_RGB     = "80,80,80";
+const LIGHT_CURSOR_STROKE = "#2a2a2a";
+const LIGHT_CURSOR_FILL   = "#f0f0f0";
 
 export function MagneticCursor() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
+  const svgRef    = useRef<SVGSVGElement>(null);
+  const lineRefs  = useRef<SVGLineElement[]>([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (window.matchMedia("(pointer: coarse)").matches) return;
 
-    const canvas   = canvasRef.current;
     const cursorEl = cursorRef.current;
-    if (!canvas || !cursorEl) return;
+    if (!cursorEl) return;
 
-    const ctx = canvas.getContext("2d")!;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-    // 深色模式軌跡顏色：讀取 --accent（螢光綠）
-    const accentHex = getComputedStyle(document.documentElement)
-      .getPropertyValue("--accent").trim() || "#00e5cc";
-    const parseRGB = (h: string) => ({
-      r: parseInt(h.slice(1, 3), 16),
-      g: parseInt(h.slice(3, 5), 16),
-      b: parseInt(h.slice(5, 7), 16),
-    });
-    const darkTrailRGB = parseRGB(accentHex);
-
-    const resize = () => {
-      canvas.width  = window.innerWidth  * dpr;
-      canvas.height = window.innerHeight * dpr;
-      canvas.style.width  = window.innerWidth  + "px";
-      canvas.style.height = window.innerHeight + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-
-    // 全域強制隱藏 OS 游標（含 cursor:pointer 的子元素）
+    // 強制隱藏 OS 游標
     const hideCursorStyle = document.createElement("style");
     hideCursorStyle.textContent = "* { cursor: none !important; }";
     document.head.appendChild(hideCursorStyle);
 
     gsap.set(cursorEl, { x: -300, y: -300, opacity: 0 });
 
-    // 攜帶餘量演算法：lastDotPos → 均勻間距，不受速度影響
-    const lastDotPos = { x: -300, y: -300 };
+    // ─── Ring buffer：本地 40 點 ───────────────────────────────
+    const points: Array<{ x: number; y: number }> = [];
+    const lastDot = { x: -300, y: -300 };
     let firstMove = true;
+    let lastMoveTime = 0;
+
+    const pushPoint = (x: number, y: number, born: number, angle: number) => {
+      points.push({ x, y });
+      while (points.length > TRAIL_LENGTH) points.shift();
+      // 同步寫入共享 trail（MapClickEffect 用）
+      cursorState.trail.push({ x, y, born, angle });
+    };
 
     const onMove = (e: MouseEvent) => {
       const cx = e.clientX;
       const cy = e.clientY;
+      lastMoveTime = performance.now();
 
       cursorState.pos.x = cx;
       cursorState.pos.y = cy;
-
-      // 游標 SVG 即時跟隨（tip 對齊，偏移 1px）
       gsap.set(cursorEl, { x: cx - 1, y: cy - 1 });
 
       if (firstMove) {
         firstMove = false;
-        lastDotPos.x = cx;
-        lastDotPos.y = cy;
+        lastDot.x = cx;
+        lastDot.y = cy;
         gsap.to(cursorEl, { opacity: 1, duration: 0.15 });
         return;
       }
 
-      const dx   = cx - lastDotPos.x;
-      const dy   = cy - lastDotPos.y;
+      const dx = cx - lastDot.x;
+      const dy = cy - lastDot.y;
       const dist = Math.hypot(dx, dy);
-
-      if (dist > 1) {
-        cursorState.lastAngle = Math.atan2(dy, dx);
-      }
-
+      if (dist > 1) cursorState.lastAngle = Math.atan2(dy, dx);
       if (dist < DOT_SPACING) return;
 
       const angle = Math.atan2(dy, dx);
-      const now   = Date.now();
+      const now = Date.now();
 
       let d = DOT_SPACING;
-      let placedCount = 0;
+      let placed = 0;
       while (d <= dist) {
         const t = d / dist;
-        cursorState.trail.push({
-          x:     lastDotPos.x + dx * t,
-          y:     lastDotPos.y + dy * t,
-          born:  now,
-          angle,
-        });
+        pushPoint(lastDot.x + dx * t, lastDot.y + dy * t, now, angle);
         d += DOT_SPACING;
-        placedCount++;
+        placed++;
       }
-
-      if (placedCount > 0) {
+      if (placed > 0) {
         const lastD = d - DOT_SPACING;
-        lastDotPos.x = lastDotPos.x + (dx / dist) * lastD;
-        lastDotPos.y = lastDotPos.y + (dy / dist) * lastD;
+        lastDot.x += (dx / dist) * lastD;
+        lastDot.y += (dy / dist) * lastD;
       }
     };
 
@@ -127,67 +104,66 @@ export function MagneticCursor() {
       );
       gsap.to(cursorEl, { scale: isInteractive ? 1.25 : 1, duration: 0.16, ease: "power2.out" });
     };
-
     const onLeave = () => gsap.to(cursorEl, { opacity: 0, duration: 0.15 });
     const onEnter = () => gsap.to(cursorEl, { opacity: 1, duration: 0.15 });
 
-    // ─── Canvas RAF：平滑貝茲曲線虛線軌跡（靜態，無流動動畫）─────
-    let raf: number;
+    // ─── rAF：寫入每條 line 的 x1/y1/x2/y2/stroke-opacity ───────
+    let raf = 0;
     const draw = () => {
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-      const now = Date.now();
+      const now = performance.now();
+      const epoch = Date.now();
 
-      while (cursorState.trail.length && now - cursorState.trail[0].born > TRAIL_LIFE) {
+      // 清理過期 cursorState.trail（給 MapClickEffect 用，本地 ring buffer 不需要）
+      while (cursorState.trail.length && epoch - cursorState.trail[0].born > TRAIL_LIFE_MS) {
         cursorState.trail.shift();
       }
 
-      const visible = cursorState.trail.filter(
-        (d) => Math.hypot(d.x - cursorState.pos.x, d.y - cursorState.pos.y) >= CURSOR_GAP
-      );
+      // 停止移動超過閾值 → 每幀 drain 一個本地 ring buffer 點
+      if (now - lastMoveTime > IDLE_DRAIN_MS && points.length > 0) {
+        points.shift();
+      }
 
-      if (visible.length >= 2) {
-        // 依主題選擇軌跡顏色（每幀讀取，支援即時主題切換）
-        const isLight = document.documentElement.classList.contains("light");
-        const { r, g, b } = isLight ? LIGHT_TRAIL_RGB : darkTrailRGB;
+      // 主題色（每幀讀，支援即時切換）
+      const isLight = document.documentElement.classList.contains("light");
+      const accentRgb = isLight
+        ? LIGHT_TRAIL_RGB
+        : getComputedStyle(document.documentElement).getPropertyValue("--accent-rgb").trim() || "95,217,192";
 
-        // 平滑二次貝茲曲線（轉角不再生硬）
-        ctx.beginPath();
-        ctx.moveTo(visible[0].x, visible[0].y);
+      const cx = cursorState.pos.x;
+      const cy = cursorState.pos.y;
 
-        for (let i = 1; i < visible.length - 1; i++) {
-          const mx = (visible[i].x + visible[i + 1].x) / 2;
-          const my = (visible[i].y + visible[i + 1].y) / 2;
-          ctx.quadraticCurveTo(visible[i].x, visible[i].y, mx, my);
-        }
-        ctx.lineTo(visible[visible.length - 1].x, visible[visible.length - 1].y);
+      // 從新到舊掃 N-1 條線（i=0 連接最新兩點，i=TRAIL_LENGTH-2 連接最舊兩點）
+      for (let i = 0; i < TRAIL_LENGTH - 1; i++) {
+        const line = lineRefs.current[i];
+        if (!line) continue;
 
-        // 漸層：舊端淡入 → 峰值 → 近游標端微淡
-        const x0 = visible[0].x;
-        const y0 = visible[0].y;
-        const x1 = visible[visible.length - 1].x;
-        const y1 = visible[visible.length - 1].y;
-        const gradDist = Math.hypot(x1 - x0, y1 - y0);
-
-        let strokeStyle: string | CanvasGradient;
-        if (gradDist < 4) {
-          strokeStyle = `rgba(${r},${g},${b},${ALPHA_PEAK})`;
-        } else {
-          const grad = ctx.createLinearGradient(x0, y0, x1, y1);
-          grad.addColorStop(0.00, `rgba(${r},${g},${b},0.04)`);
-          grad.addColorStop(0.15, `rgba(${r},${g},${b},${ALPHA_PEAK})`);
-          grad.addColorStop(0.80, `rgba(${r},${g},${b},${ALPHA_PEAK})`);
-          grad.addColorStop(1.00, `rgba(${r},${g},${b},0.22)`);
-          strokeStyle = grad;
+        const newerIdx = points.length - 1 - i;
+        const olderIdx = newerIdx - 1;
+        if (newerIdx < 0 || olderIdx < 0) {
+          // 軌跡不夠長，這條 line 隱藏
+          line.setAttribute("stroke-opacity", "0");
+          continue;
         }
 
-        // 靜態虛線：lineDashOffset 固定為 0，不做流動動畫
-        ctx.setLineDash([DASH_W, GAP_W]);
-        ctx.lineDashOffset = 0;
-        ctx.lineWidth      = LINE_W;
-        ctx.lineCap        = "round";
-        ctx.strokeStyle    = strokeStyle;
-        ctx.stroke();
-        ctx.setLineDash([]);
+        const p0 = points[newerIdx];
+        const p1 = points[olderIdx];
+
+        // 游標尖端附近的點不畫
+        const distToCursor = Math.hypot(p0.x - cx, p0.y - cy);
+        if (distToCursor < CURSOR_GAP) {
+          line.setAttribute("stroke-opacity", "0");
+          continue;
+        }
+
+        // 線性 opacity：i=0（最新）≈ 1，i=N-2（最舊）≈ 0
+        const opacity = 1 - i / (TRAIL_LENGTH - 1);
+
+        line.setAttribute("x1", String(p0.x));
+        line.setAttribute("y1", String(p0.y));
+        line.setAttribute("x2", String(p1.x));
+        line.setAttribute("y2", String(p1.y));
+        line.setAttribute("stroke", `rgba(${accentRgb.replace(/\s+/g, ",")},${opacity})`);
+        line.setAttribute("stroke-opacity", "1");
       }
 
       raf = requestAnimationFrame(draw);
@@ -198,7 +174,6 @@ export function MagneticCursor() {
     document.addEventListener("mouseover",  onOver, { passive: true });
     document.addEventListener("mouseleave", onLeave);
     document.addEventListener("mouseenter", onEnter);
-    window.addEventListener("resize", resize);
 
     return () => {
       cancelAnimationFrame(raf);
@@ -207,13 +182,12 @@ export function MagneticCursor() {
       document.removeEventListener("mouseover",  onOver);
       document.removeEventListener("mouseleave", onLeave);
       document.removeEventListener("mouseenter", onEnter);
-      window.removeEventListener("resize", resize);
     };
   }, []);
 
   return (
     <>
-      {/* 游標主題色：深色模式用 --accent，淺色模式用深灰黑 */}
+      {/* 游標主題色 */}
       <style>{`
         .mc-cursor-path {
           stroke: var(--accent);
@@ -231,18 +205,36 @@ export function MagneticCursor() {
         }
       `}</style>
 
-      {/* Canvas：平滑貝茲虛線軌跡 */}
-      <canvas
-        ref={canvasRef}
+      {/* SVG ring buffer 軌跡 — N-1 條 <line>，每條獨立 stroke-opacity */}
+      <svg
+        ref={svgRef}
         aria-hidden="true"
         style={{
           position:      "fixed",
           top:           0,
           left:          0,
+          width:         "100vw",
+          height:        "100vh",
           pointerEvents: "none",
           zIndex:        99997,
         }}
-      />
+      >
+        {Array.from({ length: TRAIL_LENGTH - 1 }).map((_, i) => (
+          <line
+            key={i}
+            ref={(el) => {
+              if (el) lineRefs.current[i] = el;
+            }}
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="0"
+            strokeWidth={STROKE_WIDTH}
+            strokeLinecap="square"
+            strokeOpacity="0"
+          />
+        ))}
+      </svg>
 
       {/* 自定義箭頭游標 */}
       <div

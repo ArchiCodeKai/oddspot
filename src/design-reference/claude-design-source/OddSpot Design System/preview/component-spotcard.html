@@ -1,93 +1,357 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
 <meta charset="utf-8">
-<title>Spot card</title>
-<link rel="stylesheet" href="../colors_and_type.css">
+<title>Spot card · 4 themes</title>
+<link rel="stylesheet" href="../themes.css">
 <style>
-  html, body { margin: 0; padding: 0; background: var(--background); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    color: var(--foreground);
-    padding: 20px;
-    box-sizing: border-box;
+    background: var(--bg-deep);
+    color: var(--fg);
+    padding: 28px;
     font-family: var(--font-brand);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  }
+
+  .header { margin-bottom: 22px; }
+  .header h1 {
+    font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+    margin: 0 0 6px; font-weight: 700; color: var(--fg);
+  }
+  .header p {
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); margin: 0; line-height: 1.6;
+  }
+  .header .legend {
+    margin-top: 10px; font-size: 10px; color: var(--muted);
+    letter-spacing: 0.04em; line-height: 1.7; text-transform: none;
+    max-width: 700px;
+  }
+  .header .legend b { color: var(--fg); font-weight: 700; }
+
+  .theme-block {
+    margin-bottom: 22px;
+    padding: 24px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+  }
+  .theme-label {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 18px;
+  }
+  .theme-name {
+    font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
+  }
+  .theme-rule { flex: 1; height: 1px; background: var(--line); }
+  .theme-meta {
+    font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .theme-swatch {
+    display: inline-block; width: 10px; height: 10px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgb(var(--accent-rgb) / 0.6);
+    border-radius: 1px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(260px, 1fr));
+    gap: 18px;
+    align-items: start;
   }
   .card {
-    width: 280px;
-    border-radius: 24px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     background: var(--panel);
-    border: 1px solid var(--line);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 32px rgba(0,229,204,0.06);
+    border: 1px solid var(--line-strong);
+    box-shadow:
+      0 16px 36px rgb(0 0 0 / 0.45),
+      0 0 22px rgb(var(--accent-rgb) / 0.06);
   }
+
+  /* hero — placeholder grid w/ small noise */
   .hero {
-    height: 180px;
-    background: linear-gradient(135deg, #4a3828 0%, #2a1f15 100%);
+    height: 160px;
     position: relative;
+    background:
+      linear-gradient(135deg, var(--panel-2) 0%, var(--bg) 100%);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgb(var(--accent-rgb) / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--accent-rgb) / 0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.6;
   }
   .hero::after {
     content: "";
-    position: absolute; inset: 0;
-    background: linear-gradient(to bottom, transparent 45%, var(--panel) 100%);
+    position: absolute; left: 0; right: 0; bottom: 0; height: 60%;
+    background: linear-gradient(to bottom, transparent 0%, var(--panel) 100%);
   }
-  .badge {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    font-size: 9px;
-    text-transform: uppercase;
+  .hero-id {
+    position: absolute; left: 12px; bottom: 50%;
+    transform: translateY(50%);
+    font-family: var(--font-brand);
+    font-size: 28px; font-weight: 700;
     letter-spacing: 0.18em;
-    padding: 4px 8px;
-    background: rgba(249,115,22,0.15);
-    color: #f97316;
-    border: 1px solid rgba(249,115,22,0.35);
-    border-radius: 2px;
+    color: rgb(var(--accent-rgb) / 0.45);
     z-index: 1;
   }
-  .body {
-    padding: 14px 16px 16px;
-    margin-top: -24px;
-    position: relative;
-    z-index: 1;
-  }
-  .name {
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: 18px;
+
+  /* glyph badge — uses category code, not color */
+  .glyph-badge {
+    position: absolute;
+    top: 12px; left: 12px;
+    font-family: var(--font-brand);
+    font-size: 9px;
     font-weight: 700;
-    line-height: 1.2;
+    letter-spacing: 0.16em;
+    padding: 5px 8px;
+    background: var(--panel-glass);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-xs);
+    z-index: 2;
+    box-shadow: 0 0 10px rgb(var(--accent-rgb) / 0.3);
+  }
+  .save-pin {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--panel-glass);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--line-strong);
+    color: var(--fg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2;
+    cursor: pointer;
+  }
+  .save-pin.is-saved { color: var(--accent); border-color: var(--accent); }
+
+  /* status row — overlaid bottom of hero */
+  .status-row {
+    position: absolute;
+    left: 12px; right: 12px; bottom: 12px;
+    display: flex; gap: 6px; flex-wrap: wrap;
+    z-index: 2;
+  }
+  .pill {
+    font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
+    padding: 3px 7px;
+    background: rgb(0 0 0 / 0.42);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--fg);
+    border: 1px solid rgb(255 255 255 / 0.15);
+    border-radius: var(--radius-xs);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .pill .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+  }
+
+  /* body */
+  .body { padding: 14px 16px 16px; }
+  .name {
+    font-family: var(--font-content);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--fg);
+  }
+  .name-en {
+    font-family: var(--font-brand);
+    font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
   }
   .meta {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    display: flex; gap: 12px;
     font-size: 10px;
+    letter-spacing: 0.04em;
     color: var(--muted);
-    letter-spacing: 0.08em;
-    margin-top: 6px;
-    display: flex;
-    gap: 10px;
+    font-family: var(--font-brand);
   }
-  .status-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 6px var(--accent);
-    margin-right: 5px;
-    vertical-align: middle;
+  .meta b {
+    color: var(--accent);
+    font-weight: 400;
   }
 </style>
 </head>
 <body>
-  <div class="card">
-    <div class="hero">
-      <span class="badge">weird-temple</span>
+  <div class="header">
+    <h1>Spot card · v2 · 3 states × 4 themes</h1>
+    <p>active · uncertain · disappeared</p>
+    <p class="legend">
+      重做版本：去除舊的彩色 badge，改用 <b>雙字母代號 (TM/AB/OS…)</b> 與 status pill。
+      封面區用 grid placeholder 取代假漸層，避免「咖啡色塊感」。
+      狀態色以小圓點呈現，不搶 accent。每個主題只換氣場色，骨架完全相同。
+    </p>
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="theme-block" data-theme="terminal">
+    <div class="theme-label">
+      <span class="theme-swatch"></span><span class="theme-name">terminal</span>
+      <span class="theme-rule"></span><span class="theme-meta">gunmetal · mint</span>
     </div>
-    <div class="body">
-      <div class="name">十八王公廟 · 黑狗分身</div>
-      <div class="meta"><span><span class="status-dot"></span>可探索</span><span>2.4 KM</span><span>25.28, 121.57</span></div>
+    <div class="grid">
+      <div class="card">
+        <div class="hero">
+          <span class="hero-id">S001</span>
+          <div class="glyph-badge">TM</div>
+          <div class="save-pin is-saved" aria-label="saved">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+          </div>
+          <div class="status-row">
+            <span class="pill"><span class="dot" style="background: var(--status-active);"></span>存在</span>
+            <span class="pill">輕鬆</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="name">十八王公廟 · 黑狗分身</div>
+          <div class="name-en">temple of black dog</div>
+          <div class="meta"><span><b>2.4 km</b></span><span>odd <b>72</b></span><span>visits <b>224</b></span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hero">
+          <span class="hero-id">S002</span>
+          <div class="glyph-badge">AB</div>
+          <div class="save-pin" aria-label="save">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+          </div>
+          <div class="status-row">
+            <span class="pill"><span class="dot" style="background: var(--status-uncertain);"></span>存疑</span>
+            <span class="pill">中度</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="name">熱海大旅社</div>
+          <div class="name-en">atami grand hotel</div>
+          <div class="meta"><span><b>1.2 km</b></span><span>odd <b>78</b></span><span>visits <b>142</b></span></div>
+        </div>
+      </div>
+
+      <div class="card" style="opacity: 0.78;">
+        <div class="hero">
+          <span class="hero-id">S005</span>
+          <div class="glyph-badge">AB</div>
+          <div class="save-pin" aria-label="save">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+          </div>
+          <div class="status-row">
+            <span class="pill"><span class="dot" style="background: var(--status-disappeared);"></span>消失</span>
+            <span class="pill">2024 拆除</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="name">廢墟卡拉 OK</div>
+          <div class="name-en">ruined karaoke</div>
+          <div class="meta"><span><b>8.4 km</b></span><span>odd <b>84</b></span><span>visits <b>67</b></span></div>
+        </div>
+      </div>
     </div>
   </div>
+
+  <!-- BLUEPRINT -->
+  <div class="theme-block" data-theme="blueprint">
+    <div class="theme-label">
+      <span class="theme-swatch"></span><span class="theme-name">blueprint</span>
+      <span class="theme-rule"></span><span class="theme-meta">slate · electric</span>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="hero"><span class="hero-id">S001</span><div class="glyph-badge">TM</div><div class="save-pin is-saved"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg></div>
+          <div class="status-row"><span class="pill"><span class="dot" style="background: var(--status-active);"></span>存在</span><span class="pill">輕鬆</span></div></div>
+        <div class="body"><div class="name">十八王公廟 · 黑狗分身</div><div class="name-en">temple of black dog</div>
+          <div class="meta"><span><b>2.4 km</b></span><span>odd <b>72</b></span><span>visits <b>224</b></span></div></div>
+      </div>
+      <div class="card">
+        <div class="hero"><span class="hero-id">S002</span><div class="glyph-badge">AB</div><div class="save-pin"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg></div>
+          <div class="status-row"><span class="pill"><span class="dot" style="background: var(--status-uncertain);"></span>存疑</span><span class="pill">中度</span></div></div>
+        <div class="body"><div class="name">熱海大旅社</div><div class="name-en">atami grand hotel</div>
+          <div class="meta"><span><b>1.2 km</b></span><span>odd <b>78</b></span><span>visits <b>142</b></span></div></div>
+      </div>
+      <div class="card" style="opacity: 0.78;">
+        <div class="hero"><span class="hero-id">S005</span><div class="glyph-badge">AB</div><div class="save-pin"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg></div>
+          <div class="status-row"><span class="pill"><span class="dot" style="background: var(--status-disappeared);"></span>消失</span><span class="pill">2024 拆除</span></div></div>
+        <div class="body"><div class="name">廢墟卡拉 OK</div><div class="name-en">ruined karaoke</div>
+          <div class="meta"><span><b>8.4 km</b></span><span>odd <b>84</b></span><span>visits <b>67</b></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAUTION -->
+  <div class="theme-block" data-theme="caution">
+    <div class="theme-label">
+      <span class="theme-swatch"></span><span class="theme-name">caution</span>
+      <span class="theme-rule"></span><span class="theme-meta">warm · hazard</span>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="hero"><span class="hero-id">S001</span><div class="glyph-badge">TM</div><div class="save-pin is-saved"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg></div>
+          <div class="status-row"><span class="pill"><span class="dot" style="background: var(--status-active);"></span>存在</span><span class="pill">輕鬆</span></div></div>
+        <div class="body"><div class="name">十八王公廟 · 黑狗分身</div><div class="name-en">temple of black dog</div>
+          <div class="meta"><span><b>2.4 km</b></span><span>odd <b>72</b></span><span>visits <b>224</b></span></div></div>
+      </div>
+      <div class="card">
+        <div class="hero"><span class="hero-id">S002</span><div class="glyph-badge">AB</div><div class="save-pin"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg></div>
+          <div class="status-row"><span class="pill"><span class="dot" style="background: var(--status-uncertain);"></span>存疑</span><span class="pill">中度</span></div></div>
+        <div class="body"><div class="name">熱海大旅社</div><div class="name-en">atami grand hotel</div>
+          <div class="meta"><span><b>1.2 km</b></span><span>odd <b>78</b></span><span>visits <b>142</b></span></div></div>
+      </div>
+      <div class="card" style="opacity: 0.78;">
+        <div class="hero"><span class="hero-id">S005</span><div class="glyph-badge">AB</div><div class="save-pin"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg></div>
+          <div class="status-row"><span class="pill"><span class="dot" style="background: var(--status-disappeared);"></span>消失</span><span class="pill">2024 拆除</span></div></div>
+        <div class="body"><div class="name">廢墟卡拉 OK</div><div class="name-en">ruined karaoke</div>
+          <div class="meta"><span><b>8.4 km</b></span><span>odd <b>84</b></span><span>visits <b>67</b></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDNIGHT -->
+  <div class="theme-block" data-theme="midnight">
+    <div class="theme-label">
+      <span class="theme-swatch"></span><span class="theme-name">midnight</span>
+      <span class="theme-rule"></span><span class="theme-meta">monochrome · grey</span>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="hero"><span class="hero-id">S001</span><div class="glyph-badge">TM</div><div class="save-pin is-saved"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg></div>
+          <div class="status-row"><span class="pill"><span class="dot" style="background: var(--status-active);"></span>存在</span><span class="pill">輕鬆</span></div></div>
+        <div class="body"><div class="name">十八王公廟 · 黑狗分身</div><div class="name-en">temple of black dog</div>
+          <div class="meta"><span><b>2.4 km</b></span><span>odd <b>72</b></span><span>visits <b>224</b></span></div></div>
+      </div>
+      <div class="card">
+        <div class="hero"><span class="hero-id">S002</span><div class="glyph-badge">AB</div><div class="save-pin"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg></div>
+          <div class="status-row"><span class="pill"><span class="dot" style="background: var(--status-uncertain);"></span>存疑</span><span class="pill">中度</span></div></div>
+        <div class="body"><div class="name">熱海大旅社</div><div class="name-en">atami grand hotel</div>
+          <div class="meta"><span><b>1.2 km</b></span><span>odd <b>78</b></span><span>visits <b>142</b></span></div></div>
+      </div>
+      <div class="card" style="opacity: 0.78;">
+        <div class="hero"><span class="hero-id">S005</span><div class="glyph-badge">AB</div><div class="save-pin"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg></div>
+          <div class="status-row"><span class="pill"><span class="dot" style="background: var(--status-disappeared);"></span>消失</span><span class="pill">2024 拆除</span></div></div>
+        <div class="body"><div class="name">廢墟卡拉 OK</div><div class="name-en">ruined karaoke</div>
+          <div class="meta"><span><b>8.4 km</b></span><span>odd <b>84</b></span><span>visits <b>67</b></span></div></div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

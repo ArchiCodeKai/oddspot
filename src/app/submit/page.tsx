@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/contexts/SessionContext";
 import { getCategoryOptions, getDifficultyLabel } from "@/lib/i18n/spotMeta";
 
 export default function SubmitPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { user } = useSession();
+  // 跟 next-auth 的回傳形態對齊（避免下游邏輯重寫）
+  const session = user ? { user } : null;
+  const status = "authenticated"; // SessionContext 沒有 loading 態（layout 已 SSR session）
   const tMeta = useTranslations("spotMeta");
 
   const [form, setForm] = useState({
@@ -120,13 +123,13 @@ export default function SubmitPage() {
               setSuccess(false);
               setForm({ name: "", nameEn: "", description: "", category: "", lat: "", lng: "", address: "", difficulty: "easy", recommendedTime: "", legend: "", imageUrl: "" });
             }}
-            className="px-4 py-2 text-sm border border-zinc-700 text-zinc-300 rounded-lg"
+            className="px-4 py-2 text-sm border border-zinc-700 text-zinc-300 rounded-xs"
           >
             繼續投稿
           </button>
           <button
             onClick={() => router.push("/map")}
-            className="px-4 py-2 text-sm bg-white text-zinc-900 rounded-lg font-medium"
+            className="px-4 py-2 text-sm bg-white text-zinc-900 rounded-xs font-medium"
           >
             回到地圖
           </button>
@@ -160,7 +163,7 @@ export default function SubmitPage() {
               value={form.name}
               onChange={handleChange}
               placeholder="例：萬華地下神秘廟宇"
-              className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
               required
             />
           </div>
@@ -172,7 +175,7 @@ export default function SubmitPage() {
               value={form.nameEn}
               onChange={handleChange}
               placeholder="e.g. Wanhua Underground Temple"
-              className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
             />
           </div>
 
@@ -182,7 +185,7 @@ export default function SubmitPage() {
               name="category"
               value={form.category}
               onChange={handleChange}
-              className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-600"
+              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-600"
               required
             >
               <option value="">選擇分類</option>
@@ -202,7 +205,7 @@ export default function SubmitPage() {
                 value={form.lat}
                 onChange={handleChange}
                 placeholder="緯度（例：25.0478）"
-                className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+                className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
                 required
               />
               <input
@@ -210,7 +213,7 @@ export default function SubmitPage() {
                 value={form.lng}
                 onChange={handleChange}
                 placeholder="經度（例：121.5319）"
-                className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+                className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
                 required
               />
             </div>
@@ -226,7 +229,7 @@ export default function SubmitPage() {
               value={form.address}
               onChange={handleChange}
               placeholder="例：台北市萬華區某某路123號"
-              className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
             />
           </div>
 
@@ -236,7 +239,7 @@ export default function SubmitPage() {
               name="difficulty"
               value={form.difficulty}
               onChange={handleChange}
-              className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-600"
+              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-600"
             >
               {difficultyOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -254,7 +257,7 @@ export default function SubmitPage() {
               onChange={handleChange}
               placeholder="描述這個地方有什麼特別的..."
               rows={3}
-              className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 resize-none"
+              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 resize-none"
             />
           </div>
 
@@ -266,7 +269,7 @@ export default function SubmitPage() {
               onChange={handleChange}
               placeholder="這個地方有什麼奇怪的故事或傳說嗎？"
               rows={2}
-              className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 resize-none"
+              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 resize-none"
             />
           </div>
 
@@ -277,7 +280,7 @@ export default function SubmitPage() {
               value={form.recommendedTime}
               onChange={handleChange}
               placeholder="例：深夜、日落時分、平日下午"
-              className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
             />
           </div>
 
@@ -288,7 +291,7 @@ export default function SubmitPage() {
               value={form.imageUrl}
               onChange={handleChange}
               placeholder="https://..."
-              className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
             />
           </div>
 
@@ -299,7 +302,7 @@ export default function SubmitPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 bg-white text-zinc-900 rounded-lg font-medium text-sm disabled:opacity-50 mt-1"
+            className="w-full py-3 bg-white text-zinc-900 rounded-xs font-medium text-sm disabled:opacity-50 mt-1"
           >
             {submitting ? "送出中..." : "送出審核"}
           </button>

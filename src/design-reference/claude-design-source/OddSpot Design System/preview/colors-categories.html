@@ -1,94 +1,286 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
 <meta charset="utf-8">
-<title>Category colors</title>
-<link rel="stylesheet" href="../colors_and_type.css">
+<title>Category system · deprecated → v2</title>
+<link rel="stylesheet" href="../themes.css">
 <style>
-  html, body { margin: 0; padding: 0; background: var(--background); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
+    background: var(--bg-deep);
+    color: var(--fg);
+    padding: 28px;
     font-family: var(--font-brand);
-    color: var(--foreground);
-    padding: 20px;
-    box-sizing: border-box;
   }
-  .grid {
+
+  .header { margin-bottom: 22px; }
+  .header h1 {
+    font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+    margin: 0 0 6px; font-weight: 700; color: var(--fg);
+  }
+  .header p {
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); margin: 0; line-height: 1.6;
+  }
+  .header .legend {
+    margin-top: 10px; font-size: 10px; color: var(--muted);
+    letter-spacing: 0.04em; line-height: 1.7; text-transform: none;
+    max-width: 700px;
+  }
+  .header .legend b { color: var(--fg); font-weight: 700; }
+
+  /* ── Deprecated banner ───────────────────────────── */
+  .deprecated-block {
+    margin-bottom: 26px;
+    padding: 22px 24px;
+    background: rgb(255 80 80 / 0.06);
+    border: 1px solid rgb(255 80 80 / 0.4);
+    border-radius: var(--radius-md);
+    position: relative;
+  }
+  .deprecated-banner {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px;
+  }
+  .deprecated-banner .stamp {
+    font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: #ff7777; font-weight: 700;
+    padding: 4px 9px;
+    border: 1px solid #ff7777;
+    border-radius: var(--radius-xs);
+  }
+  .deprecated-banner .reason {
+    font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .old-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 8px;
+    opacity: 0.45;
+    pointer-events: none;
+    filter: saturate(0.7);
   }
-  .chip {
-    border-radius: 2px;
+  .old-chip {
+    border-radius: var(--radius-xs);
     padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    display: flex; align-items: center; gap: 10px;
     border: 1px solid;
     font-size: 11px;
+    position: relative;
   }
-  .chip .dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
+  .old-chip::after {
+    content: ""; position: absolute; left: 6px; right: 6px; top: 50%;
+    height: 1px; background: currentColor; opacity: 0.6;
+  }
+  .old-chip .dot {
+    width: 14px; height: 14px; border-radius: 50%;
     border: 2px solid rgba(255,255,255,0.7);
     flex-shrink: 0;
   }
-  .chip .label {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
+  .old-chip .label {
+    display: flex; flex-direction: column; gap: 2px; min-width: 0;
   }
-  .chip .zh {
+  .old-chip .zh {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.04em;
+  }
+  .old-chip .hex {
+    font-size: 9px; letter-spacing: 0.08em; opacity: 0.85;
+  }
+
+  /* ── New v2: 4 themes × glyph chips ──────────────── */
+  .theme-block {
+    margin-bottom: 22px;
+    padding: 22px 24px 24px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+  }
+  .theme-label {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .theme-name {
+    font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
+  }
+  .theme-rule { flex: 1; height: 1px; background: var(--line); }
+  .theme-meta {
+    font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .swatch {
+    display: inline-block; width: 10px; height: 10px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgb(var(--accent-rgb) / 0.6);
+    border-radius: 1px;
+  }
+
+  .new-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .glyph-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px 10px 12px;
+    background: var(--panel);
+    border: 1px solid rgb(var(--accent-rgb) / 0.18);
+    border-radius: var(--radius-xs);
+    color: var(--fg);
+  }
+  .glyph-chip .glyph {
+    font-family: var(--font-brand);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    padding: 4px 6px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 1px;
+    flex-shrink: 0;
+  }
+  .glyph-chip .label {
+    display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  }
+  .glyph-chip .zh {
     font-family: 'Noto Sans TC', sans-serif;
     font-size: 11px;
-    font-weight: 500;
+    color: var(--fg);
     letter-spacing: 0.04em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
-  .chip .hex {
+  .glyph-chip .en {
     font-size: 9px;
-    letter-spacing: 0.08em;
-    opacity: 0.85;
+    color: var(--muted);
+    letter-spacing: 0.06em;
   }
 </style>
 </head>
 <body>
-  <div class="grid">
-    <div class="chip" style="background:#f9731618; border-color:#f9731640; color:#f97316;">
-      <span class="dot" style="background:#f97316;"></span>
-      <span class="label"><span class="zh">詭異廟宇</span><span class="hex">#F97316</span></span>
+
+  <div class="header">
+    <h1>Category system · v1 deprecated → v2 glyph</h1>
+    <p>分類辨識：從八彩 → 雙字母代號</p>
+    <p class="legend">
+      v1（八彩分類色）已廢棄。問題：八個高飽和色互搶視覺、與 status 色衝突、深色背景下對比不一致。<br>
+      v2 改用 <b>單色 + 兩字母代號</b>（TM/AB/GO…），代號跟 map-pin 共用同一套，整個系統視覺收斂到單一 accent。
+      參見 <b>Components — filter chips</b>。
+    </p>
+  </div>
+
+  <!-- DEPRECATED v1 -->
+  <div class="deprecated-block">
+    <div class="deprecated-banner">
+      <span class="stamp">DEPRECATED · v1</span>
+      <span class="reason">colors clash · low contrast on dark · do not use</span>
     </div>
-    <div class="chip" style="background:#6b728018; border-color:#6b728040; color:#9ca3af;">
-      <span class="dot" style="background:#6b7280;"></span>
-      <span class="label"><span class="zh">廢棄場所</span><span class="hex">#6B7280</span></span>
-    </div>
-    <div class="chip" style="background:#3b82f618; border-color:#3b82f640; color:#3b82f6;">
-      <span class="dot" style="background:#3b82f6;"></span>
-      <span class="label"><span class="zh">巨型物體</span><span class="hex">#3B82F6</span></span>
-    </div>
-    <div class="chip" style="background:#ec489918; border-color:#ec489940; color:#ec4899;">
-      <span class="dot" style="background:#ec4899;"></span>
-      <span class="label"><span class="zh">俗豔裝置</span><span class="hex">#EC4899</span></span>
-    </div>
-    <div class="chip" style="background:#14b8a618; border-color:#14b8a640; color:#14b8a6;">
-      <span class="dot" style="background:#14b8a6;"></span>
-      <span class="label"><span class="zh">邊緣建築</span><span class="hex">#14B8A6</span></span>
-    </div>
-    <div class="chip" style="background:#8b5cf618; border-color:#8b5cf640; color:#8b5cf6;">
-      <span class="dot" style="background:#8b5cf6;"></span>
-      <span class="label"><span class="zh">都市傳說</span><span class="hex">#8B5CF6</span></span>
-    </div>
-    <div class="chip" style="background:#22c55e18; border-color:#22c55e40; color:#22c55e;">
-      <span class="dot" style="background:#22c55e;"></span>
-      <span class="label"><span class="zh">荒謬景觀</span><span class="hex">#22C55E</span></span>
-    </div>
-    <div class="chip" style="background:#eab30818; border-color:#eab30840; color:#eab308;">
-      <span class="dot" style="background:#eab308;"></span>
-      <span class="label"><span class="zh">奇異店面</span><span class="hex">#EAB308</span></span>
+    <div class="old-grid">
+      <div class="old-chip" style="background:#f9731618; border-color:#f9731640; color:#f97316;">
+        <span class="dot" style="background:#f97316;"></span>
+        <span class="label"><span class="zh">詭異廟宇</span><span class="hex">#F97316</span></span>
+      </div>
+      <div class="old-chip" style="background:#6b728018; border-color:#6b728040; color:#9ca3af;">
+        <span class="dot" style="background:#6b7280;"></span>
+        <span class="label"><span class="zh">廢棄場所</span><span class="hex">#6B7280</span></span>
+      </div>
+      <div class="old-chip" style="background:#3b82f618; border-color:#3b82f640; color:#3b82f6;">
+        <span class="dot" style="background:#3b82f6;"></span>
+        <span class="label"><span class="zh">巨型物體</span><span class="hex">#3B82F6</span></span>
+      </div>
+      <div class="old-chip" style="background:#ec489918; border-color:#ec489940; color:#ec4899;">
+        <span class="dot" style="background:#ec4899;"></span>
+        <span class="label"><span class="zh">俗豔裝置</span><span class="hex">#EC4899</span></span>
+      </div>
+      <div class="old-chip" style="background:#14b8a618; border-color:#14b8a640; color:#14b8a6;">
+        <span class="dot" style="background:#14b8a6;"></span>
+        <span class="label"><span class="zh">邊緣建築</span><span class="hex">#14B8A6</span></span>
+      </div>
+      <div class="old-chip" style="background:#8b5cf618; border-color:#8b5cf640; color:#8b5cf6;">
+        <span class="dot" style="background:#8b5cf6;"></span>
+        <span class="label"><span class="zh">都市傳說</span><span class="hex">#8B5CF6</span></span>
+      </div>
+      <div class="old-chip" style="background:#22c55e18; border-color:#22c55e40; color:#22c55e;">
+        <span class="dot" style="background:#22c55e;"></span>
+        <span class="label"><span class="zh">荒謬景觀</span><span class="hex">#22C55E</span></span>
+      </div>
+      <div class="old-chip" style="background:#eab30818; border-color:#eab30840; color:#eab308;">
+        <span class="dot" style="background:#eab308;"></span>
+        <span class="label"><span class="zh">奇異店面</span><span class="hex">#EAB308</span></span>
+      </div>
     </div>
   </div>
+
+  <!-- NEW v2: 4 themes -->
+  <div class="theme-block" data-theme="terminal">
+    <div class="theme-label">
+      <span class="swatch"></span><span class="theme-name">terminal</span>
+      <span class="theme-rule"></span><span class="theme-meta">v2 · glyph + accent</span>
+    </div>
+    <div class="new-grid">
+      <div class="glyph-chip"><span class="glyph">TM</span><span class="label"><span class="zh">詭異廟宇</span><span class="en">temple</span></span></div>
+      <div class="glyph-chip"><span class="glyph">AB</span><span class="label"><span class="zh">廢棄場所</span><span class="en">abandoned</span></span></div>
+      <div class="glyph-chip"><span class="glyph">GO</span><span class="label"><span class="zh">巨型物體</span><span class="en">giant object</span></span></div>
+      <div class="glyph-chip"><span class="glyph">KT</span><span class="label"><span class="zh">俗豔裝置</span><span class="en">kitsch</span></span></div>
+      <div class="glyph-chip"><span class="glyph">MA</span><span class="label"><span class="zh">邊緣建築</span><span class="en">marginal arch.</span></span></div>
+      <div class="glyph-chip"><span class="glyph">UL</span><span class="label"><span class="zh">都市傳說</span><span class="en">urban legend</span></span></div>
+      <div class="glyph-chip"><span class="glyph">AL</span><span class="label"><span class="zh">荒謬景觀</span><span class="en">absurd landscape</span></span></div>
+      <div class="glyph-chip"><span class="glyph">OS</span><span class="label"><span class="zh">奇異店面</span><span class="en">odd shopfront</span></span></div>
+    </div>
+  </div>
+
+  <div class="theme-block" data-theme="blueprint">
+    <div class="theme-label">
+      <span class="swatch"></span><span class="theme-name">blueprint</span>
+      <span class="theme-rule"></span><span class="theme-meta">v2 · glyph + accent</span>
+    </div>
+    <div class="new-grid">
+      <div class="glyph-chip"><span class="glyph">TM</span><span class="label"><span class="zh">詭異廟宇</span><span class="en">temple</span></span></div>
+      <div class="glyph-chip"><span class="glyph">AB</span><span class="label"><span class="zh">廢棄場所</span><span class="en">abandoned</span></span></div>
+      <div class="glyph-chip"><span class="glyph">GO</span><span class="label"><span class="zh">巨型物體</span><span class="en">giant object</span></span></div>
+      <div class="glyph-chip"><span class="glyph">KT</span><span class="label"><span class="zh">俗豔裝置</span><span class="en">kitsch</span></span></div>
+      <div class="glyph-chip"><span class="glyph">MA</span><span class="label"><span class="zh">邊緣建築</span><span class="en">marginal arch.</span></span></div>
+      <div class="glyph-chip"><span class="glyph">UL</span><span class="label"><span class="zh">都市傳說</span><span class="en">urban legend</span></span></div>
+      <div class="glyph-chip"><span class="glyph">AL</span><span class="label"><span class="zh">荒謬景觀</span><span class="en">absurd landscape</span></span></div>
+      <div class="glyph-chip"><span class="glyph">OS</span><span class="label"><span class="zh">奇異店面</span><span class="en">odd shopfront</span></span></div>
+    </div>
+  </div>
+
+  <div class="theme-block" data-theme="caution">
+    <div class="theme-label">
+      <span class="swatch"></span><span class="theme-name">caution</span>
+      <span class="theme-rule"></span><span class="theme-meta">v2 · glyph + accent</span>
+    </div>
+    <div class="new-grid">
+      <div class="glyph-chip"><span class="glyph">TM</span><span class="label"><span class="zh">詭異廟宇</span><span class="en">temple</span></span></div>
+      <div class="glyph-chip"><span class="glyph">AB</span><span class="label"><span class="zh">廢棄場所</span><span class="en">abandoned</span></span></div>
+      <div class="glyph-chip"><span class="glyph">GO</span><span class="label"><span class="zh">巨型物體</span><span class="en">giant object</span></span></div>
+      <div class="glyph-chip"><span class="glyph">KT</span><span class="label"><span class="zh">俗豔裝置</span><span class="en">kitsch</span></span></div>
+      <div class="glyph-chip"><span class="glyph">MA</span><span class="label"><span class="zh">邊緣建築</span><span class="en">marginal arch.</span></span></div>
+      <div class="glyph-chip"><span class="glyph">UL</span><span class="label"><span class="zh">都市傳說</span><span class="en">urban legend</span></span></div>
+      <div class="glyph-chip"><span class="glyph">AL</span><span class="label"><span class="zh">荒謬景觀</span><span class="en">absurd landscape</span></span></div>
+      <div class="glyph-chip"><span class="glyph">OS</span><span class="label"><span class="zh">奇異店面</span><span class="en">odd shopfront</span></span></div>
+    </div>
+  </div>
+
+  <div class="theme-block" data-theme="midnight">
+    <div class="theme-label">
+      <span class="swatch"></span><span class="theme-name">midnight</span>
+      <span class="theme-rule"></span><span class="theme-meta">v2 · glyph + accent</span>
+    </div>
+    <div class="new-grid">
+      <div class="glyph-chip"><span class="glyph">TM</span><span class="label"><span class="zh">詭異廟宇</span><span class="en">temple</span></span></div>
+      <div class="glyph-chip"><span class="glyph">AB</span><span class="label"><span class="zh">廢棄場所</span><span class="en">abandoned</span></span></div>
+      <div class="glyph-chip"><span class="glyph">GO</span><span class="label"><span class="zh">巨型物體</span><span class="en">giant object</span></span></div>
+      <div class="glyph-chip"><span class="glyph">KT</span><span class="label"><span class="zh">俗豔裝置</span><span class="en">kitsch</span></span></div>
+      <div class="glyph-chip"><span class="glyph">MA</span><span class="label"><span class="zh">邊緣建築</span><span class="en">marginal arch.</span></span></div>
+      <div class="glyph-chip"><span class="glyph">UL</span><span class="label"><span class="zh">都市傳說</span><span class="en">urban legend</span></span></div>
+      <div class="glyph-chip"><span class="glyph">AL</span><span class="label"><span class="zh">荒謬景觀</span><span class="en">absurd landscape</span></span></div>
+      <div class="glyph-chip"><span class="glyph">OS</span><span class="label"><span class="zh">奇異店面</span><span class="en">odd shopfront</span></span></div>
+    </div>
+  </div>
+
 </body>
 </html>

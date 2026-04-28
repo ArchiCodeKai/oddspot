@@ -60,4 +60,4 @@ categories: string（選填，逗號分隔）
 import { prisma } from "@/lib/db";
 ```
 
-注意：Prisma 7 需要 better-sqlite3 adapter，已封裝在 `db.ts` 中。
+注意：Prisma 7 目前使用 `@prisma/adapter-pg`，`db.ts` 會透過 `DATABASE_URL` 建立 PostgreSQL 連線。
