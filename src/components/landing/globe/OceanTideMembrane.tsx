@@ -115,6 +115,9 @@ export function OceanTideMembrane({
   rippleFieldRef,
   visibility = 1,
 }: OceanTideMembraneProps) {
+  // 主題切換時平滑插值顏色
+  const smoothAccentRef = useRef(accentColor.clone());
+
   // dummy 1×1 texture 佔位，等 landMaskTexture 載入後替換
   const dummyTex = useMemo(() => {
     const d = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, THREE.RGBAFormat);
@@ -149,14 +152,15 @@ export function OceanTideMembrane({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 只建一次，uniforms 在 useFrame 更新
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, dt) => {
     // 更新 land mask texture（載入後只換一次）
     if (landMaskTexture && material.uniforms.uLandMask.value !== landMaskTexture) {
       material.uniforms.uLandMask.value = landMaskTexture;
     }
 
-    // 顏色 + visibility → 套到 baseOpacity
-    material.uniforms.uColor.value.copy(accentColor);
+    // 顏色平滑插值 + visibility → 套到 baseOpacity
+    smoothAccentRef.current.lerp(accentColor, 1 - Math.exp(-dt * 3));
+    material.uniforms.uColor.value.copy(smoothAccentRef.current);
     material.uniforms.uBaseOpacity.value = 0.05 * visibility;
     material.uniforms.uWaveOpacityBoost.value = 0.22 * visibility;
 

@@ -58,10 +58,12 @@ export function OceanTideGlow({
   const pointsRef = useRef<THREE.Points>(null);
   const glowTex = useMemo(() => getGlowPointTexture(), []);
   const tmpCamLocal = useMemo(() => new THREE.Vector3(), []);
+  // 主題切換時平滑插值顏色
+  const smoothAccentRef = useRef(accentColor.clone());
 
   const { camera } = useThree();
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, dt) => {
     const points = pointsRef.current;
     if (!points || !geometry) return;
 
@@ -78,9 +80,11 @@ export function OceanTideGlow({
     const colorArr = colors.array as Float32Array;
     const count = positions.count;
 
-    const aR = accentColor.r;
-    const aG = accentColor.g;
-    const aB = accentColor.b;
+    // 主題切換平滑插值
+    smoothAccentRef.current.lerp(accentColor, 1 - Math.exp(-dt * 3));
+    const aR = smoothAccentRef.current.r;
+    const aG = smoothAccentRef.current.g;
+    const aB = smoothAccentRef.current.b;
 
     const ripples = rippleFieldRef?.current?.getActiveRipples() ?? [];
 

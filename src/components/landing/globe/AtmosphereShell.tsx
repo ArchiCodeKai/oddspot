@@ -73,6 +73,8 @@ export function AtmosphereShell({
   intensity = 3.0,
 }: AtmosphereShellProps) {
   const matRef = useRef<THREE.ShaderMaterial>(null);
+  // 主題切換時平滑插值（避免 uniform 瞬間跳色）
+  const smoothAccentRef = useRef(accentColor.clone());
 
   const material = useMemo(
     () =>
@@ -93,10 +95,11 @@ export function AtmosphereShell({
     [accentColor, opacity, power, intensity],
   );
 
-  // 主題切換時更新 uColor uniform（不重建 material）
-  useFrame(() => {
+  // 主題切換時平滑更新 uColor uniform（指數緩出插值，避免瞬間跳色）
+  useFrame((_, dt) => {
     if (matRef.current) {
-      matRef.current.uniforms.uColor.value.copy(accentColor);
+      smoothAccentRef.current.lerp(accentColor, 1 - Math.exp(-dt * 3));
+      matRef.current.uniforms.uColor.value.copy(smoothAccentRef.current);
     }
   });
 
