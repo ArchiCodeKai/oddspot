@@ -123,6 +123,8 @@
   --font-mono: var(--font-space-mono);
   --font-brand: var(--font-space-mono);
   --font-content: var(--font-noto-sans-tc);
+  /* 日文酸性顯示字體：DotGothic16 點陣像素感，與 VT323 同屬終端機美學 */
+  --font-dot-gothic: 'DotGothic16', monospace;
 }
 
 body {

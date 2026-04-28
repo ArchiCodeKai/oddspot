@@ -10,12 +10,13 @@ import { BrandTag } from "@/components/ui/BrandTag";
 import { AcidButton } from "@/components/ui/AcidButton";
 import { EyeMark } from "@/components/ui/EyeMark";
 import { useAppStore } from "@/store/useAppStore";
+import { useLocaleStore } from "@/store/useLocaleStore";
 import {
   BarcodeS,
-  CheckboardWaveS,
   DealWithItS,
   ErrorTagS,
   StarBurstS,
+  WordmarkS,
 } from "./AcidStickers";
 import { TerrainDeco } from "./TerrainDeco";
 import { Marquee } from "./Marquee";
@@ -76,6 +77,7 @@ const MARQUEE_ITEMS = [
 export function LandingExperience() {
   const router = useRouter();
   const t = useTranslations("landing");
+  const { locale } = useLocaleStore();
   const startTimeRef = useRef<number>(performance.now());
   const [phase, setPhase] = useState<Phase>("boot-0");
   const [dissolveProgress, setDissolveProgress] = useState(0);
@@ -357,8 +359,8 @@ export function LandingExperience() {
 
             {/* Acid stickers — SphereS（GLOBAL NULL）已移除，會擋住地球
                 SwirlS 被 LangPortalToggle 取代 */}
-            <BarcodeS      style={{ top: "8%",  left: "4%"  }}              delay={0.15} />
-            <CheckboardWaveS style={{ top: "14%", left: "38%" }} rotate={4} delay={0.35} />
+            <WordmarkS     style={{ top: "8%",  left: "4%"  }} rotate={-3}  delay={0.1} />
+            <BarcodeS      style={{ top: "22%", left: "4%"  }}              delay={0.2} />
             <ErrorTagS     style={{ bottom: "14%", left: "3%" }}            delay={0.5} />
             <StarBurstS    style={{ bottom: "22%", left: "36%" }}            delay={0.6} />
             <DealWithItS   style={{ bottom: "14%", right: "6%" }}            delay={0.7} />
@@ -418,9 +420,18 @@ export function LandingExperience() {
                 {t("systemTag")}
               </BrandTag>
               <h1
-                className="t-tc-h1"
+                className={
+                  locale === "en"
+                    ? "t-en-h2"
+                    : locale === "ja"
+                    ? "t-jp-h1"
+                    : "t-tc-h1"
+                }
                 style={{
-                  fontSize: "clamp(32px, 6vw, 68px)",
+                  fontSize:
+                    locale === "en"
+                      ? "clamp(1.8rem, 3.5vw, 2.5rem)"
+                      : "clamp(28px, 5vw, 56px)",
                   margin: 0,
                   marginBottom: 24,
                   whiteSpace: "pre-line",
