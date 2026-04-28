@@ -65,7 +65,17 @@ export async function GET(request: NextRequest) {
       orderBy: { id: "asc" },
     });
 
-    const result: SpotMapPoint[] = spots.map((spot) => {
+    const result: SpotMapPoint[] = spots.map((spot: {
+      id: string;
+      name: string;
+      nameEn: string | null;
+      category: string;
+      status: string;
+      difficulty: string;
+      images: string;
+      lat: number;
+      lng: number;
+    }) => {
       const images: string[] = JSON.parse(spot.images || "[]");
       return {
         id: spot.id,
