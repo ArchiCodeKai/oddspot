@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import { APIProvider, Map, type MapCameraChangedEvent } from "@vis.gl/react-google-maps";
 import { SpotMarker } from "./SpotMarker";
 import { SpotPopup } from "./SpotPopup";
-import { useAppStore } from "@/store/useAppStore";
 import type { SpotMapPoint } from "@/types/spots";
 
 const TAIPEI_CENTER = { lat: 25.0478, lng: 121.5319 };
@@ -27,7 +26,6 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
   const [selectedSpot, setSelectedSpot] = useState<SpotMapPoint | null>(null);
   const [zoom, setZoom] = useState(14);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
-  const isDark = useAppStore((s) => s.theme !== "light");
 
   const handleCameraChange = useCallback((e: MapCameraChangedEvent) => {
     setZoom(Math.round(e.detail.zoom));
@@ -53,7 +51,7 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
           style={{
             position: "absolute",
             inset: 0,
-            filter: isDark ? DARK_MAP_FILTER : "none",
+            filter: DARK_MAP_FILTER,
           }}
         >
           <Map

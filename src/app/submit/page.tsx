@@ -11,7 +11,6 @@ export default function SubmitPage() {
   const { user } = useSession();
   // 跟 next-auth 的回傳形態對齊（避免下游邏輯重寫）
   const session = user ? { user } : null;
-  const status = "authenticated"; // SessionContext 沒有 loading 態（layout 已 SSR session）
   const tMeta = useTranslations("spotMeta");
 
   const [form, setForm] = useState({
@@ -35,14 +34,6 @@ export default function SubmitPage() {
     value,
     label: getDifficultyLabel(tMeta, value),
   }));
-
-  if (status === "loading") {
-    return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
-        <div className="text-zinc-500 text-sm">載入中...</div>
-      </div>
-    );
-  }
 
   if (!session) {
     return (

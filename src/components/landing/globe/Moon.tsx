@@ -127,6 +127,28 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
     return g;
   }, []);
 
+  // 透過 primitive 建立 THREE.Line（避開 R3F <line> 與 SVG <line> 的 JSX 型別衝突）
+  const trailLine = useMemo(() => {
+    const mat = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    trailMatRef.current = mat;
+    const line = new THREE.Line(trailGeom, mat);
+    line.renderOrder = 1;
+    return line;
+  }, [trailGeom]);
+
+  // 同步反應式 material 屬性（accentColor / visibility 變動時更新）
+  useEffect(() => {
+    const mat = trailMatRef.current;
+    if (!mat) return;
+    mat.color.copy(accentColor);
+    mat.opacity = 0.7 * visibility;
+  }, [accentColor, visibility]);
+
   // ─── Dust 粒子系統 ────────────────────────────────────────────────────────
   const dustParticlesRef  = useRef<DustParticle[]>(
     Array.from({ length: MAX_DUST }, () => ({
@@ -339,18 +361,7 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
       {/* 公轉錨點（rotation.y 永遠持續，grabbed 也不停） */}
       <group ref={anchorRef}>
         {/* 流光拖尾（grabbed 時淡出，由 trailMatRef 控制） */}
-        <line renderOrder={1}>
-          <primitive object={trailGeom} attach="geometry" />
-          <lineBasicMaterial
-            ref={trailMatRef}
-            color={accentColor}
-            vertexColors
-            transparent
-            opacity={0.7 * visibility}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </line>
+        <primitive object={trailLine} />
 
         {/* 軌道代理點：永遠在 [MOON_ORBIT_RADIUS, 0, 0]，供 TideRippleField 取軌道 world pos
             moonBodyRef 脫軌時此節點仍在正確位置，潮汐來源不受拖曳影響 */}
