@@ -26,7 +26,7 @@ export async function GET() {
     });
 
     return NextResponse.json({
-      data: savedSpots.map((s) => ({ spotId: s.spotId, savedAt: s.createdAt })),
+      data: savedSpots.map((s: { spotId: string; createdAt: Date }) => ({ spotId: s.spotId, savedAt: s.createdAt })),
       success: true,
     });
   } catch (error) {
