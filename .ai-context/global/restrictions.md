@@ -1,11 +1,13 @@
 # 禁止操作清單
 
-## 絕對禁止（會造成不可逆影響）
+## Git 操作（執行前必須先確認）
 
-### Git 操作
-- `git add` / `git commit` / `git push`
-- `git reset` / `git checkout` / `git merge`
-- 所有 git 操作都必須由使用者手動執行
+- 任何 git 操作（`add` / `commit` / `push` / `pull` / `merge` / `checkout` / `branch` / `reset` / `rebase` / `stash` / `tag` 等）執行前，**必須先說明打算做什麼、影響範圍，並等使用者明確確認後才可執行**
+- 確認的形式：列出打算執行的指令、影響範圍（檔案 / 分支 / 是否動到 remote），等使用者回覆「確認」「OK」「可以」之類的明確同意
+- 一次確認只授權當下這一組操作，下次要再 git 操作時必須重新確認
+- 高風險操作（`push --force` / `reset --hard` / `branch -D` / `clean -fd`）即使已同意也要再次確認一次
+
+## 絕對禁止（會造成不可逆影響）
 
 ### 伺服器操作
 - `npm run dev`（port 限制）
