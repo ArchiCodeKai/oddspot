@@ -140,7 +140,7 @@ html, body { background: var(--bg); color: var(--fg); }
 /* EN H2 / section — "SCANNING_NEARBY.EXE", "237 ODD_SPOTS_FOUND" */
 .t-en-h2 {
   font-family: var(--font-vt323), 'VT323', 'Courier New', ui-monospace, monospace;
-  font-size: 3rem;
+  font-size: clamp(3rem, 8vw, 4rem);
   font-weight: 400;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -169,6 +169,17 @@ html, body { background: var(--bg); color: var(--fg); }
   line-height: 1.2;
   color: var(--fg);
   text-shadow: 0 0 30px rgb(var(--accent-rgb) / 0.25);
+}
+
+/* JP H1 / hero — DotGothic16 點陣像素字，日文酸性顯示標題 */
+.t-jp-h1 {
+  font-family: var(--font-dot-gothic), 'DotGothic16', monospace;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  color: var(--fg);
+  text-shadow: 0 0 28px rgb(var(--accent-rgb) / 0.25);
 }
 
 /* TC body — Noto Sans TC 正文，內嵌英文/數字自動切回 JetBrains Mono */

@@ -76,27 +76,6 @@ export function BarcodeS({ style, rotate = -6, delay = 0.1 }: StickerProps) {
   );
 }
 
-// S2 · Checkerboard wave with HARD FORM label
-export function CheckboardWaveS({ style, rotate = 4, delay = 0.2 }: StickerProps) {
-  return (
-    <motion.div
-      style={{ position: "absolute", color: "var(--accent)", ...style }}
-      {...stickerMotion(rotate, delay, "top")}
-    >
-      <svg width="140" height="60" viewBox="0 0 140 60" aria-hidden="true">
-        <defs>
-          <pattern id="acid-ck" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-            <rect width="5" height="5" fill="currentColor" />
-            <rect x="5" y="5" width="5" height="5" fill="currentColor" />
-          </pattern>
-        </defs>
-        <path d="M0 50 Q35 10 70 30 T140 20 V60 H0 Z" fill="url(#acid-ck)" opacity="0.85" />
-      </svg>
-      <div style={stickerLabelStyle}>HARD FORM / 001</div>
-    </motion.div>
-  );
-}
-
 // S3 · Error triangle + archive tag
 export function ErrorTagS({ style, rotate = -3, delay = 0.35 }: StickerProps) {
   return (
@@ -198,3 +177,47 @@ const stickerLabelStyle: CSSProperties = {
   whiteSpace: "nowrap",
   marginTop: 4,
 };
+
+// S8 · Brand wordmark — OddSpot（EN H1 規格：VT323 + accent glow 35%）
+export function WordmarkS({ style, rotate = -3, delay = 0.05 }: StickerProps) {
+  return (
+    <motion.div
+      style={{ position: "absolute", ...style }}
+      {...stickerMotion(rotate, delay, "left")}
+    >
+      <div
+        style={{
+          fontFamily: "var(--font-vt323), 'VT323', 'Courier New', monospace",
+          fontSize: "clamp(88px, 12vw, 120px)",
+          fontWeight: 400,
+          letterSpacing: "0.01em",
+          lineHeight: 0.95,
+          color: "var(--fg)",
+        }}
+      >
+        Odd
+        <span
+          style={{
+            color: "var(--accent)",
+            textShadow: "0 0 32px rgb(var(--accent-rgb) / 0.35)",
+          }}
+        >
+          Spot
+        </span>
+      </div>
+      <div
+        style={{
+          fontFamily: "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
+          fontSize: 8,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          color: "var(--muted)",
+          whiteSpace: "nowrap",
+          marginTop: 8,
+        }}
+      >
+        B-Grade Spot Explorer
+      </div>
+    </motion.div>
+  );
+}
