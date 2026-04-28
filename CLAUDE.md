@@ -9,8 +9,12 @@
 
 ## Vibe Coding 操作原則
 
+### 操作前必須先確認
+- **任何 git 操作（add / commit / push / pull / merge / checkout / branch 等）執行前，必須先說明打算做什麼、影響範圍，並等我明確確認後才可以執行**
+- 一次確認只授權當下這一組操作，下次要再 git 操作時必須重新確認
+- 高風險操作（force push / reset --hard / branch -D 等）即使已同意也要再次確認一次
+
 ### 絕對禁止
-- **不可執行任何 git 操作**（add / commit / push / pull / merge）
 - **不可執行 `npm run dev`**（port 使用限制）
 - **不可進行大範圍重構**，只針對被請求的部分修改
 
