@@ -66,6 +66,9 @@ export function EyeMark({
         cursor: "pointer",
         animation: "os-eye-scan 2.8s ease-in-out infinite",
         transition: "transform 200ms ease-out, filter 200ms ease-out",
+        // Remove the default browser focus ring on click (the blue rectangle)
+        outline: "none",
+        WebkitTapHighlightColor: "transparent",
       }
     : { animation: "os-eye-scan 2.8s ease-in-out infinite" };
 

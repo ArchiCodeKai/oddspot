@@ -5,6 +5,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "rea
 import * as THREE from "three";
 import { buildMoonPoints } from "./buildMoonPoints";
 import { useAppStore } from "@/store/useAppStore";
+import { useJawMoonStore } from "@/store/useJawMoonStore";
 
 // ─── 月球參數 ─────────────────────────────────────────────────────────────────
 export const MOON_RADIUS = 0.25;
@@ -81,7 +82,9 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
   useImperativeHandle(forwardedRef, () => orbitProxyRef.current!, []);
 
   const cycleTheme      = useAppStore((s) => s.cycleTheme);
-  const { camera, clock } = useThree();
+  const { camera, clock, size: viewportSize } = useThree();
+  // Reused scratch vector for moon→screen projection (avoids per-frame alloc)
+  const moonScreenProjRef = useRef(new THREE.Vector3());
 
   // ─── 月球點雲幾何（主題色切換時重建）──────────────────────────────────────
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -342,6 +345,18 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
     }
     dustPosAttr.needsUpdate = true;
     dustColAttr.needsUpdate = true;
+
+    // ── Project moon world position to viewport pixel coords ──
+    // The TeethJawR3F canvas reads this from useJawMoonStore to trigger a
+    // lunge-bite when the moon enters its on-screen proximity zone.
+    // Also pass the current state so the jaw can apply different bite
+    // cooldowns for orbital flybys vs user-drag interaction.
+    const moonProj = moonScreenProjRef.current;
+    moon.getWorldPosition(moonProj);
+    moonProj.project(camera); // → NDC space [-1, 1]
+    const screenX = (moonProj.x * 0.5 + 0.5) * viewportSize.width;
+    const screenY = (-moonProj.y * 0.5 + 0.5) * viewportSize.height;
+    useJawMoonStore.getState().setMoonFrame(screenX, screenY, state);
   });
 
   return (
