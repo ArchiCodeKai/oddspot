@@ -11,6 +11,7 @@ import { AcidButton } from "@/components/ui/AcidButton";
 import { EyeMark } from "@/components/ui/EyeMark";
 import { useAppStore } from "@/store/useAppStore";
 import { useLocaleStore } from "@/store/useLocaleStore";
+import { useShouldUseLightGlobe } from "@/hooks/useViewportTier";
 import {
   BarcodeS,
   DealWithItS,
@@ -23,8 +24,16 @@ import { Marquee } from "./Marquee";
 import { LangPortalToggle } from "./LangPortalToggle";
 
 // GlobeScene 含 Three.js，禁止 SSR（canvas + WebGL）
+// 桌面版：完整點雲 + 海洋 shader + 月球（重）
 const GlobeScene = dynamic(
   () => import("./GlobeScene").then((m) => m.GlobeScene),
+  { ssr: false },
+);
+
+// 手機版：經緯線 wireframe + 城市光點 + low-poly 月球（輕量，給手機效能）
+// 兩者 props 完全相同，可無痛切換
+const GlobeSceneMobile = dynamic(
+  () => import("./GlobeSceneMobile").then((m) => m.GlobeSceneMobile),
   { ssr: false },
 );
 
@@ -78,6 +87,7 @@ export function LandingExperience() {
   const router = useRouter();
   const t = useTranslations("landing");
   const { locale } = useLocaleStore();
+  const useLightGlobe = useShouldUseLightGlobe();
   const startTimeRef = useRef<number>(performance.now());
   const [phase, setPhase] = useState<Phase>("boot-0");
   const [dissolveProgress, setDissolveProgress] = useState(0);
@@ -202,8 +212,14 @@ export function LandingExperience() {
         }}
       />
 
-      {/* Globe canvas — 全螢幕 */}
-      <GlobeScene phase={phase} skipBoot={skipBoot} dissolveProgress={dissolveProgress} />
+      {/* Globe canvas — 全螢幕
+          桌面 / 平板：完整點雲版（GlobeScene）
+          手機 / prefers-reduced-motion：wireframe + 城市光點輕量版（GlobeSceneMobile） */}
+      {useLightGlobe ? (
+        <GlobeSceneMobile phase={phase} skipBoot={skipBoot} dissolveProgress={dissolveProgress} />
+      ) : (
+        <GlobeScene phase={phase} skipBoot={skipBoot} dissolveProgress={dissolveProgress} />
+      )}
 
       {/* HUD: 左上 system tag + phase */}
       <div
@@ -524,6 +540,27 @@ export function LandingExperience() {
         )}
       </AnimatePresence>
 
+      {/* DEV ONLY · viewport debug 角標。確認 RWD 生效後可以移除這個 block */}
+      {process.env.NODE_ENV !== "production" && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "fixed",
+            bottom: 4,
+            right: 4,
+            zIndex: 9999,
+            padding: "4px 8px",
+            background: useLightGlobe ? "rgba(95, 217, 192, 0.9)" : "rgba(255, 100, 100, 0.9)",
+            color: "#000",
+            fontFamily: "var(--font-jetbrains-mono), monospace",
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            pointerEvents: "none",
+          }}
+        >
+          {useLightGlobe ? "MOBILE" : "DESKTOP"} · {typeof window !== "undefined" ? window.innerWidth : "?"}px
+        </div>
+      )}
     </motion.div>
   );
 }
