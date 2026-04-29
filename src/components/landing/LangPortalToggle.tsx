@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { useLocaleStore } from "@/store/useLocaleStore";
 import { nextLocale, type Locale } from "@/lib/i18n";
 
-// 羅馬石膏頭像 R3F — 禁止 SSR
-const RomanBustR3F = dynamic(
-  () => import("./RomanBustR3F").then((m) => m.RomanBustR3F),
+// 牙齒/下顎 R3F — 禁止 SSR
+const TeethJawR3F = dynamic(
+  () => import("./TeethJawR3F").then((m) => m.TeethJawR3F),
   { ssr: false },
 );
 
@@ -45,7 +45,6 @@ const CHAR_POOLS: Record<Locale, string[]> = {
 const FONT_BY_LOCALE: Record<Locale, string> = {
   "zh-TW": "var(--font-noto-sans-tc), 'Noto Sans TC', sans-serif",
   en: "var(--font-vt323), 'VT323', 'Courier New', monospace",
-  // DotGothic16 for acid-consistent Japanese display chars
   ja: "'DotGothic16', var(--font-dot-gothic), monospace",
 };
 
@@ -78,81 +77,54 @@ function sampleChars(locale: Locale, n: number): string[] {
 }
 
 // ─────────────────────────────────────────────────────
-// 字符環 — 水平繞頭部口部飛行
+// 煙霧字符流 — 從嘴巴湧出，炊煙裊裊往上漂散
 // ─────────────────────────────────────────────────────
-interface CharRingProps {
+interface SmokeTrailProps {
   chars: string[];
   font: string;
-  radius: number;
   active: boolean;
   version: number;
 }
 
-function CharRing({ chars, font, radius, active, version }: CharRingProps) {
-  const step = 360 / chars.length;
+function SmokeTrail({ chars, font, active, version }: SmokeTrailProps) {
+  const n = chars.length;
+  const duration = active ? 3.0 : 5.0;
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: "58%",
-        left: "50%",
-        width: 0,
-        height: 0,
-        transformStyle: "preserve-3d",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: 0,
-          height: 0,
-          transformStyle: "preserve-3d",
-          animation: `ring-spin-h ${active ? 5 : 16}s linear infinite`,
-        }}
-      >
-        {chars.map((c, i) => {
-          const angle = i * step;
-          const isMulti = c.length > 1;
-          return (
-            <span
-              key={`${version}-${i}-${c}`}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: 20,
-                height: 20,
-                marginLeft: -10,
-                marginTop: -10,
-                transformStyle: "preserve-3d",
-                transform: `rotateY(${angle}deg) translateZ(${radius}px)`,
-                backfaceVisibility: "hidden",
-                WebkitBackfaceVisibility: "hidden",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontFamily: font,
-                fontSize: isMulti ? 7 : 12,
-                fontWeight: 500,
-                color: "var(--accent)",
-                textShadow: "0 0 6px rgb(var(--accent-rgb) / 0.8)",
-                whiteSpace: "nowrap",
-                lineHeight: 1,
-                pointerEvents: "none",
-                animation: `ring-char-fade 0.5s ease both`,
-                animationDelay: `${i * 0.025}s`,
-                transition: "opacity 280ms",
-                ...(active ? { ["--char-o" as string]: "1" } : { ["--char-o" as string]: "0.9" }),
-              }}
-            >
-              {c}
-            </span>
-          );
-        })}
-      </div>
+    <div style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none" }}>
+      {chars.map((c, i) => {
+        const isMulti = c.length > 1;
+        const delay = -(i / n) * duration;
+        return (
+          <span
+            key={`${version}-${i}-${c}`}
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "63%",
+              fontFamily: font,
+              fontSize: isMulti ? 9 : 13,
+              fontWeight: 500,
+              color: "var(--accent)",
+              textShadow: active
+                ? "0 0 10px rgb(var(--accent-rgb) / 1.0), 0 0 22px rgb(var(--accent-rgb) / 0.55)"
+                : "0 0 6px rgb(var(--accent-rgb) / 0.8)",
+              whiteSpace: "nowrap",
+              lineHeight: 1,
+              pointerEvents: "none",
+              transition: "text-shadow 300ms",
+              animationName: "wisp-rise",
+              animationDuration: `${duration}s`,
+              animationTimingFunction: "cubic-bezier(0.33, 0, 0.66, 1)",
+              animationDelay: `${delay}s`,
+              animationIterationCount: "infinite",
+              animationFillMode: "both",
+            }}
+          >
+            {c}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -163,16 +135,16 @@ function CharRing({ chars, font, radius, active, version }: CharRingProps) {
 export function LangPortalToggle({ size = 128 }: { size?: number }) {
   const { locale, setLocale } = useLocaleStore();
   const [hover,  setHover]  = useState(false);
-  const [focus,  setFocus]  = useState(false);    // keyboard focus state
+  const [focus,  setFocus]  = useState(false);
   const [charLocale, setCharLocale] = useState<Locale>(locale);
   const [ringVersion, setRingVersion] = useState(0);
   const [chars, setChars] = useState<string[]>([]);
 
-  // click animation states
-  const [charVisible, setCharVisible] = useState(true);  // char ring opacity/scale
-  const [glitching,   setGlitching]   = useState(false); // brief glitch on click
+  const [charVisible, setCharVisible] = useState(true);
+  const [glitching,   setGlitching]   = useState(false);
+  const [beamTrigger, setBeamTrigger] = useState(0); // increments on click → fires mouth beam
 
-  const active = hover || focus;  // keyboard + mouse both wake the bust
+  const active = hover || focus;
 
   useEffect(() => {
     setChars(sampleChars(charLocale, 20));
@@ -185,121 +157,129 @@ export function LangPortalToggle({ size = 128 }: { size?: number }) {
 
   const handleClick = () => {
     if (glitching) return;
-    // Phase 1: chars shrink (sucked into mouth) + glitch
     setCharVisible(false);
     setGlitching(true);
-    // Phase 2: locale switches mid-glitch
+    setBeamTrigger((n) => n + 1); // fire the mouth beam
     setTimeout(() => {
       const next = nextLocale(locale);
       setLocale(next);
     }, 180);
-    // Phase 3: glitch ends, new-locale chars spit out
     setTimeout(() => {
       setGlitching(false);
       setCharVisible(true);
     }, 340);
   };
 
-  // ring radius: horizontal orbit at head width ≈ size × 0.48
-  const ringRadius = size * 0.48;
-
   return (
-    <button
-      type="button"
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onFocus={() => setFocus(true)}
-      onBlur={() => setFocus(false)}
-      onClick={handleClick}
-      aria-label={`Switch language — current: ${LOCALE_NAMES[locale]}`}
+    // Outer wrapper — plain div, no transform-style/filter/perspective.
+    // The WebGL canvas lives here and renders without obstruction.
+    <div
       style={{
         position: "relative",
         width: size,
         height: size,
-        padding: 0,
-        background: "transparent",
-        border: "none",
-        cursor: "pointer",
-        display: "block",
-        perspective: size * 3.5,
-        transformStyle: "preserve-3d",
-        filter: active
-          ? "drop-shadow(0 0 18px rgb(var(--accent-rgb) / 0.7))"
-          : "drop-shadow(0 0 8px rgb(var(--accent-rgb) / 0.4))",
-        transition: "filter 280ms",
         animation: glitching ? "lang-glitch 0.34s steps(4) both" : "none",
-        outline: focus ? "2px solid var(--accent)" : "none",
-        outlineOffset: 4,
-        borderRadius: "50%",
       }}
     >
-      {/* 3D 頭像 */}
-      <RomanBustR3F active={active} />
+      {/* 3D 上下顎牙齒 — hovered (mouse only) drives CSS drop-shadow silhouette glow;
+          active (hover || focus) drives bite speed; beamTrigger fires light beam on click */}
+      <TeethJawR3F active={active} hovered={hover} beamTrigger={beamTrigger} />
 
-      {/* 字符環 — click 時縮進嘴裡，切換後從嘴吐出 */}
-      <div
+      {/* Interactive overlay button */}
+      <button
+        type="button"
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
+        onClick={handleClick}
+        aria-label={`Switch language — current: ${LOCALE_NAMES[locale]}`}
         style={{
           position: "absolute",
           inset: 0,
-          transformStyle: "preserve-3d",
-          pointerEvents: "none",
-          transform: charVisible ? "scale(1)" : "scale(0.08)",
-          transition: charVisible
-            ? "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)"
-            : "transform 180ms ease-in",
+          padding: 0,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          outline: "none",
+          borderRadius: "50%",
+          zIndex: 2,
+          overflow: "visible",
         }}
       >
-        <CharRing
-          chars={chars}
-          font={FONT_BY_LOCALE[charLocale]}
-          radius={ringRadius}
-          active={active}
-          version={ringVersion}
-        />
-      </div>
+        {/* 煙霧流 — click 時縮進嘴，切換後從嘴吐出 */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            overflow: "visible",
+            pointerEvents: "none",
+            transform: charVisible ? "scale(1)" : "scale(0.08)",
+            transition: charVisible
+              ? "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)"
+              : "transform 180ms ease-in",
+          }}
+        >
+          <SmokeTrail
+            chars={chars}
+            font={FONT_BY_LOCALE[charLocale]}
+            active={active}
+            version={ringVersion}
+          />
+        </div>
 
-      {/* Label */}
-      <span
-        style={{
-          position: "absolute",
-          top: "100%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          marginTop: 6,
-          fontFamily: "var(--font-jetbrains-mono), monospace",
-          fontSize: 9,
-          letterSpacing: "0.2em",
-          textTransform: "uppercase",
-          color: active ? "var(--accent)" : "var(--muted)",
-          whiteSpace: "nowrap",
-          pointerEvents: "none",
-          transition: "color 250ms",
-          textShadow: active ? "0 0 8px rgb(var(--accent-rgb) / 0.5)" : "none",
-        }}
-      >
-        LANG:{LOCALE_CODES[locale]}
-      </span>
+        {/* Label */}
+        <span
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            marginTop: 6,
+            fontFamily: "var(--font-jetbrains-mono), monospace",
+            fontSize: 9,
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            color: active ? "var(--accent)" : "var(--muted)",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            transition: "color 250ms",
+            textShadow: active ? "0 0 8px rgb(var(--accent-rgb) / 0.5)" : "none",
+          }}
+        >
+          LANG:{LOCALE_CODES[locale]}
+        </span>
+      </button>
 
       <style>{`
-        @keyframes ring-spin-h {
-          from { transform: rotateY(0deg); }
-          to   { transform: rotateY(360deg); }
-        }
-        @keyframes ring-char-fade {
-          from { opacity: 0; }
-          to   { opacity: var(--char-o, 0.9); }
+        @keyframes wisp-rise {
+          0%   { transform: translate(-50%, -50%) scale(0.48) rotate(-2deg);
+                 opacity: 0; }
+          6%   { opacity: 0.90; }
+          18%  { transform: translate(calc(-50% + 4px), calc(-50% - 20px)) scale(0.68) rotate(2deg);
+                 opacity: 0.88; }
+          36%  { transform: translate(calc(-50% + 9px), calc(-50% - 52px)) scale(0.86) rotate(4deg);
+                 opacity: 0.84; }
+          54%  { transform: translate(calc(-50% + 7px), calc(-50% - 90px)) scale(1.00) rotate(1deg);
+                 opacity: 0.65; }
+          72%  { transform: translate(calc(-50% - 2px), calc(-50% - 128px)) scale(1.12) rotate(-2deg);
+                 opacity: 0.30; }
+          88%  { transform: translate(calc(-50% - 5px), calc(-50% - 158px)) scale(1.22) rotate(-3deg);
+                 opacity: 0.08; }
+          100% { transform: translate(calc(-50% - 3px), calc(-50% - 178px)) scale(1.30) rotate(-2deg);
+                 opacity: 0; }
         }
         @keyframes lang-glitch {
           0%   { filter: none; transform: none; }
-          20%  { filter: hue-rotate(80deg) brightness(2.0) saturate(3);
-                 transform: skewX(4deg) translateX(3px); }
-          45%  { filter: hue-rotate(-80deg) brightness(0.5);
-                 transform: skewX(-3deg) translateX(-4px) scaleX(1.04); }
-          70%  { filter: hue-rotate(40deg) brightness(1.4);
-                 transform: translateX(2px); }
+          15%  { filter: brightness(1.35) saturate(1.5);
+                 transform: translateX(1px); }
+          40%  { filter: brightness(0.92);
+                 transform: translateX(-1px); }
+          70%  { filter: brightness(1.10);
+                 transform: translateX(0); }
           100% { filter: none; transform: none; }
         }
       `}</style>
-    </button>
+    </div>
   );
 }
