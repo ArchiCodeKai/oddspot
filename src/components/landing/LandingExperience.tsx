@@ -183,6 +183,10 @@ export function LandingExperience() {
         // 雙保險：CSS var + hardcoded fallback
         background: "var(--bg, #040c0a)",
         color: "var(--fg, #c6e8e0)",
+        // 整頁文字全部不可選 — 拖曳月球、地球時不會誤選 HUD / sticker / marquee。
+        // 加上 webkit 前綴以涵蓋 Safari / iOS。
+        userSelect: "none",
+        WebkitUserSelect: "none",
       }}
     >
       {/* Film grain */}
