@@ -335,7 +335,7 @@ export function LandingExperience() {
               <TerrainDeco />
             </motion.div>
 
-            {/* 眼睛 mascot — 點擊循環切 4 主題 (terminal/blueprint/caution/midnight) */}
+            {/* 眼睛 mascot — OddSpot wordmark「ot」正下方，點擊循環切主題 */}
             <motion.div
               initial={{ opacity: 0, scale: 0.6 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -343,8 +343,8 @@ export function LandingExperience() {
               className="landing-eye"
               style={{
                 position: "absolute",
-                top: "10%",
-                right: "6%",
+                top: "22%",
+                left: "25%",
                 zIndex: 6,
               }}
             >
@@ -360,14 +360,13 @@ export function LandingExperience() {
             {/* Acid stickers — SphereS（GLOBAL NULL）已移除，會擋住地球
                 SwirlS 被 LangPortalToggle 取代 */}
             <WordmarkS     style={{ top: "8%",  left: "4%"  }} rotate={-3}  delay={0.1} />
-            <BarcodeS      style={{ top: "22%", left: "4%"  }}              delay={0.2} />
             <ErrorTagS     style={{ bottom: "14%", left: "3%" }}            delay={0.5} />
             <StarBurstS    style={{ bottom: "22%", left: "36%" }}            delay={0.6} />
             <DealWithItS   style={{ bottom: "14%", right: "6%" }}            delay={0.7} />
 
-            {/* 語言切換蟲洞 — 從星空中彈出（spring pop + glow burst） */}
+            {/* 語言切換蟲洞 — 右上角，縮小版 */}
             <motion.div
-              initial={{ opacity: 0, scale: 0, rotate: -45 }}
+              initial={{ opacity: 0, scale: 0.6, rotate: -20 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{
                 delay: 0.5,
@@ -379,8 +378,8 @@ export function LandingExperience() {
               className="landing-lang-portal"
               style={{
                 position: "absolute",
-                top: "24%",
-                right: "58%",
+                top: "7%",
+                right: "4%",
                 zIndex: 10,
               }}
             >
@@ -398,7 +397,7 @@ export function LandingExperience() {
                   pointerEvents: "none",
                 }}
               />
-              <LangPortalToggle size={128} />
+              <LangPortalToggle size={116} />
             </motion.div>
 
             {/* Headline + CTA */}
