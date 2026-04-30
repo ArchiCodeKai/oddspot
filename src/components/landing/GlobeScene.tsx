@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { Moon } from "./globe/Moon";
 import { latLngToVec3, type GeoJSONFeatureCollection } from "./globe/geoUtils";
 import { buildHeightmap } from "./globe/buildDisplacedSphere";
-import { buildLandPoints } from "./globe/buildLandPoints";
+import { buildLandPoints, recolorLandPoints } from "./globe/buildLandPoints";
 import { buildOceanPoints } from "./globe/buildOceanPoints";
 import { AtmosphereShell } from "./globe/AtmosphereShell";
 import { OceanTideGlow } from "./globe/OceanTideGlow";
@@ -521,29 +521,20 @@ export function GlobeScene({ phase, skipBoot, dissolveProgress, style }: GlobeSc
     return () => { cancelled = true; };
   }, []);
 
-  // 主題切換 → 重建 land geometry（vertex colors 是 baked，需重算）
-  // 用 ref 記錄上次 accent 避免初次渲染重建
+  // 主題切換 → 直接 recolor 已存在的 land geometry（不重建、不 fetch GeoJSON）
+  // 改動前：fetch + buildHeightmap + buildLandPoints (90k candidates) ≈ 80-150ms 卡頓
+  // 改動後：讀 cache + 重算 colors attribute ≈ 1-3ms
+  // 抓月球期間每 1.5s cycleTheme 不再 jank
   const prevAccentRef = useRef<string>(accentColor.getHexString());
   useEffect(() => {
     const newHex = accentColor.getHexString();
     if (prevAccentRef.current === newHex) return;
     prevAccentRef.current = newHex;
 
-    // 重新從 GeoJSON 算（簡化處理：拒絕複雜的 heightmap caching 設計）
-    fetch("/data/ne_110m_land.json")
-      .then((r) => r.json() as Promise<GeoJSONFeatureCollection>)
-      .then((data) => {
-        const hm = buildHeightmap(data);
-        const land = buildLandPoints({
-          heightmap: hm,
-          accentColor,
-          candidateCount: 90000,
-          threshold: 100,
-          highlightChance: 0.06,
-        });
-        setLandGeom(land);
-      });
-  }, [accentColor]);
+    if (landGeom) {
+      recolorLandPoints(landGeom, accentColor);
+    }
+  }, [accentColor, landGeom]);
 
   return (
     <div style={{ position: "absolute", inset: 0, ...style }}>

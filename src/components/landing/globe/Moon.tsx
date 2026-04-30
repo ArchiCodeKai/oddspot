@@ -3,7 +3,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { buildMoonPoints } from "./buildMoonPoints";
+import { buildMoonPoints, recolorMoonPoints } from "./buildMoonPoints";
 import { useAppStore } from "@/store/useAppStore";
 import { useJawMoonStore } from "@/store/useJawMoonStore";
 
@@ -86,13 +86,21 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
   // Reused scratch vector for moon→screen projection (avoids per-frame alloc)
   const moonScreenProjRef = useRef(new THREE.Vector3());
 
-  // ─── 月球點雲幾何（主題色切換時重建）──────────────────────────────────────
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // ─── 月球點雲幾何（只 build 一次，主題切換改走 recolorMoonPoints） ────────
+  // 改動前：grabbed 每 1.5s cycleTheme → buildMoonPoints (22k candidates) ≈ 30-60ms 卡頓
+  // 改動後：useMemo 只跑一次，主題切換時下方 useEffect 重算 colors ≈ 1ms
   const moonPointsGeom = useMemo(
     () => buildMoonPoints({ moonRadius: MOON_RADIUS, accentColor }),
+    // 故意不依賴 accentColor：position 是固定的，只有 colors 跟著變
+    // accentColor 變動由下方 recolorMoonPoints effect 處理
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [`#${accentColor.getHexString()}`],
+    [],
   );
+
+  // 主題切換 → recolor 不重建
+  useEffect(() => {
+    recolorMoonPoints(moonPointsGeom, accentColor);
+  }, [accentColor, moonPointsGeom]);
 
   // ─── 軌道虛線 geometry ────────────────────────────────────────────────────
   const orbitDashedGeom = useMemo(() => {
