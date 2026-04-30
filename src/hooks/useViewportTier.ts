@@ -81,3 +81,27 @@ export function useShouldUseLightGlobe(): boolean {
   const reduced = useReducedMotion();
   return tier === "mobile" || reduced;
 }
+
+/**
+ * Globe 渲染分層：
+ *   - "light"   → GlobeSceneMobile（海岸線 + 等高線，老 hardware 友善）
+ *   - "reduced" → GlobeScene 點雲減 30%（平板級裝置）
+ *   - "full"    → GlobeScene 完整版（桌面）
+ *
+ * 邏輯：
+ *   mobile (≤767px)        → light
+ *   tablet (768-1023px)    → reduced（中階檔位）
+ *   desktop (≥1024px)      → full
+ *   prefers-reduced-motion → 各降一級（desktop→reduced, tablet→light）
+ */
+export type GlobeTier = "light" | "reduced" | "full";
+
+export function useGlobeTier(): GlobeTier {
+  const viewport = useViewportTier();
+  const reduced = useReducedMotion();
+
+  if (viewport === "mobile") return "light";
+  if (viewport === "tablet") return reduced ? "light" : "reduced";
+  // desktop
+  return reduced ? "reduced" : "full";
+}

@@ -181,6 +181,7 @@ These rules carry over unchanged — don't regress them:
 | 吉祥物 eye moods | ⏳ 待開始 | — |
 | 開場動畫序列 | ⏳ 待開始 | — |
 | Acid stickers / 貼紙 | ⏳ 待開始 | — |
+| Landing mobile globe | 🔄 調整中 | `GlobeSceneMobile.tsx` 使用 heightmap coastline + elevation/ridge contours，避免 triangle 海岸鋸齒並補地形起伏 |
 
 ## Files in this skill
 

@@ -11,7 +11,7 @@ import { AcidButton } from "@/components/ui/AcidButton";
 import { EyeMark } from "@/components/ui/EyeMark";
 import { useAppStore } from "@/store/useAppStore";
 import { useLocaleStore } from "@/store/useLocaleStore";
-import { useShouldUseLightGlobe } from "@/hooks/useViewportTier";
+import { useGlobeTier } from "@/hooks/useViewportTier";
 import {
   BarcodeS,
   DealWithItS,
@@ -87,7 +87,8 @@ export function LandingExperience() {
   const router = useRouter();
   const t = useTranslations("landing");
   const { locale } = useLocaleStore();
-  const useLightGlobe = useShouldUseLightGlobe();
+  const globeTier = useGlobeTier(); // "light" | "reduced" | "full"
+  const useLightGlobe = globeTier === "light";
   const startTimeRef = useRef<number>(performance.now());
   const [phase, setPhase] = useState<Phase>("boot-0");
   const [dissolveProgress, setDissolveProgress] = useState(0);
@@ -217,12 +218,18 @@ export function LandingExperience() {
       />
 
       {/* Globe canvas — 全螢幕
-          桌面 / 平板：完整點雲版（GlobeScene）
-          手機 / prefers-reduced-motion：wireframe + 城市光點輕量版（GlobeSceneMobile） */}
-      {useLightGlobe ? (
+          mobile / reduced-motion        → GlobeSceneMobile（海岸線版，超輕量）
+          tablet / desktop reduced-motion → GlobeScene tier="reduced"（點雲砍 30%）
+          desktop                         → GlobeScene tier="full"（完整版） */}
+      {globeTier === "light" ? (
         <GlobeSceneMobile phase={phase} skipBoot={skipBoot} dissolveProgress={dissolveProgress} />
       ) : (
-        <GlobeScene phase={phase} skipBoot={skipBoot} dissolveProgress={dissolveProgress} />
+        <GlobeScene
+          phase={phase}
+          skipBoot={skipBoot}
+          dissolveProgress={dissolveProgress}
+          tier={globeTier}
+        />
       )}
 
       {/* HUD: 左上 system tag + phase */}
@@ -544,7 +551,7 @@ export function LandingExperience() {
         )}
       </AnimatePresence>
 
-      {/* DEV ONLY · viewport debug 角標。確認 RWD 生效後可以移除這個 block */}
+      {/* DEV ONLY · viewport + globe tier debug 角標。確認 RWD 生效後可移除 */}
       {process.env.NODE_ENV !== "production" && (
         <div
           aria-hidden="true"
@@ -554,7 +561,10 @@ export function LandingExperience() {
             right: 4,
             zIndex: 9999,
             padding: "4px 8px",
-            background: useLightGlobe ? "rgba(95, 217, 192, 0.9)" : "rgba(255, 100, 100, 0.9)",
+            background:
+              globeTier === "light"   ? "rgba(95, 217, 192, 0.9)"   // 綠 = mobile 海岸線版
+              : globeTier === "reduced" ? "rgba(255, 200, 80, 0.9)"  // 橘 = 點雲 -30%
+              :                           "rgba(255, 100, 100, 0.9)", // 紅 = 完整桌面
             color: "#000",
             fontFamily: "var(--font-jetbrains-mono), monospace",
             fontSize: 10,
@@ -562,7 +572,7 @@ export function LandingExperience() {
             pointerEvents: "none",
           }}
         >
-          {useLightGlobe ? "MOBILE" : "DESKTOP"} · {typeof window !== "undefined" ? window.innerWidth : "?"}px
+          {globeTier.toUpperCase()} · {typeof window !== "undefined" ? window.innerWidth : "?"}px
         </div>
       )}
     </motion.div>

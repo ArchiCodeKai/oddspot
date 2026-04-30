@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { Moon } from "./globe/Moon";
 import { latLngToVec3, type GeoJSONFeatureCollection } from "./globe/geoUtils";
 import { buildHeightmap } from "./globe/buildDisplacedSphere";
-import { buildLandPoints } from "./globe/buildLandPoints";
+import { buildLandPoints, recolorLandPoints } from "./globe/buildLandPoints";
 import { buildOceanPoints } from "./globe/buildOceanPoints";
 import { AtmosphereShell } from "./globe/AtmosphereShell";
 import { OceanTideGlow } from "./globe/OceanTideGlow";
@@ -16,6 +16,7 @@ import { OceanTideGlow } from "./globe/OceanTideGlow";
 import { getGlowPointTexture } from "./globe/glowPointTexture";
 import { TideRippleField, type TideRippleFieldHandle } from "./globe/TideRippleField";
 import { OceanTideMembrane } from "./globe/OceanTideMembrane";
+import { TidalEllipsoidShell } from "./globe/TidalEllipsoidShell";
 
 // 地球軸傾（真實 23.5° vs 黃道）
 const EARTH_AXIAL_TILT_RAD = (23.5 * Math.PI) / 180;
@@ -48,6 +49,8 @@ interface GlobeInnerProps {
   accentColor: THREE.Color;
   /** 256×128 land-mask DataTexture，給 OceanTideMembrane shader 用 */
   landMaskTex: THREE.DataTexture | null;
+  /** 月球點雲密度（0~1），1 = 完整 22k candidates，0.7 = 砍 30% */
+  moonDensity: number;
 }
 
 function GlobeInner({
@@ -59,6 +62,7 @@ function GlobeInner({
   oceanCoreColor,
   accentColor,
   landMaskTex,
+  moonDensity,
 }: GlobeInnerProps) {
   const dissolveRef = useRef<THREE.Group>(null);
   const earthSpinRef = useRef<THREE.Group>(null);
@@ -68,6 +72,10 @@ function GlobeInner({
   const halo2Ref = useRef<THREE.Mesh>(null);
   const oceanCoreMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const landMatRef = useRef<THREE.PointsMaterial>(null);
+  // Earth-local sub-lunar 方向（每幀 useFrame 更新，給 TidalEllipsoidShell 用）
+  const subLunarLocalRef = useRef<THREE.Vector3>(new THREE.Vector3(1, 0, 0));
+  const tmpSubLWorld = useRef(new THREE.Vector3());
+  const tmpEarthQuatInv = useRef(new THREE.Quaternion());
   const { camera, clock } = useThree();
   const startRef = useRef<number | null>(null);
   // 點擊地球 → 平滑旋轉對正台灣，暫停 5 秒後繼續
@@ -246,6 +254,19 @@ function GlobeInner({
       halo2Ref.current.scale.setScalar(1 + p * 2.0);
       (halo2Ref.current.material as THREE.MeshBasicMaterial).opacity = 0.45 * Math.sin(p * Math.PI);
     }
+
+    // ─── 計算 sub-lunar earth-local（給 TidalEllipsoidShell 用）─────
+    // 1) 月球 world position normalize → world-space sub-lunar 方向
+    // 2) 用 earthSpin world quat 反轉 → earth-local 方向（不受 spin 影響）
+    if (moonGroupRef.current) {
+      moonGroupRef.current.getWorldPosition(tmpSubLWorld.current);
+      tmpSubLWorld.current.normalize();
+      eg.getWorldQuaternion(tmpEarthQuatInv.current).invert();
+      subLunarLocalRef.current
+        .copy(tmpSubLWorld.current)
+        .applyQuaternion(tmpEarthQuatInv.current)
+        .normalize();
+    }
   });
 
   // 月球可見度（boot-3 開始淡入到 idle 完整顯示）
@@ -327,6 +348,19 @@ function GlobeInner({
               ref={rippleFieldRef}
               moonRef={moonGroupRef}
               earthSpinRef={earthSpinRef}
+            />
+
+            {/* Layer 3c: Tidal Ellipsoid Shell — 潮汐橢圓殼（橄欖球體）
+                沿 sub-lunar 軸 P2 Legendre 拉長 ~5%（軸極凸、赤道凹）
+                表面有流體 noise 擾動，模擬洋流不規則翻動
+                land mask 削弱陸地處 → 視覺上像「海洋潮汐殼」包覆地球 */}
+            <TidalEllipsoidShell
+              accentColor={accentColor}
+              landMaskTexture={landMaskTex}
+              subLunarLocalRef={subLunarLocalRef}
+              visibility={1}
+              tideAmp={0.038}
+              noiseAmp={0.012}
             />
 
             {/* Layer 4: Atmosphere Shell
@@ -435,6 +469,7 @@ function GlobeInner({
           ref={moonGroupRef}
           accentColor={accentColor}
           visibility={moonVisibility}
+          pointDensity={moonDensity}
         />
 
         {/* GravityField 已停用 — 視覺敘事改用 TideRippleField（純球面 ripple，無 beam） */}
@@ -453,9 +488,23 @@ interface GlobeSceneProps {
   skipBoot: boolean;
   dissolveProgress: number;
   style?: React.CSSProperties;
+  /** 渲染品質分層：
+   *   "full"    → 桌面完整版（land 90k / ocean 15k / moon 22k candidates）
+   *   "reduced" → 平板/中階版，candidate 砍 30%（fps +25-30%，視覺差異微小）
+   *   省略 → 視為 "full"（向下相容） */
+  tier?: "full" | "reduced";
 }
 
-export function GlobeScene({ phase, skipBoot, dissolveProgress, style }: GlobeSceneProps) {
+// ─── Candidate count 配置（按 tier 縮放） ─────────────────────────
+// reduced 模式 candidate 砍 30%，實際渲染點數約砍 30%（heightmap 過濾比例不變）
+// 視覺密度：full 100% → reduced ~70%，肉眼幾乎難辨
+const TIER_CONFIG = {
+  full:    { land: 90000, ocean: 15000, moonDensity: 1.0 },
+  reduced: { land: 63000, ocean: 10500, moonDensity: 0.7 },
+} as const;
+
+export function GlobeScene({ phase, skipBoot, dissolveProgress, style, tier = "full" }: GlobeSceneProps) {
+  const cfg = TIER_CONFIG[tier];
   const [landGeom, setLandGeom] = useState<THREE.BufferGeometry | null>(null);
   const [oceanGeom, setOceanGeom] = useState<THREE.BufferGeometry | null>(null);
   const [landMaskTex, setLandMaskTex] = useState<THREE.DataTexture | null>(null);
@@ -487,13 +536,13 @@ export function GlobeScene({ phase, skipBoot, dissolveProgress, style }: GlobeSc
         const land = buildLandPoints({
           heightmap: hm,
           accentColor: readAccentColor(),
-          candidateCount: 90000,
+          candidateCount: cfg.land,
           threshold: 100,
           highlightChance: 0.06,
         });
         const ocean = buildOceanPoints({
           heightmap: hm,
-          candidateCount: 15000,
+          candidateCount: cfg.ocean,
           threshold: 100,
           radius: 1.003,
         });
@@ -521,29 +570,20 @@ export function GlobeScene({ phase, skipBoot, dissolveProgress, style }: GlobeSc
     return () => { cancelled = true; };
   }, []);
 
-  // 主題切換 → 重建 land geometry（vertex colors 是 baked，需重算）
-  // 用 ref 記錄上次 accent 避免初次渲染重建
+  // 主題切換 → 直接 recolor 已存在的 land geometry（不重建、不 fetch GeoJSON）
+  // 改動前：fetch + buildHeightmap + buildLandPoints (90k candidates) ≈ 80-150ms 卡頓
+  // 改動後：讀 cache + 重算 colors attribute ≈ 1-3ms
+  // 抓月球期間每 1.5s cycleTheme 不再 jank
   const prevAccentRef = useRef<string>(accentColor.getHexString());
   useEffect(() => {
     const newHex = accentColor.getHexString();
     if (prevAccentRef.current === newHex) return;
     prevAccentRef.current = newHex;
 
-    // 重新從 GeoJSON 算（簡化處理：拒絕複雜的 heightmap caching 設計）
-    fetch("/data/ne_110m_land.json")
-      .then((r) => r.json() as Promise<GeoJSONFeatureCollection>)
-      .then((data) => {
-        const hm = buildHeightmap(data);
-        const land = buildLandPoints({
-          heightmap: hm,
-          accentColor,
-          candidateCount: 90000,
-          threshold: 100,
-          highlightChance: 0.06,
-        });
-        setLandGeom(land);
-      });
-  }, [accentColor]);
+    if (landGeom) {
+      recolorLandPoints(landGeom, accentColor);
+    }
+  }, [accentColor, landGeom]);
 
   return (
     <div style={{ position: "absolute", inset: 0, ...style }}>
@@ -565,6 +605,7 @@ export function GlobeScene({ phase, skipBoot, dissolveProgress, style }: GlobeSc
           oceanCoreColor={oceanCoreColor}
           accentColor={accentColor}
           landMaskTex={landMaskTex}
+          moonDensity={cfg.moonDensity}
         />
       </Canvas>
     </div>

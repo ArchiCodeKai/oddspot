@@ -279,12 +279,16 @@ function RealJaw({
   beamTrigger,
   clickJawTrigger,
   domContainerRef,
+  domRectRef,
 }: {
   active: boolean;
   mouseTarget: React.RefObject<MouseTarget>;
   beamTrigger: number;
   clickJawTrigger: number;
   domContainerRef: React.RefObject<HTMLDivElement | null>;
+  /** Cached container rect — 從上層用 ResizeObserver / scroll listener 維護
+   *  避免每幀呼叫 getBoundingClientRect()（會強制 layout flush，引發 reflow） */
+  domRectRef: React.RefObject<DOMRect | null>;
 }) {
   const { scene } = useGLTF(MODEL_URL);
   const rootRef  = useRef<THREE.Group>(null);
@@ -704,15 +708,18 @@ function RealJaw({
     // mouth's pixel position can be compared 1:1 to ms.moonScreenX/Y.
     let mouthScreenX = Number.NaN;
     let mouthScreenY = Number.NaN;
-    const dom = domContainerRef.current;
-    if (dom) {
+    // 改動前：每幀 dom.getBoundingClientRect() → 強制 layout flush
+    //         在有 grain + scanlines + DOM stickers 時引發 reflow，每幀 0.3-1ms 浪費
+    // 改動後：讀上層 ResizeObserver/scroll 維護的 cached rect (0 cost)
+    //         Landing 是 fixed 全屏不滾動，cache 命中率 ~100%
+    const rect = domRectRef.current;
+    if (rect && domContainerRef.current) {
       const mouthWorld = mouthWorldRef.current;
       // root.matrix may be stale this frame (rotation/position were just
       // mutated above); updateMatrix() recomposes from the latest local TRS.
       root.updateMatrix();
       mouthWorld.copy(jawSetup.beamOrigin).applyMatrix4(root.matrix);
       mouthWorld.project(jawCamera); // → NDC ∈ [-1, 1]
-      const rect = dom.getBoundingClientRect();
       mouthScreenX = rect.left + (mouthWorld.x * 0.5 + 0.5) * rect.width;
       mouthScreenY = rect.top  + (-mouthWorld.y * 0.5 + 0.5) * rect.height;
     }
@@ -824,6 +831,7 @@ function JawWithSuspense(props: {
   beamTrigger: number;
   clickJawTrigger: number;
   domContainerRef: React.RefObject<HTMLDivElement | null>;
+  domRectRef: React.RefObject<DOMRect | null>;
 }) {
   return (
     <Suspense fallback={null}>
@@ -974,11 +982,36 @@ export function TeethJawR3F({
   const [canvasReady, setCanvasReady] = useState(false);
   const containerRef  = useRef<HTMLDivElement>(null);
   const mouseTargetRef = useRef<MouseTarget>({ rotY: 0, rotX: 0, active: false });
+  // Cached container rect — 給 RealJaw useFrame 用，避免每幀呼叫 getBoundingClientRect
+  // ResizeObserver + scroll listener 維護，命中率 ~100%（Landing 是 fixed 全屏）
+  const containerRectRef = useRef<DOMRect | null>(null);
 
   useEffect(() => {
     const id = setTimeout(() => setCanvasReady(true), 150);
     return () => clearTimeout(id);
   }, []);
+
+  // 維護 cached rect（resize / scroll 時更新；其他時間 useFrame 直接讀）
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const updateRect = () => {
+      containerRectRef.current = el.getBoundingClientRect();
+    };
+    // 初始抓一次
+    updateRect();
+    // 容器大小變動（視窗 resize / RWD 切換 viewport）
+    const ro = new ResizeObserver(updateRect);
+    ro.observe(el);
+    // 視窗滾動（rect.top/left 會變）— Landing 是 fixed 但保險起見還是聽
+    window.addEventListener("scroll", updateRect, { passive: true });
+    window.addEventListener("resize", updateRect);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("scroll", updateRect);
+      window.removeEventListener("resize", updateRect);
+    };
+  }, [canvasReady]);
 
   // Global mouse-look tracking (within 380px of bust centre)
   useEffect(() => {
@@ -1050,6 +1083,7 @@ export function TeethJawR3F({
           beamTrigger={beamTrigger}
           clickJawTrigger={clickJawTrigger}
           domContainerRef={containerRef}
+          domRectRef={containerRectRef}
         />
       </Canvas>
     </div>

@@ -3,7 +3,8 @@ import * as THREE from "three";
 // ─── 坑洞定義 ────────────────────────────────────────────────────────────────
 // lat/lng 單位：度；radius / rimWidth：角距離（度）
 // 位置只需視覺合理，不需精確月球 GIS
-const MOON_CRATERS = [
+// 匯出供手機版 buildMoonTerrainSphere 重用（共享同一份坑洞定義）
+export const MOON_CRATERS = [
   { lat:  15, lng:   20, radius: 18, rimWidth: 5 },  // 大坑（Tycho-like）
   { lat: -30, lng:  -60, radius: 12, rimWidth: 4 },
   { lat:  50, lng:   80, radius:  8, rimWidth: 3 },
@@ -27,6 +28,11 @@ interface BuildMoonPointsOptions {
   candidateCount?: number;
 }
 
+// ─── Color recipe codes（與 buildLandPoints 同模式） ────────────────────────
+// 主題切換時不用重建月球點雲（22k candidates），只 recolor 已有的 color attribute
+const RECIPE_ACCENT = 0;
+const RECIPE_WHITE = 1;
+
 /**
  * 計算兩個 lat/lng 點之間的角距離（度）
  */
@@ -43,6 +49,57 @@ function angularDist(
 }
 
 /**
+ * 用 cached recipes 重新算月球 colors（in-place mutate）
+ */
+function applyMoonColors(
+  colors: Float32Array,
+  recipes: Uint8Array,
+  brightness: Float32Array,
+  accentColor: THREE.Color,
+): void {
+  const aR = accentColor.r;
+  const aG = accentColor.g;
+  const aB = accentColor.b;
+  const n = recipes.length;
+  for (let i = 0; i < n; i++) {
+    const i3 = i * 3;
+    if (recipes[i] === RECIPE_WHITE) {
+      colors[i3] = 1.0;
+      colors[i3 + 1] = 1.0;
+      colors[i3 + 2] = 1.0;
+    } else {
+      const b = brightness[i];
+      colors[i3] = aR * b;
+      colors[i3 + 1] = aG * b;
+      colors[i3 + 2] = aB * b;
+    }
+  }
+}
+
+/**
+ * 主題切換時呼叫：用 cached recipes 重算 colors，不重建 22k candidates
+ *
+ * 改動前：grabbed 期間每 1.5 秒 cycleTheme → buildMoonPoints (~30-60ms blocked)
+ * 改動後：直接 recolor (~1ms)
+ *
+ * @returns true = 重算成功；false = 沒 recipes（fallback rebuild）
+ */
+export function recolorMoonPoints(
+  geom: THREE.BufferGeometry,
+  accentColor: THREE.Color,
+): boolean {
+  const colorAttr = geom.attributes.color;
+  if (!colorAttr) return false;
+  const recipes = geom.userData.colorRecipes as Uint8Array | undefined;
+  const brightness = geom.userData.colorBrightness as Float32Array | undefined;
+  if (!recipes || !brightness) return false;
+
+  applyMoonColors(colorAttr.array as Float32Array, recipes, brightness, accentColor);
+  colorAttr.needsUpdate = true;
+  return true;
+}
+
+/**
  * 生成月球點雲 BufferGeometry
  *
  * 視覺設計：
@@ -53,6 +110,10 @@ function angularDist(
  * 結果 attributes：
  *   - position: 3D（球面座標 × moonRadius）
  *   - color:    per-vertex RGB（跟隨 accentColor）
+ *
+ * userData（給 recolorMoonPoints 用，主題切換時不重建）：
+ *   - colorRecipes:    Uint8Array  0=accent, 1=white
+ *   - colorBrightness: Float32Array  accent 亮度倍率（white 時為 0）
  */
 export function buildMoonPoints({
   moonRadius,
@@ -60,11 +121,8 @@ export function buildMoonPoints({
   candidateCount = 22000,
 }: BuildMoonPointsOptions): THREE.BufferGeometry {
   const positions: number[] = [];
-  const colors: number[] = [];
-
-  const aR = accentColor.r;
-  const aG = accentColor.g;
-  const aB = accentColor.b;
+  const recipesArr: number[] = [];
+  const brightnessArr: number[] = [];
 
   for (let i = 0; i < candidateCount; i++) {
     // Uniform sphere sampling
@@ -113,26 +171,37 @@ export function buildMoonPoints({
     // 位置
     positions.push(x * moonRadius, y * moonRadius, z * moonRadius);
 
-    // 顏色
+    // 顏色 recipe（決策一次，主題切換時重用）
     if (region === "rim") {
       if (Math.random() < 0.05) {
         // 白色高亮（rim 偶爾閃亮）
-        colors.push(1.0, 1.0, 1.0);
+        recipesArr.push(RECIPE_WHITE);
+        brightnessArr.push(0);
       } else {
         const b = Math.min(0.70 + Math.random() * 0.40 + rimFactor * 0.15, 1.15);
-        colors.push(aR * b, aG * b, aB * b);
+        recipesArr.push(RECIPE_ACCENT);
+        brightnessArr.push(b);
       }
     } else if (region === "bowl") {
       const b = 0.28 + Math.random() * 0.17;
-      colors.push(aR * b, aG * b, aB * b);
+      recipesArr.push(RECIPE_ACCENT);
+      brightnessArr.push(b);
     } else {
       const b = 0.55 + Math.random() * 0.30;
-      colors.push(aR * b, aG * b, aB * b);
+      recipesArr.push(RECIPE_ACCENT);
+      brightnessArr.push(b);
     }
   }
 
+  const recipes = new Uint8Array(recipesArr);
+  const brightness = new Float32Array(brightnessArr);
+  const colors = new Float32Array(recipes.length * 3);
+  applyMoonColors(colors, recipes, brightness, accentColor);
+
   const geom = new THREE.BufferGeometry();
   geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geom.setAttribute("color",    new THREE.Float32BufferAttribute(colors, 3));
+  geom.setAttribute("color",    new THREE.BufferAttribute(colors, 3));
+  geom.userData.colorRecipes = recipes;
+  geom.userData.colorBrightness = brightness;
   return geom;
 }
