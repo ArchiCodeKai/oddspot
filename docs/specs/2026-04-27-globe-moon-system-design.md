@@ -129,6 +129,21 @@ lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(lineSegments,
 - **Continent outline**：`LineBasicMaterial({ color: accent, transparent: true, opacity: 0.85, linewidth: 1 })`
 - **位移幅度**：`max 0.025`（球面半徑的 2.5%）—— 在 wireframe 上看得出來但不誇張
 
+### 4.4 Mobile light globe 修正（2026-04-30）
+
+手機版不再混用「低多邊形填色面」與「高解析 GeoJSON 海岸線」。兩者解析度不同會造成色塊與邊線無法吻合。
+
+目前 `GlobeSceneMobile` 的 light globe 使用 `buildTerrainSphere(...)` 產生四組 heightmap 同源幾何：
+
+| 幾何 | 用途 | 視覺規則 |
+|---|---|---|
+| `meshGeometry` | 陸地 mask 填色 | 完整 displaced sphere；shader 用 `aLandFactor` 切陸地，避免 triangle coast 鋸齒 |
+| `coastlineGeometry` | 海岸線 | marching squares 從 heightmap land threshold 抽 contour，比 triangle edge 平滑 |
+| `wireGeometry` | 大陸內部等高線 | 從 procedural elevation field 抽 contour，補山脈/盆地/高原可讀性 |
+| `ridgeGeometry` | 山脈/高地線 | 從 mountain field 抽 contour，讓大陸中央不只是單純填色 |
+
+透明度層級維持：陸地高點 > 一般陸地 > 潮汐 wave > 海洋。海洋與潮汐仍由 mobile ocean shell 處理，陸地 mesh 不再覆蓋整顆球。
+
 ---
 
 ## 5. Moon

@@ -12,12 +12,14 @@ const MAX_LAND_RADIUS = 1.045;        // 任何點的硬性上限
 // ─── 山脈 Gaussian bump 列表 ─────────────────────────────────────────────────
 // 位置只需大致合理，不需精確 GIS；width 單位 = 緯/經度
 // falloff: height * exp(-(dist/width)²)
-const MOUNTAIN_BUMPS = [
+// 匯出供 GlobeSceneMobile 的 displaced wireframe sphere 重用
+export const MOUNTAIN_BUMPS = [
   { lat:  28, lng:  86, width: 12, height: 0.022 }, // 喜馬拉雅（最高）
   { lat:  46, lng:  10, width:  7, height: 0.012 }, // 阿爾卑斯
   { lat: -15, lng: -72, width: 18, height: 0.018 }, // 安地斯
   { lat:  43, lng: -110, width: 14, height: 0.014 }, // 落磯山脈
   { lat:   0, lng:  37, width: 10, height: 0.010 }, // 東非高原（弱）
+  { lat: 23.7, lng: 121.0, width: 1.8, height: 0.014 }, // 台灣中央山脈（OddSpot 重點）
 ] as const;
 
 /**
@@ -34,8 +36,10 @@ function deterministicNoise(lat: number, lng: number): number {
 /**
  * 計算指定 lat/lng 點的山脈 bump 高度（所有 bump 疊加）
  * falloff: height * exp(-(euclideanDist / width)²)
+ *
+ * 匯出供 displaced wireframe sphere 重用（共享同一份山脈定義，視覺一致）
  */
-function mountainElevation(lat: number, lng: number): number {
+export function mountainElevation(lat: number, lng: number): number {
   let elev = 0;
   for (const m of MOUNTAIN_BUMPS) {
     const dLat = lat - m.lat;

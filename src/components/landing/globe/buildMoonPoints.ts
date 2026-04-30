@@ -3,7 +3,8 @@ import * as THREE from "three";
 // ─── 坑洞定義 ────────────────────────────────────────────────────────────────
 // lat/lng 單位：度；radius / rimWidth：角距離（度）
 // 位置只需視覺合理，不需精確月球 GIS
-const MOON_CRATERS = [
+// 匯出供手機版 buildMoonTerrainSphere 重用（共享同一份坑洞定義）
+export const MOON_CRATERS = [
   { lat:  15, lng:   20, radius: 18, rimWidth: 5 },  // 大坑（Tycho-like）
   { lat: -30, lng:  -60, radius: 12, rimWidth: 4 },
   { lat:  50, lng:   80, radius:  8, rimWidth: 3 },

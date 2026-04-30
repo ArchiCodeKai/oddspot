@@ -49,7 +49,11 @@ interface MoonProps {
   accentColor: THREE.Color;
   /** 0 = 隱藏，1 = 完整顯示（boot 期間 fade in） */
   visibility?: number;
+  /** 點雲密度（0~1），1 = 完整 22k candidates，0.7 = 砍 30%（reduced tier 用） */
+  pointDensity?: number;
 }
+
+const MOON_BASE_CANDIDATES = 22000;
 
 /**
  * 月球元件 v6 — 點雲月球 + 拖曳互動
@@ -67,7 +71,7 @@ interface MoonProps {
  *   - grabbed 期間：tumble rotation + dust 粒子逸散 + 每 1.5s 切換主題
  */
 export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
-  { accentColor, visibility = 1 },
+  { accentColor, visibility = 1, pointDensity = 1 },
   forwardedRef,
 ) {
   // ─── 群組 refs ────────────────────────────────────────────────────────────
@@ -89,10 +93,16 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
   // ─── 月球點雲幾何（只 build 一次，主題切換改走 recolorMoonPoints） ────────
   // 改動前：grabbed 每 1.5s cycleTheme → buildMoonPoints (22k candidates) ≈ 30-60ms 卡頓
   // 改動後：useMemo 只跑一次，主題切換時下方 useEffect 重算 colors ≈ 1ms
+  // pointDensity：依 GlobeScene 的 tier 縮放 candidate count（reduced 走 0.7 = 砍 30%）
   const moonPointsGeom = useMemo(
-    () => buildMoonPoints({ moonRadius: MOON_RADIUS, accentColor }),
+    () => buildMoonPoints({
+      moonRadius: MOON_RADIUS,
+      accentColor,
+      candidateCount: Math.round(MOON_BASE_CANDIDATES * pointDensity),
+    }),
     // 故意不依賴 accentColor：position 是固定的，只有 colors 跟著變
     // accentColor 變動由下方 recolorMoonPoints effect 處理
+    // pointDensity 也不放 dep：mount 時就決定了，跟著 tier 走，過程中不會變
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
