@@ -354,13 +354,16 @@ function GlobeInner({
                 沿 sub-lunar 軸 P2 Legendre 拉長 ~5%（軸極凸、赤道凹）
                 表面有流體 noise 擾動，模擬洋流不規則翻動
                 land mask 削弱陸地處 → 視覺上像「海洋潮汐殼」包覆地球 */}
+            {/* base 1.110：land max ~1.045，shell 赤道內縮後仍 ≥ 1.069 → 不被陸地擋
+                軸極半徑 ≈ 1.193，會穿出 atmosphere 1.065（atmosphere 是 fresnel rim，中間透明，不擋） */}
             <TidalEllipsoidShell
               accentColor={accentColor}
               landMaskTexture={landMaskTex}
               subLunarLocalRef={subLunarLocalRef}
               visibility={1}
-              tideAmp={0.038}
-              noiseAmp={0.012}
+              baseRadius={1.110}
+              tideAmp={0.075}
+              noiseAmp={0.025}
             />
 
             {/* Layer 4: Atmosphere Shell

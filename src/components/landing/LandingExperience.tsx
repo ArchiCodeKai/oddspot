@@ -95,6 +95,12 @@ export function LandingExperience() {
   const [exiting, setExiting] = useState(false);
   const [clock, setClock] = useState("--:--:--");
   const [skipBoot, setSkipBoot] = useState(false);
+  // mounted 旗標：避免 SSR/client 不一致造成 hydration mismatch
+  // 之前的 dev 角標用 typeof window 動態判斷，server="?" / client=瀏覽器寬度
+  // → React 19 嚴格 hydration check 會丟棄整個 tree 重 render
+  // → Canvas 重 mount → GLB 重新載入 → shader state 重置 → 看起來像「載入特別慢」+ 潮汐消失
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // 整個 boot → dissolve 動畫驅動：mount 一次，rAF 自我終止
   // 之前的版本把這個拆成兩個 useEffect 且依賴 [phase]，
@@ -218,18 +224,22 @@ export function LandingExperience() {
       />
 
       {/* Globe canvas — 全螢幕
-          mobile / reduced-motion        → GlobeSceneMobile（海岸線版，超輕量）
-          tablet / desktop reduced-motion → GlobeScene tier="reduced"（點雲砍 30%）
-          desktop                         → GlobeScene tier="full"（完整版） */}
-      {globeTier === "light" ? (
-        <GlobeSceneMobile phase={phase} skipBoot={skipBoot} dissolveProgress={dissolveProgress} />
-      ) : (
-        <GlobeScene
-          phase={phase}
-          skipBoot={skipBoot}
-          dissolveProgress={dissolveProgress}
-          tier={globeTier}
-        />
+          mobile / reduced-motion        → GlobeSceneMobile（海岸線版）
+          tablet / desktop reduced-motion → GlobeScene tier="reduced"（點雲 -30%）
+          desktop                         → GlobeScene tier="full"
+          mounted 守護：避免 SSR fallback "desktop" → client "light" 觸發
+          GlobeScene unmount + GlobeSceneMobile mount 的 Canvas 重建（GLB 重抓 / shader state 丟失） */}
+      {mounted && (
+        globeTier === "light" ? (
+          <GlobeSceneMobile phase={phase} skipBoot={skipBoot} dissolveProgress={dissolveProgress} />
+        ) : (
+          <GlobeScene
+            phase={phase}
+            skipBoot={skipBoot}
+            dissolveProgress={dissolveProgress}
+            tier={globeTier}
+          />
+        )
       )}
 
       {/* HUD: 左上 system tag + phase */}
@@ -551,8 +561,10 @@ export function LandingExperience() {
         )}
       </AnimatePresence>
 
-      {/* DEV ONLY · viewport + globe tier debug 角標。確認 RWD 生效後可移除 */}
-      {process.env.NODE_ENV !== "production" && (
+      {/* DEV ONLY · viewport + globe tier debug 角標
+          mounted 守護：mount 完才渲染整個 div，避免 server "?" / client "574"
+          的 hydration mismatch（會把整顆 React tree 重 render，讓 Canvas+GLB 重 mount） */}
+      {process.env.NODE_ENV !== "production" && mounted && (
         <div
           aria-hidden="true"
           style={{
@@ -562,9 +574,9 @@ export function LandingExperience() {
             zIndex: 9999,
             padding: "4px 8px",
             background:
-              globeTier === "light"   ? "rgba(95, 217, 192, 0.9)"   // 綠 = mobile 海岸線版
-              : globeTier === "reduced" ? "rgba(255, 200, 80, 0.9)"  // 橘 = 點雲 -30%
-              :                           "rgba(255, 100, 100, 0.9)", // 紅 = 完整桌面
+              globeTier === "light"   ? "rgba(95, 217, 192, 0.9)"
+              : globeTier === "reduced" ? "rgba(255, 200, 80, 0.9)"
+              :                           "rgba(255, 100, 100, 0.9)",
             color: "#000",
             fontFamily: "var(--font-jetbrains-mono), monospace",
             fontSize: 10,
@@ -572,7 +584,7 @@ export function LandingExperience() {
             pointerEvents: "none",
           }}
         >
-          {globeTier.toUpperCase()} · {typeof window !== "undefined" ? window.innerWidth : "?"}px
+          {globeTier.toUpperCase()} · {window.innerWidth}px
         </div>
       )}
     </motion.div>

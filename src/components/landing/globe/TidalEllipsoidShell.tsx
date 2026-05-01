@@ -21,6 +21,7 @@ const VERTEX_SHADER = /* glsl */ `
   uniform float uTime;
   uniform float uTideAmp;
   uniform float uNoiseAmp;
+  uniform float uBaseRadius;  // shell 基底半徑（讓 shell 包覆地球+陸地）
 
   varying vec3  vLocalNormal;
   varying float vLegendre;
@@ -36,19 +37,17 @@ const VERTEX_SHADER = /* glsl */ `
     vLegendre = legendre;
 
     // 流體擾動 noise（4 層多頻 sin/cos，無 texture）
-    // 每層用不同頻率 + uTime 緩速漂移，模擬海流不規則翻動
     float n1 = sin(n.x * 11.0 + n.y * 7.0  + uTime * 0.55);
     float n2 = cos(n.z * 13.0 - n.x * 9.0  - uTime * 0.42);
     float n3 = sin((n.x + n.y) * 17.0 + uTime * 0.71);
     float n4 = cos((n.y - n.z) * 21.0 - uTime * 0.38);
     float fluidNoise = (n1 * 0.40 + n2 * 0.28 + n3 * 0.18 + n4 * 0.14);
-    // 朝兩極的 noise 加重（潮汐隆起區擾動更明顯）
     fluidNoise *= 0.65 + abs(c) * 0.35;
     vNoise = fluidNoise;
 
-    // 總 displacement：橢圓拉長 + 流體擾動
+    // 總 radius：base × (1 + 橢圓 + 流體)
     float disp = legendre * uTideAmp + fluidNoise * uNoiseAmp;
-    vec3 displaced = n * (1.0 + disp);
+    vec3 displaced = n * uBaseRadius * (1.0 + disp);
 
     gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
   }
@@ -65,27 +64,33 @@ const FRAGMENT_SHADER = /* glsl */ `
   varying float vNoise;
 
   void main() {
-    // Land mask 採樣（陸地處淡化，潮汐殼是「海面」概念）
+    // Land mask
     float lat = asin(clamp(vLocalNormal.y, -1.0, 1.0));
     float lng = atan(vLocalNormal.z, -vLocalNormal.x);
     vec2 uv = vec2((lng + PI) / (2.0 * PI), 0.5 - lat / PI);
     float landVal = texture2D(uLandMask, uv).r;
-    float oceanFactor = 1.0 - smoothstep(0.30, 0.55, landVal);
+    float landFactor = smoothstep(0.30, 0.55, landVal);
+    float oceanWeight = mix(1.0, 0.55, landFactor);
 
-    // 軸極潮汐隆起區：更亮（lLegendre > 0 處）
-    float axisGlow = max(0.0, vLegendre);
-    // 赤道腰部：淡
-    float baseGlow = 0.06;
+    // ⭐ Baseline：整顆殼**永遠**至少有 0.20 可見度（保證輪廓可見）
+    //    避免之前「fragment 計算多項相加後仍接近 0、整個殼隱形」的問題
+    float baseline = 0.20;
 
-    // noise 擾動：高處（流體峰）提亮
-    float noiseGlow = max(0.0, vNoise) * 0.18;
+    // 軸極潮汐隆起區：朝月球面 + 反面雙凸
+    float axisGlow = max(0.0, vLegendre) * 0.95;
 
-    float intensity = (baseGlow + axisGlow * 0.35 + noiseGlow) * oceanFactor;
+    // 流體 noise 高處提亮
+    float noiseGlow = max(0.0, vNoise) * 0.55;
+
+    float intensity = (baseline + axisGlow + noiseGlow) * oceanWeight;
     vec3 col = uAccent * intensity;
-    // 潮汐峰白光點綴（讓「流動」感更強）
-    col += vec3(1.0, 0.96, 0.78) * noiseGlow * 0.5;
+    // 流體峰白光（粒子流動感）
+    col += vec3(1.0, 0.96, 0.78) * noiseGlow * 0.60;
+    // 軸極白光
+    col += vec3(1.0, 0.92, 0.65) * axisGlow * 0.35;
 
-    float a = clamp(intensity * uOpacity, 0.0, 0.55);
+    // alpha 保底 0.18，讓殼輪廓至少有可見度
+    float a = clamp(intensity * uOpacity, 0.0, 0.90);
     gl_FragColor = vec4(col, a);
   }
 `;
@@ -96,7 +101,9 @@ interface TidalEllipsoidShellProps {
   /** earth-local 月球方向 ref（每幀 GlobeScene 更新） */
   subLunarLocalRef: React.RefObject<THREE.Vector3>;
   visibility?: number;
-  /** 橢圓拉長振幅（球半徑比例，0.05 = 5%） */
+  /** Shell 基底半徑（要 ≥ land 表面半徑，避免被陸地遮）*/
+  baseRadius?: number;
+  /** 橢圓拉長振幅（球半徑比例，0.06 = 6% 軸極凸出） */
   tideAmp?: number;
   /** 流體 noise 振幅 */
   noiseAmp?: number;
@@ -120,20 +127,22 @@ export function TidalEllipsoidShell({
   landMaskTexture,
   subLunarLocalRef,
   visibility = 1,
-  tideAmp = 0.038,
-  noiseAmp = 0.012,
+  baseRadius = 1.048,
+  tideAmp = 0.075,
+  noiseAmp = 0.025,
 }: TidalEllipsoidShellProps) {
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
   const uniforms = useMemo(
     () => ({
-      uAccent:    { value: accentColor.clone() },
-      uSubLunar:  { value: new THREE.Vector3(1, 0, 0) },
-      uTime:      { value: 0 },
-      uTideAmp:   { value: tideAmp },
-      uNoiseAmp:  { value: noiseAmp },
-      uOpacity:   { value: 0 },
-      uLandMask:  { value: landMaskTexture },
+      uAccent:      { value: accentColor.clone() },
+      uSubLunar:    { value: new THREE.Vector3(1, 0, 0) },
+      uTime:        { value: 0 },
+      uTideAmp:     { value: tideAmp },
+      uNoiseAmp:    { value: noiseAmp },
+      uBaseRadius:  { value: baseRadius },
+      uOpacity:     { value: 0 },
+      uLandMask:    { value: landMaskTexture },
     }),
     // accentColor / landMaskTexture 變化由下方 useEffect 同步
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -157,7 +166,7 @@ export function TidalEllipsoidShell({
   });
 
   return (
-    <mesh renderOrder={3}>
+    <mesh renderOrder={8}>
       {/* base sphere 1.0；vertex shader 自己拉長到橢圓（避免 React-side scale 跟 shader 重複位移） */}
       <sphereGeometry args={[1.0, 96, 48]} />
       <shaderMaterial
@@ -167,8 +176,11 @@ export function TidalEllipsoidShell({
         fragmentShader={FRAGMENT_SHADER}
         transparent
         depthWrite={false}
+        depthTest={false}
         side={THREE.FrontSide}
-        blending={THREE.AdditiveBlending}
+        // NormalBlending（不是 Additive）：dark / light 雙主題下都可見
+        // Additive 在白底上會完全消失（白 + accent ≈ 白）
+        blending={THREE.NormalBlending}
       />
     </mesh>
   );
