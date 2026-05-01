@@ -144,14 +144,14 @@ lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(lineSegments,
 
 透明度層級維持：陸地高點 > 一般陸地 > 潮汐 wave > 海洋。海洋與潮汐仍由 mobile ocean shell 處理，陸地 mesh 不再覆蓋整顆球。
 
-### 4.5 Mobile tide shell 修正（2026-05-02）
+### 4.5 Mobile ocean volume + tide shell 修正（2026-05-02）
 
-手機版潮汐不再只依賴 D1 ripple 事件的圓形掃描線。`MobileOceanShell` 以 shader 控制固定外層橢圓殼：
+手機版潮汐不再只依賴 D1 ripple 事件的圓形掃描線，也不再把海面做成單純外層罩光。`GlobeSceneMobile` 現在拆成兩層：
 
-- `uBaseRadius = 1.145`，赤道內縮後仍在 terrain max 外側，避免潮汐殼被陸地/海面遮住。
-- P2 Legendre 模型 `P2(c) = (3c² - 1) / 2` 沿 sub-lunar 軸做雙向凸起，視覺上對應「月球把海洋拉成橢圓殼」。
-- material 使用 `depthTest={false}`、`renderOrder={8}`，保證手機透明層排序後仍可見。
-- 除 ripple wave-front 外，shader 另有持續的 low-cost current bands，讓海面在沒有事件觸發時仍有淡水彩洋流擾動。
+- `MobileOceanVolume`：位於地球核心與陸地板塊之間，使用同一張 land mask 只顯示海洋。這層負責可見的水面材質、持續洋流 bands、D1 wave-front 與海洋亮度。
+- `MobileOceanShell`：位於地形外側，保留 P2 Legendre 橢圓潮汐包覆殼；`uBaseRadius = 1.145`，赤道內縮後仍在 terrain max 外側。
+- 兩層都沿 sub-lunar 軸使用 `P2(c) = (3c² - 1) / 2` 做雙向凸起，視覺上對應「月球把海洋拉成橢圓殼」。
+- 手機 canvas 設定 `touch-action: none`，地球與月球拖拽用 pointer capture 維持連續追蹤，避免瀏覽器把手勢轉成頁面 pan。
 
 ---
 

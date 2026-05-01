@@ -75,6 +75,7 @@ function buildWaypoints(targetX: number, targetY: number): { pts: Point[]; pathL
 
 export function MapClickEffect() {
   const arrowRef = useRef<HTMLDivElement>(null);
+  const [enabled, setEnabled] = useState(false);
   const [impact, setImpact] = useState<ImpactState>({
     x: 0, y: 0, id: 0, rings: 2,
   });
@@ -82,9 +83,21 @@ export function MapClickEffect() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.matchMedia("(pointer: coarse)").matches) return;
-    // Mobile / tablet viewport（含 DevTools 模擬手機）
-    if (window.matchMedia("(max-width: 1023px)").matches) return;
+    const check = () => {
+      if (window.matchMedia("(pointer: coarse)").matches) return false;
+      // Mobile / tablet viewport（含 DevTools 模擬手機）
+      if (window.matchMedia("(max-width: 1023px)").matches) return false;
+      return true;
+    };
+    setEnabled(check());
+    const onResize = () => setEnabled(check());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!enabled) return;
 
     const arrowEl = arrowRef.current;
     if (!arrowEl) return;
@@ -167,10 +180,13 @@ export function MapClickEffect() {
 
     window.addEventListener("oddspot:markerclick", onMarkerClick);
     return () => window.removeEventListener("oddspot:markerclick", onMarkerClick);
-  }, []);
+  }, [enabled]);
 
   // 最後一個 ring 動畫結束後清除
   const handleLastRingEnd = () => setImpactActive(false);
+
+  // 手機/平板 viewport 完全不渲染箭頭 DOM，避免停在左上角形成鬼影 cursor。
+  if (!enabled) return null;
 
   // ring 樣式基底
   const ringBase: React.CSSProperties = {

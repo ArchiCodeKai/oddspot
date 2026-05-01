@@ -60,7 +60,7 @@ SpotMarker      →  dispatch CustomEvent "oddspot:markerclick"
 MapClickEffect  →  listen "oddspot:markerclick"，從 cursorState 讀取軌跡，播放 GSAP 動畫
 ```
 
-**觸控設備：** 兩個效果元件都會在 `pointer: coarse` 時提前 return，行動端無影響。
+**觸控設備與手機 viewport：** 兩個效果元件都只在桌面 viewport 渲染。判斷同時包含 `pointer: coarse` 與 `max-width: 1023px`，避免 DevTools 手機尺寸下仍輸出停在左上角的箭頭 DOM。
 
 ## 已知限制
 

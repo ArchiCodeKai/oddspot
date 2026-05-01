@@ -150,8 +150,17 @@ function MoonLite({
 
   const pointerNDCRef = useRef(new THREE.Vector2());
   const dragPlaneRef = useRef(new THREE.Plane());
+  const activePointerIdRef = useRef<number | null>(null);
+  const captureTargetRef = useRef<Element | null>(null);
 
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
+
+  const writePointerNDC = (clientX: number, clientY: number) => {
+    const rect = gl.domElement.getBoundingClientRect();
+    const x = rect.width > 0 ? (clientX - rect.left) / rect.width : 0.5;
+    const y = rect.height > 0 ? (clientY - rect.top) / rect.height : 0.5;
+    pointerNDCRef.current.set(x * 2 - 1, -(y * 2 - 1));
+  };
 
   const moonTerrain = useMemo(
     () => buildMoonTerrainSphere({ moonRadius: MOON_RADIUS, segmentsW: 32, segmentsH: 16 }),
@@ -161,17 +170,36 @@ function MoonLite({
   // Window pointer events（追蹤手指/滑鼠位置 → 給 raycaster 用）
   useEffect(() => {
     function handleMove(e: PointerEvent) {
-      pointerNDCRef.current.set(
-        (e.clientX / window.innerWidth) * 2 - 1,
-        -(e.clientY / window.innerHeight) * 2 + 1,
-      );
+      if (
+        moonStateRef.current === "grabbed" &&
+        activePointerIdRef.current !== null &&
+        e.pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
+      if (moonStateRef.current === "grabbed") e.preventDefault();
+      writePointerNDC(e.clientX, e.clientY);
     }
-    function handleUp() {
+    function handleUp(e: PointerEvent) {
+      if (
+        activePointerIdRef.current !== null &&
+        e.pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
       if (moonStateRef.current !== "grabbed") return;
       moonStateRef.current = "returning";
-      document.body.style.cursor = "";
+      if (
+        captureTargetRef.current &&
+        activePointerIdRef.current !== null &&
+        captureTargetRef.current.hasPointerCapture?.(activePointerIdRef.current)
+      ) {
+        captureTargetRef.current.releasePointerCapture(activePointerIdRef.current);
+      }
+      activePointerIdRef.current = null;
+      captureTargetRef.current = null;
     }
-    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointermove", handleMove, { passive: false });
     window.addEventListener("pointerup", handleUp);
     window.addEventListener("pointercancel", handleUp);
     return () => {
@@ -179,7 +207,7 @@ function MoonLite({
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleUp);
     };
-  }, []);
+  }, [gl, moonStateRef]);
 
   useFrame((state, dt) => {
     const anchor = anchorRef.current;
@@ -250,6 +278,13 @@ function MoonLite({
         <mesh
           onPointerDown={(e) => {
             if (moonStateRef.current === "grabbed") return;
+            e.nativeEvent.preventDefault();
+            activePointerIdRef.current = e.nativeEvent.pointerId;
+            const target = e.nativeEvent.target as Element | null;
+            if (target?.setPointerCapture) {
+              target.setPointerCapture(e.nativeEvent.pointerId);
+              captureTargetRef.current = target;
+            }
 
             // 建立 camera-facing drag plane（通過月球當前 world 位置）
             moonBodyRef.current!.getWorldPosition(_moonScratchPos);
@@ -260,13 +295,9 @@ function MoonLite({
             );
 
             // 初始化 NDC（防止第一幀沒 pointermove 時 hit 跳到 (0,0)）
-            pointerNDCRef.current.set(
-              (e.nativeEvent.clientX / window.innerWidth) * 2 - 1,
-              -(e.nativeEvent.clientY / window.innerHeight) * 2 + 1,
-            );
+            writePointerNDC(e.nativeEvent.clientX, e.nativeEvent.clientY);
 
             moonStateRef.current = "grabbed";
-            document.body.style.cursor = "grabbing";
           }}
         >
           <sphereGeometry args={[MOON_RADIUS * 1.6, 16, 8]} />
@@ -662,6 +693,169 @@ function MobileMoonShader({
   );
 }
 
+// ─── 手機版海洋量體：在地球核心與陸地板塊之間的真實水面層 ───
+// 這層負責「海洋本身有材質」：只在 ocean mask 顯示，陸地由上層 terrain 蓋住。
+// 外層 MobileOceanShell 只保留橢圓潮汐包覆感，避免把水面材質蓋成單純藍色光暈。
+function MobileOceanVolume({
+  accentColor,
+  subLunarLocalRef,
+  rippleStateRef,
+  visibility,
+  landMaskTex,
+}: {
+  accentColor: THREE.Color;
+  subLunarLocalRef: React.RefObject<THREE.Vector3>;
+  rippleStateRef: React.RefObject<RippleState>;
+  visibility: number;
+  landMaskTex: THREE.DataTexture | null;
+}) {
+  const uniforms = useMemo(
+    () => ({
+      uAccent:       { value: accentColor.clone() },
+      uSubLunar:     { value: new THREE.Vector3(1, 0, 0) },
+      uRippleOrigin: { value: new THREE.Vector3(1, 0, 0) },
+      uWaveFrontRad: { value: -1 },
+      uBaseRadius:   { value: 1.018 },
+      uOpacity:      { value: 0 },
+      uLandMask:     { value: landMaskTex },
+      uTime:         { value: 0 },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  useEffect(() => {
+    uniforms.uAccent.value.copy(accentColor);
+  }, [accentColor, uniforms]);
+
+  useEffect(() => {
+    uniforms.uLandMask.value = landMaskTex;
+  }, [landMaskTex, uniforms]);
+
+  useFrame((state) => {
+    uniforms.uTime.value = state.clock.elapsedTime;
+    uniforms.uOpacity.value = visibility;
+    uniforms.uSubLunar.value.copy(subLunarLocalRef.current).normalize();
+
+    const rs = rippleStateRef.current;
+    if (rs.live) {
+      uniforms.uRippleOrigin.value.set(rs.originX, rs.originY, rs.originZ).normalize();
+      const t = rs.age / RIPPLE_LIFE_SEC;
+      const eased = 1 - Math.pow(1 - t, 2);
+      uniforms.uWaveFrontRad.value = (eased * RIPPLE_MAX_RADIUS_DEG * Math.PI) / 180;
+    } else {
+      uniforms.uWaveFrontRad.value = -1;
+    }
+  });
+
+  if (!landMaskTex) return null;
+
+  return (
+    <mesh renderOrder={0}>
+      <sphereGeometry args={[1.0, 56, 32]} />
+      <shaderMaterial
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+        depthTest={false}
+        side={THREE.FrontSide}
+        blending={THREE.NormalBlending}
+        vertexShader={/* glsl */ `
+          #define PI 3.14159265359
+          uniform vec3      uSubLunar;
+          uniform float     uBaseRadius;
+          uniform float     uTime;
+          uniform sampler2D uLandMask;
+          varying vec3  vSphereNormal;
+          varying vec3  vViewNormal;
+          varying float vOceanFactor;
+          varying float vLegendre;
+          varying float vCurrent;
+
+          void main() {
+            vec3 n = normalize(position);
+            vSphereNormal = n;
+
+            float lat = asin(clamp(n.y, -1.0, 1.0));
+            float lng = atan(n.z, -n.x);
+            vec2 maskUv = vec2((lng + PI) / (2.0 * PI), 0.5 - lat / PI);
+            float landMask = texture2D(uLandMask, maskUv).r;
+            float oceanFactor = 1.0 - smoothstep(0.28, 0.54, landMask);
+            vOceanFactor = oceanFactor;
+
+            float c = dot(n, uSubLunar);
+            float legendre = (3.0 * c * c - 1.0) * 0.5;
+            vLegendre = legendre;
+
+            float angDist = acos(clamp(c, -1.0, 1.0));
+            float bandA = sin(angDist * 18.0 - uTime * 1.65 + n.y * 4.0) * 0.5 + 0.5;
+            float bandB = sin((n.x - n.z) * 13.0 + uTime * 0.85) * 0.5 + 0.5;
+            float current = smoothstep(0.50, 0.94, bandA) * 0.78 + smoothstep(0.62, 0.96, bandB) * 0.22;
+            current *= smoothstep(2.75, 0.25, angDist);
+            vCurrent = current * oceanFactor;
+
+            float ellipsoid = legendre * 0.024;
+            float waveLift = current * 0.014 * oceanFactor;
+            vec3 displaced = n * (uBaseRadius * (1.0 + ellipsoid) + waveLift);
+            vViewNormal = normalize(normalMatrix * n);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+          }
+        `}
+        fragmentShader={/* glsl */ `
+          #define PI 3.14159265359
+          uniform vec3      uAccent;
+          uniform vec3      uSubLunar;
+          uniform vec3      uRippleOrigin;
+          uniform float     uWaveFrontRad;
+          uniform float     uOpacity;
+          varying vec3  vSphereNormal;
+          varying vec3  vViewNormal;
+          varying float vOceanFactor;
+          varying float vLegendre;
+          varying float vCurrent;
+
+          void main() {
+            if (vOceanFactor < 0.08) discard;
+
+            float oceanEdge = smoothstep(0.08, 0.34, vOceanFactor);
+            float dotSub = dot(vSphereNormal, uSubLunar);
+            float axisWater = smoothstep(-0.25, 1.0, vLegendre);
+            float current = vCurrent;
+
+            float waveBand = 0.0;
+            if (uWaveFrontRad > 0.0) {
+              float waveDot = dot(vSphereNormal, uRippleOrigin);
+              float angDist = acos(clamp(waveDot, -1.0, 1.0));
+              float distFromFront = abs(angDist - uWaveFrontRad);
+              waveBand = max(0.0, 1.0 - distFromFront / 0.24);
+              waveBand = pow(waveBand, 1.15);
+            }
+
+            float facing = pow(max(0.0, dotSub), 1.5);
+            float backFacing = pow(max(0.0, -dotSub), 1.9);
+            float rim = pow(1.0 - max(0.0, vViewNormal.z), 2.6);
+
+            float intensity =
+              0.28 +
+              axisWater * 0.44 +
+              current * 0.52 +
+              waveBand * 1.20 +
+              facing * 0.20 +
+              backFacing * 0.14 +
+              rim * 0.18;
+
+            vec3 col = uAccent * intensity;
+            col += vec3(1.0, 0.96, 0.78) * (waveBand * 0.55 + current * 0.18);
+
+            float alpha = (0.34 + axisWater * 0.16 + current * 0.20 + waveBand * 0.34) * oceanEdge * uOpacity;
+            gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.82));
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 // ─── 海洋薄膜 shell（D1/D2 之外的 ambient 潮汐視覺）──────────────
 // 設計理念：用 ShaderMaterial 寫一層極薄的球殼，每幀只改 3 個 uniform float
 // 不每幀改 buffer、不加 lineSegments、不加 points → 對手機效能近乎免費
@@ -837,19 +1031,19 @@ function MobileOceanShell({
             // 海洋 1.0 / 陸地 0.35：殼仍跨過整顆球，但陸地上較淡，不搶海岸線。
             float oceanWeight = mix(0.35, 1.0, oceanFactor);
 
-            // Baseline 保證手機版不會只剩黑海面。
-            float baseline = 0.24;
+            // 外層只做潮汐包覆輪廓；海面材質由 MobileOceanVolume 負責。
+            float baseline = 0.11;
 
             // 軸極水彩（軸極區最深、赤道淡）
-            float axisWatercolor = smoothstep(-0.35, 1.0, vLegendre) * 0.95;
+            float axisWatercolor = smoothstep(-0.35, 1.0, vLegendre) * 0.48;
 
             // 朝月球面 hemisphere
             float dotSub = dot(vSphereNormal, uSubLunar);
             float facing = max(0.0, dotSub);
-            float baseGlow = pow(facing, 1.4) * 0.38;
+            float baseGlow = pow(facing, 1.4) * 0.22;
             // 反月球面（背面潮汐軸極）
             float backFacing = max(0.0, -dotSub);
-            float backGlow = pow(backFacing, 1.8) * 0.30;
+            float backGlow = pow(backFacing, 1.8) * 0.16;
 
             // Wave-front band — D1 同心圓擴散
             float angDist = acos(clamp(dotSub, -1.0, 1.0));
@@ -858,28 +1052,28 @@ function MobileOceanShell({
               float distFromFront = abs(angDist - uWaveFrontRad);
               float bandWidth = 0.32;
               waveBand = max(0.0, 1.0 - distFromFront / bandWidth);
-              waveBand = pow(waveBand, 1.05) * 1.65;
+              waveBand = pow(waveBand, 1.05) * 1.05;
             }
 
             // 持續洋流，不依賴 rippleState.live；月球掃過時也會一直有淡淡波紋在水彩殼上漂移。
-            float current = vCurrentBand * 0.34;
-            current += (sin(angDist * 8.0 + vSphereNormal.y * 5.0 - uTime * 1.1) * 0.5 + 0.5) * 0.10;
+            float current = vCurrentBand * 0.16;
+            current += (sin(angDist * 8.0 + vSphereNormal.y * 5.0 - uTime * 1.1) * 0.5 + 0.5) * 0.05;
 
             // Rim fresnel — 球緣輪廓
             float fresnel = pow(1.0 - max(0.0, vViewNormal.z), 2.5);
-            float rim = fresnel * 0.28;
+            float rim = fresnel * 0.16;
 
             // Tide-peak 提亮
-            float peakBoost = clamp(vTideHeight * 12.0, 0.0, 1.0) * 0.36;
+            float peakBoost = clamp(vTideHeight * 12.0, 0.0, 1.0) * 0.20;
 
             // 合成：baseline 永遠存在 + 其他 term × oceanWeight
             float intensity = baseline + (axisWatercolor + baseGlow + backGlow + waveBand + current + rim + peakBoost) * oceanWeight;
             vec3 col = uAccent * intensity;
             // 波峰白光點綴
-            col += vec3(1.0, 1.0, 0.92) * (waveBand * 0.42 + current * 0.18 + peakBoost * 0.36) * oceanWeight;
+            col += vec3(1.0, 1.0, 0.92) * (waveBand * 0.28 + current * 0.10 + peakBoost * 0.20) * oceanWeight;
 
             // alpha 保底：baseline × uOpacity 即可確保殼可見
-            float a = clamp(intensity * uOpacity, 0.0, 0.96);
+            float a = clamp(intensity * uOpacity, 0.0, 0.46);
             gl_FragColor = vec4(col, a);
           }
         `}
@@ -968,10 +1162,19 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
   const dragStartRotYRef = useRef(0);
   const dragStartRotXRef = useRef(0);
   const springBackTargetRef = useRef<{ x: number; y: number } | null>(null);
+  const activeEarthPointerIdRef = useRef<number | null>(null);
+  const earthCaptureTargetRef = useRef<Element | null>(null);
 
   useEffect(() => {
     function handleMove(e: PointerEvent) {
       if (!isDraggingRef.current) return;
+      if (
+        activeEarthPointerIdRef.current !== null &&
+        e.pointerId !== activeEarthPointerIdRef.current
+      ) {
+        return;
+      }
+      e.preventDefault();
       const eg = earthSpinRef.current;
       if (!eg) return;
       const dx = e.clientX - dragStartXRef.current;
@@ -983,10 +1186,24 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
         eg.rotation.x = dragStartRotXRef.current + (dy / 1000) * Math.PI * 2;
       }
     }
-    function handleUp() {
+    function handleUp(e: PointerEvent) {
       if (!isDraggingRef.current) return;
+      if (
+        activeEarthPointerIdRef.current !== null &&
+        e.pointerId !== activeEarthPointerIdRef.current
+      ) {
+        return;
+      }
       isDraggingRef.current = false;
-      document.body.style.cursor = "";
+      if (
+        earthCaptureTargetRef.current &&
+        activeEarthPointerIdRef.current !== null &&
+        earthCaptureTargetRef.current.hasPointerCapture?.(activeEarthPointerIdRef.current)
+      ) {
+        earthCaptureTargetRef.current.releasePointerCapture(activeEarthPointerIdRef.current);
+      }
+      activeEarthPointerIdRef.current = null;
+      earthCaptureTargetRef.current = null;
       if (didDragRef.current) {
         // 雙軸 spring back
         springBackTargetRef.current = {
@@ -1007,7 +1224,7 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
         snapTargetYRef.current = eg.rotation.y + delta;
       }
     }
-    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointermove", handleMove, { passive: false });
     window.addEventListener("pointerup", handleUp);
     window.addEventListener("pointercancel", handleUp);
     return () => {
@@ -1216,6 +1433,17 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
               />
             </lineSegments>
 
+            {/* Layer 2: 海洋 surface volume
+                位置在地球核心與陸地板塊之間；shader 用同一張 land mask 只顯示海洋。
+                這層承擔手機版可見的水面材質、洋流 band、D1 wave-front。 */}
+            <MobileOceanVolume
+              accentColor={accentColor}
+              subLunarLocalRef={subLunarLocalRef}
+              rippleStateRef={rippleStateRef}
+              visibility={moonVisibility}
+              landMaskTex={landMaskTex}
+            />
+
             {/* Layer 3a: 陸地 mask 填色面
                 完整球面用 aLandFactor 切出陸地，不再用三角外框當海岸線。
                 aElevation 提供大陸內部階梯深淺，避免只有單純填色。 */}
@@ -1334,9 +1562,16 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
               onPointerDown={(e) => {
                 // 月球 grabbed 中時不啟動地球拖拽（避免雙物件搶 drag）
                 if (moonStateRef.current === "grabbed") return;
+                e.nativeEvent.preventDefault();
 
                 isDraggingRef.current = true;
                 didDragRef.current = false;
+                activeEarthPointerIdRef.current = e.nativeEvent.pointerId;
+                const target = e.nativeEvent.target as Element | null;
+                if (target?.setPointerCapture) {
+                  target.setPointerCapture(e.nativeEvent.pointerId);
+                  earthCaptureTargetRef.current = target;
+                }
                 // 同時記錄 X+Y pointer 跟 X+Y rotation，handleMove 才能算雙軸 dx/dy
                 dragStartXRef.current = e.nativeEvent.clientX;
                 dragStartYRef.current = e.nativeEvent.clientY;
@@ -1416,14 +1651,24 @@ export function GlobeSceneMobile({ phase, skipBoot, dissolveProgress, style }: G
   }, []);
 
   return (
-    <div style={{ position: "absolute", inset: 0, ...style }}>
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        touchAction: "none",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        ...style,
+      }}
+    >
       <Canvas
         camera={{ fov: 50, near: 0.01, far: 1000, position: [0, 0, 4.6] }}
         dpr={[1, 1.5]}
         gl={{ antialias: false, alpha: true, powerPreference: "low-power" }}
-        style={{ background: "transparent" }}
+        style={{ background: "transparent", touchAction: "none" }}
         onCreated={({ gl }) => {
           gl.setClearColor(0x000000, 0);
+          gl.domElement.style.touchAction = "none";
         }}
       >
         <GlobeInner
