@@ -144,6 +144,15 @@ lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(lineSegments,
 
 透明度層級維持：陸地高點 > 一般陸地 > 潮汐 wave > 海洋。海洋與潮汐仍由 mobile ocean shell 處理，陸地 mesh 不再覆蓋整顆球。
 
+### 4.5 Mobile tide shell 修正（2026-05-02）
+
+手機版潮汐不再只依賴 D1 ripple 事件的圓形掃描線。`MobileOceanShell` 以 shader 控制固定外層橢圓殼：
+
+- `uBaseRadius = 1.145`，赤道內縮後仍在 terrain max 外側，避免潮汐殼被陸地/海面遮住。
+- P2 Legendre 模型 `P2(c) = (3c² - 1) / 2` 沿 sub-lunar 軸做雙向凸起，視覺上對應「月球把海洋拉成橢圓殼」。
+- material 使用 `depthTest={false}`、`renderOrder={8}`，保證手機透明層排序後仍可見。
+- 除 ripple wave-front 外，shader 另有持續的 low-cost current bands，讓海面在沒有事件觸發時仍有淡水彩洋流擾動。
+
 ---
 
 ## 5. Moon

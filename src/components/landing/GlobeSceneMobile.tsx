@@ -121,57 +121,116 @@ function buildStarPositions(): Float32Array {
 // ─── 月球：displaced wireframe sphere（坑洞 + rim + 表面 noise） ────
 // 與地球 buildTerrainSphere 同模式，效能對齊
 // 加上自轉讓坑洞在公轉之外仍可見「轉動」
-const MOON_SELF_ROTATION = 0.12; // rad/sec，月球自轉速度（比公轉慢）
+const MOON_SELF_ROTATION = 0.12; // rad/sec
+type MoonState = "orbiting" | "grabbed" | "returning";
+
+// Module-level scratch（避免每幀 GC）
+const _moonScratchPos = new THREE.Vector3();
+const _moonScratchHit = new THREE.Vector3();
+const _moonRaycaster = new THREE.Raycaster();
+const _moonOrbitTarget = new THREE.Vector3(MOON_ORBIT_RADIUS, 0, 0);
+const _moonCamDir = new THREE.Vector3();
 
 function MoonLite({
   accentColor,
   visibility,
   subLunarRef,
+  moonStateRef,
 }: {
   accentColor: THREE.Color;
   visibility: number;
-  /** 把月球 sub-lunar 點（地心 → 月球 unit vector）寫進這個 ref，給潮汐用 */
   subLunarRef: React.RefObject<THREE.Vector3>;
+  /** 共享狀態機：地球 onPointerDown 也讀同一份 ref，避免月球 grabbed 時雙物件搶 drag */
+  moonStateRef: React.RefObject<MoonState>;
 }) {
-  const groupRef = useRef<THREE.Group>(null);
+  const anchorRef = useRef<THREE.Group>(null);
   const moonBodyRef = useRef<THREE.Group>(null);
   const moonSelfRef = useRef<THREE.Group>(null);
   const matWireRef = useRef<THREE.LineBasicMaterial>(null);
-  const tmpVec = useRef(new THREE.Vector3());
 
-  // 一次 build 月球 mesh + wireframe（含 aCrater attribute）
+  const pointerNDCRef = useRef(new THREE.Vector2());
+  const dragPlaneRef = useRef(new THREE.Plane());
+
+  const { camera } = useThree();
+
   const moonTerrain = useMemo(
     () => buildMoonTerrainSphere({ moonRadius: MOON_RADIUS, segmentsW: 32, segmentsH: 16 }),
     [],
   );
 
+  // Window pointer events（追蹤手指/滑鼠位置 → 給 raycaster 用）
+  useEffect(() => {
+    function handleMove(e: PointerEvent) {
+      pointerNDCRef.current.set(
+        (e.clientX / window.innerWidth) * 2 - 1,
+        -(e.clientY / window.innerHeight) * 2 + 1,
+      );
+    }
+    function handleUp() {
+      if (moonStateRef.current !== "grabbed") return;
+      moonStateRef.current = "returning";
+      document.body.style.cursor = "";
+    }
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+  }, []);
+
   useFrame((state, dt) => {
-    const g = groupRef.current;
+    const anchor = anchorRef.current;
     const body = moonBodyRef.current;
     const self = moonSelfRef.current;
-    if (!g || !body) return;
-    g.rotation.y = state.clock.elapsedTime * (2 * Math.PI / MOON_ORBIT_PERIOD_SEC);
+    if (!anchor || !body) return;
+
+    // anchor 永遠公轉（grabbed 時也不停 — 軌道穩定）
+    anchor.rotation.y = state.clock.elapsedTime * (2 * Math.PI / MOON_ORBIT_PERIOD_SEC);
     if (self) self.rotation.y += dt * MOON_SELF_ROTATION;
     if (matWireRef.current) matWireRef.current.opacity = visibility * 0.18;
 
-    body.getWorldPosition(tmpVec.current);
-    tmpVec.current.normalize();
-    if (subLunarRef.current) subLunarRef.current.copy(tmpVec.current);
+    const moonState = moonStateRef.current;
+
+    if (moonState === "orbiting") {
+      // 月球綁在軌道目標位置
+      body.position.copy(_moonOrbitTarget);
+    } else if (moonState === "grabbed") {
+      // raycaster 從相機朝 NDC 方向射 ray，跟 drag plane 求交點
+      _moonRaycaster.setFromCamera(pointerNDCRef.current, camera);
+      if (_moonRaycaster.ray.intersectPlane(dragPlaneRef.current, _moonScratchHit)) {
+        anchor.worldToLocal(_moonScratchHit);
+        body.position.copy(_moonScratchHit);
+      }
+    } else if (moonState === "returning") {
+      // Spring back 到軌道（local space lerp）
+      const k = 1 - Math.exp(-dt * 4.5);
+      body.position.lerp(_moonOrbitTarget, k);
+      if (body.position.distanceTo(_moonOrbitTarget) < 0.03) {
+        body.position.copy(_moonOrbitTarget);
+        moonStateRef.current = "orbiting";
+      }
+    }
+
+    // 寫 sub-lunar
+    body.getWorldPosition(_moonScratchPos);
+    _moonScratchPos.normalize();
+    if (subLunarRef.current) subLunarRef.current.copy(_moonScratchPos);
   });
 
   return (
-    <group ref={groupRef} rotation-x={MOON_ORBIT_INCLINE_RAD}>
-      <group ref={moonBodyRef} position={[MOON_ORBIT_RADIUS, 0, 0]}>
+    <group ref={anchorRef} rotation-x={MOON_ORBIT_INCLINE_RAD}>
+      {/* moonBodyRef 不再寫死 position — 由 useFrame 依 state 寫入 */}
+      <group ref={moonBodyRef}>
         <group ref={moonSelfRef}>
-          {/* Mesh 分層 alpha：bowl 透、surface 中、rim 不透 — 替代原本實心深色殼 */}
           <MobileMoonShader
             geometry={moonTerrain.meshGeometry}
             accentColor={accentColor}
             visibility={visibility}
           />
-
-          {/* 輔助線框：opacity 0.18 — 大幅淡化（之前 0.40 太搶眼）
-              只當「crater 邊界提示」，主視覺交給 mesh shader 的 alpha 分層 */}
+          {/* 輔助線框 opacity 0.18 — 主視覺交給 mesh shader */}
           <lineSegments geometry={moonTerrain.wireGeometry}>
             <lineBasicMaterial
               ref={matWireRef}
@@ -182,6 +241,37 @@ function MoonLite({
             />
           </lineSegments>
         </group>
+
+        {/* 互動碰撞球（略大於月球，透明）→ 觸碰/手指拿取月球
+            ⚠️ 不呼叫 e.stopPropagation()：R3F 的 stopPropagation 會 cancel native event
+            導致 window pointermove/pointerup listener 收不到事件，月球只能跟初始 NDC 同步一次
+            （= 用戶感覺「只稍微回應一下」就停）
+            改用 moonStateRef 在地球 onPointerDown 內守護：grabbed 時地球不啟動拖拽 */}
+        <mesh
+          onPointerDown={(e) => {
+            if (moonStateRef.current === "grabbed") return;
+
+            // 建立 camera-facing drag plane（通過月球當前 world 位置）
+            moonBodyRef.current!.getWorldPosition(_moonScratchPos);
+            camera.getWorldDirection(_moonCamDir);
+            dragPlaneRef.current.setFromNormalAndCoplanarPoint(
+              _moonCamDir,
+              _moonScratchPos.clone(),
+            );
+
+            // 初始化 NDC（防止第一幀沒 pointermove 時 hit 跳到 (0,0)）
+            pointerNDCRef.current.set(
+              (e.nativeEvent.clientX / window.innerWidth) * 2 - 1,
+              -(e.nativeEvent.clientY / window.innerHeight) * 2 + 1,
+            );
+
+            moonStateRef.current = "grabbed";
+            document.body.style.cursor = "grabbing";
+          }}
+        >
+          <sphereGeometry args={[MOON_RADIUS * 1.6, 16, 8]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
       </group>
     </group>
   );
@@ -607,6 +697,7 @@ function MobileOceanShell({
     () => ({
       uAccent:       { value: accentColor.clone() },
       uSubLunar:     { value: new THREE.Vector3(1, 0, 0) },
+      uBaseRadius:   { value: 1.145 },
       uWaveFrontRad: { value: -1 },
       uOpacity:      { value: 0 },
       uLandMask:     { value: landMaskTex },
@@ -656,24 +747,30 @@ function MobileOceanShell({
   });
 
   return (
-    <mesh renderOrder={2}>
-      <sphereGeometry args={[1.022, 32, 24]} />
+    <mesh renderOrder={8}>
+      {/* base radius 由 shader 的 uBaseRadius 控制，避免 geometry radius / vertex displacement 混用後難以判斷實際外殼位置。 */}
+      <sphereGeometry args={[1.0, 40, 28]} />
       <shaderMaterial
         ref={matRef}
         uniforms={uniforms}
         transparent
         depthWrite={false}
-        side={THREE.FrontSide}
-        blending={THREE.AdditiveBlending}
+        depthTest={false}
+        side={THREE.DoubleSide}
+        // NormalBlending：dark theme + light theme 都看得到 shell
+        // Additive 在白底上會完全消失（白 + accent ≈ 白）
+        blending={THREE.NormalBlending}
         vertexShader={/* glsl */ `
           #define PI 3.14159265359
           uniform vec3      uSubLunar;
           uniform float     uTime;
+          uniform float     uBaseRadius;
           uniform sampler2D uLandMask;
           varying vec3 vSphereNormal;
           varying vec3 vViewNormal;
           varying float vLegendre;       // P2 軸極隆起係數（fragment 用於水彩漸層）
           varying float vTideHeight;     // 總 displacement（fragment 提亮波峰）
+          varying float vCurrentBand;     // 持續洋流 band，不依賴 D1 ripple event
 
           void main() {
             vec3 sphereN = normalize(position);
@@ -689,25 +786,28 @@ function MobileOceanShell({
             // ─── P2 Legendre 橢圓拉長（科學潮汐模型）──────────────
             //   沿 sub-lunar 軸的兩極都凸（朝月球面 + 反面），赤道腰部凹
             //   公式：(3·cos²θ − 1) / 2 ← 軸極=1、赤道=−0.5
-            //   AMP 0.024 = 球半徑 2.4% 拉長，比球體明顯但不誇張
+            //   AMP 0.095 = 軸極明顯凸出；赤道內縮後仍在 terrain max 外側
             float c = dot(sphereN, uSubLunar);
             float legendre = (3.0 * c * c - 1.0) * 0.5;
             vLegendre = legendre;
-            float ellipsoid = legendre * 0.024;
+            float ellipsoid = legendre * 0.095;
 
-            // ─── 輕量同心波 height：海面波峰高度（保留立體感） ────
-            //    fragment 不再畫 multi-band 紋路，但 vertex 保留波峰
+            // ─── 輕量同心波 height（保留波峰立體感）──────────────
             float angDist = acos(clamp(c, -1.0, 1.0));
-            float bandPhase = angDist * 16.0 - uTime * 1.3;
+            float bandPhase = angDist * 15.0 - uTime * 1.45;
             float bands = sin(bandPhase) * 0.5 + 0.5;
-            bands = smoothstep(0.55, 0.95, bands);
+            bands = smoothstep(0.50, 0.93, bands);
             float bandFade = smoothstep(2.6, 0.4, angDist);
-            float waveHeight = bands * bandFade * 0.010;
+            float waveHeight = bands * bandFade * 0.018;
+            vCurrentBand = bands * bandFade;
 
-            float totalDisp = (ellipsoid + waveHeight) * oceanFactor;
+            // 注意：陸地處 displacement = 0（不擾動陸地下的海殼）
+            // 但 ellipsoid 是「殼整體變形」，陸地上方的殼也應跟著拉長 → 不乘 oceanFactor
+            // 只有 waveHeight (波峰起伏) 在陸地處抑制
+            float totalDisp = ellipsoid + waveHeight * oceanFactor;
             vTideHeight = totalDisp;
 
-            vec3 displaced = position + sphereN * totalDisp;
+            vec3 displaced = sphereN * (uBaseRadius * (1.0 + ellipsoid) + waveHeight * oceanFactor);
             vViewNormal = normalize(normalMatrix * normal);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
           }
@@ -718,11 +818,13 @@ function MobileOceanShell({
           uniform vec3      uSubLunar;
           uniform float     uWaveFrontRad;
           uniform float     uOpacity;
+          uniform float     uTime;
           uniform sampler2D uLandMask;
           varying vec3  vSphereNormal;
           varying vec3  vViewNormal;
           varying float vLegendre;     // P2 軸極隆起（vertex 已算）
           varying float vTideHeight;
+          varying float vCurrentBand;
 
           void main() {
             // ─── Land mask 採樣 ─────────────────────────────────
@@ -732,46 +834,52 @@ function MobileOceanShell({
             float landMask = texture2D(uLandMask, maskUv).r;
             float landFactor = smoothstep(0.30, 0.55, landMask);
             float oceanFactor = 1.0 - landFactor;
+            // 海洋 1.0 / 陸地 0.35：殼仍跨過整顆球，但陸地上較淡，不搶海岸線。
+            float oceanWeight = mix(0.35, 1.0, oceanFactor);
 
-            // ─── 水彩色塊（取代之前 scanline + multi-band 紋路）───
-            // 朝 sub-lunar 兩極（軸極隆起區）有最深色塊，赤道腰部最淡
-            // 用 P2 Legendre 結果做 smoothstep，邊界柔和、無紋路
-            float axisWatercolor = smoothstep(-0.2, 0.95, vLegendre) * 0.32 * oceanFactor;
+            // Baseline 保證手機版不會只剩黑海面。
+            float baseline = 0.24;
 
-            // 朝月球面 hemisphere 微亮基底（前半最亮、背面次之、赤道最淡）
+            // 軸極水彩（軸極區最深、赤道淡）
+            float axisWatercolor = smoothstep(-0.35, 1.0, vLegendre) * 0.95;
+
+            // 朝月球面 hemisphere
             float dotSub = dot(vSphereNormal, uSubLunar);
             float facing = max(0.0, dotSub);
-            float baseGlow = pow(facing, 1.5) * 0.22 * oceanFactor;
-            // 反月球面也有 P2 隆起（背面潮汐），但比正面淡
+            float baseGlow = pow(facing, 1.4) * 0.38;
+            // 反月球面（背面潮汐軸極）
             float backFacing = max(0.0, -dotSub);
-            float backGlow = pow(backFacing, 2.0) * 0.13 * oceanFactor;
+            float backGlow = pow(backFacing, 1.8) * 0.30;
 
-            // ─── Wave-front band — D1 同心圓擴散（強化版） ─────
-            // 用戶看不到「波紋掃過」效果 → 強化 peak 0.85 → 1.10
+            // Wave-front band — D1 同心圓擴散
             float angDist = acos(clamp(dotSub, -1.0, 1.0));
             float waveBand = 0.0;
             if (uWaveFrontRad > 0.0) {
               float distFromFront = abs(angDist - uWaveFrontRad);
               float bandWidth = 0.32;
               waveBand = max(0.0, 1.0 - distFromFront / bandWidth);
-              waveBand = pow(waveBand, 1.10) * 1.10 * oceanFactor;
+              waveBand = pow(waveBand, 1.05) * 1.65;
             }
 
-            // ─── Rim fresnel — 球緣海洋輪廓 ──────────────────────
+            // 持續洋流，不依賴 rippleState.live；月球掃過時也會一直有淡淡波紋在水彩殼上漂移。
+            float current = vCurrentBand * 0.34;
+            current += (sin(angDist * 8.0 + vSphereNormal.y * 5.0 - uTime * 1.1) * 0.5 + 0.5) * 0.10;
+
+            // Rim fresnel — 球緣輪廓
             float fresnel = pow(1.0 - max(0.0, vViewNormal.z), 2.5);
-            float rim = fresnel * 0.18 * oceanFactor;
+            float rim = fresnel * 0.28;
 
-            // ─── Tide-peak 提亮 — vertex 高處 fragment 微亮 ──────
-            float peakBoost = clamp(vTideHeight * 28.0, 0.0, 1.0) * 0.22 * oceanFactor;
+            // Tide-peak 提亮
+            float peakBoost = clamp(vTideHeight * 12.0, 0.0, 1.0) * 0.36;
 
-            // ─── 合成 ─────────────────────────────────────────
-            // 水彩色塊在最底（柔軟 base），上面疊：基底 glow、波紋擴散、rim、peak
-            float intensity = axisWatercolor + baseGlow + backGlow + waveBand + rim + peakBoost;
+            // 合成：baseline 永遠存在 + 其他 term × oceanWeight
+            float intensity = baseline + (axisWatercolor + baseGlow + backGlow + waveBand + current + rim + peakBoost) * oceanWeight;
             vec3 col = uAccent * intensity;
-            // 波紋掃過時加白光點綴（讓 wave-front 在水彩 base 上更顯眼）
-            col += vec3(1.0, 1.0, 0.92) * (waveBand * 0.28 + peakBoost * 0.30);
+            // 波峰白光點綴
+            col += vec3(1.0, 1.0, 0.92) * (waveBand * 0.42 + current * 0.18 + peakBoost * 0.36) * oceanWeight;
 
-            float a = clamp(intensity * uOpacity, 0.0, 0.72);
+            // alpha 保底：baseline × uOpacity 即可確保殼可見
+            float a = clamp(intensity * uOpacity, 0.0, 0.96);
             gl_FragColor = vec4(col, a);
           }
         `}
@@ -798,6 +906,8 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
   const subLunarRef = useRef<THREE.Vector3>(new THREE.Vector3(1, 0, 0));
   // sub-lunar 在 earth-local 空間（每幀更新，給 terrain shader 共用）
   const subLunarLocalRef = useRef<THREE.Vector3>(new THREE.Vector3(1, 0, 0));
+  // 月球狀態機（共享給地球 onPointerDown：避免月球 grabbed 時雙物件搶 drag）
+  const moonStateRef = useRef<MoonState>("orbiting");
   // 共享 ripple state（D1 LineSegments、ocean shell、terrain shader 都讀同一份）
   const rippleStateRef = useRef<RippleState>({
     age: 0, live: false,
@@ -848,12 +958,16 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
   const pauseEndRef = useRef<number>(-1);
   const snapTargetYRef = useRef<number | null>(null);
 
-  // 互動
+  // ─── 地球雙軸拖拽（手機觸控 + DevTools 模擬都 work） ─────────
+  // 水平拖 → rotation.y、垂直拖 → rotation.x
+  // 放開 → spring back 到拖拽前的姿態，繼續正常自轉
   const isDraggingRef = useRef(false);
   const didDragRef = useRef(false);
   const dragStartXRef = useRef(0);
+  const dragStartYRef = useRef(0);
   const dragStartRotYRef = useRef(0);
-  const springBackTargetRef = useRef<number | null>(null);
+  const dragStartRotXRef = useRef(0);
+  const springBackTargetRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     function handleMove(e: PointerEvent) {
@@ -861,9 +975,12 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
       const eg = earthSpinRef.current;
       if (!eg) return;
       const dx = e.clientX - dragStartXRef.current;
-      if (Math.abs(dx) > 4) didDragRef.current = true;
+      const dy = e.clientY - dragStartYRef.current;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) didDragRef.current = true;
       if (didDragRef.current) {
-        eg.rotation.y = dragStartRotYRef.current + (dx / 800) * Math.PI * 2;
+        // 每 1000px 位移 ≈ 360° 旋轉（同桌面版手感）
+        eg.rotation.y = dragStartRotYRef.current + (dx / 1000) * Math.PI * 2;
+        eg.rotation.x = dragStartRotXRef.current + (dy / 1000) * Math.PI * 2;
       }
     }
     function handleUp() {
@@ -871,8 +988,13 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
       isDraggingRef.current = false;
       document.body.style.cursor = "";
       if (didDragRef.current) {
-        springBackTargetRef.current = dragStartRotYRef.current;
+        // 雙軸 spring back
+        springBackTargetRef.current = {
+          x: dragStartRotXRef.current,
+          y: dragStartRotYRef.current,
+        };
       } else {
+        // 純點擊（沒有超過 4px 拖拽門檻）→ snap 到台灣
         const eg = earthSpinRef.current;
         if (!eg) return;
         const targetY = -Math.atan2(TAIWAN_POS.x, TAIWAN_POS.z);
@@ -913,15 +1035,19 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
 
     // 自轉 / 拖拽 / snap 狀態機
     if (isDraggingRef.current) {
-      // pointermove 寫入
+      // pointermove 直接寫入 rotation.x / .y
     } else if (springBackTargetRef.current !== null) {
+      // 雙軸 spring back（X + Y 同時指數緩出回到拖拽前姿態）
       const tgt = springBackTargetRef.current;
-      const dist = tgt - eg.rotation.y;
-      if (Math.abs(dist) < 0.003) {
-        eg.rotation.y = tgt;
+      const distX = tgt.x - eg.rotation.x;
+      const distY = tgt.y - eg.rotation.y;
+      if (Math.abs(distX) < 0.003 && Math.abs(distY) < 0.003) {
+        eg.rotation.x = tgt.x;
+        eg.rotation.y = tgt.y;
         springBackTargetRef.current = null;
       } else {
-        eg.rotation.y += dist * 0.08;
+        eg.rotation.x += distX * 0.08;
+        eg.rotation.y += distY * 0.08;
       }
     } else if (snapTargetYRef.current !== null) {
       const dist = snapTargetYRef.current - eg.rotation.y;
@@ -1202,17 +1328,24 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
               />
             </mesh>
 
-            {/* 互動球殼 */}
+            {/* 互動球殼：點擊 → snap 台灣；拖拽 → 全軸自由旋轉，放開彈回 */}
             <mesh
               frustumCulled={false}
               onPointerDown={(e) => {
+                // 月球 grabbed 中時不啟動地球拖拽（避免雙物件搶 drag）
+                if (moonStateRef.current === "grabbed") return;
+
                 isDraggingRef.current = true;
                 didDragRef.current = false;
+                // 同時記錄 X+Y pointer 跟 X+Y rotation，handleMove 才能算雙軸 dx/dy
                 dragStartXRef.current = e.nativeEvent.clientX;
+                dragStartYRef.current = e.nativeEvent.clientY;
                 dragStartRotYRef.current = earthSpinRef.current?.rotation.y ?? 0;
+                dragStartRotXRef.current = earthSpinRef.current?.rotation.x ?? 0;
                 snapTargetYRef.current = null;
                 springBackTargetRef.current = null;
-                e.stopPropagation();
+                // 不呼叫 e.stopPropagation()：R3F 的 stopPropagation 會 cancel native event
+                // 導致 window pointermove/up listener 收不到事件，拖拽完全不觸發
               }}
             >
               <sphereGeometry args={[1.1, 16, 12]} />
@@ -1226,6 +1359,7 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
           accentColor={accentColor}
           visibility={moonVisibility}
           subLunarRef={subLunarRef}
+          moonStateRef={moonStateRef}
         />
       </group>
 

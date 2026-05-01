@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { cursorState } from "@/lib/cursor-state";
 
@@ -29,10 +29,29 @@ export function MagneticCursor() {
   const cursorRef = useRef<HTMLDivElement>(null);
   const svgRef    = useRef<SVGSVGElement>(null);
   const lineRefs  = useRef<SVGLineElement[]>([]);
+  // 是否啟用 cursor — 依 viewport 跟 pointer 類型決定
+  // 用 state 控制 return JSX，避免「div 仍渲染 + listener 沒掛」的鬼影 cursor
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.matchMedia("(pointer: coarse)").matches) return;
+    const check = () => {
+      // 觸控裝置（真實手機/平板的 pointer 是 coarse）
+      if (window.matchMedia("(pointer: coarse)").matches) return false;
+      // Mobile / tablet viewport（含 DevTools 模擬手機）
+      if (window.matchMedia("(max-width: 1023px)").matches) return false;
+      return true;
+    };
+    setEnabled(check());
+    // 視窗 resize 跨閾值 → 重新評估（DevTools 切 viewport 即時生效）
+    const onResize = () => setEnabled(check());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!enabled) return;
 
     const cursorEl = cursorRef.current;
     if (!cursorEl) return;
@@ -183,7 +202,10 @@ export function MagneticCursor() {
       document.removeEventListener("mouseleave", onLeave);
       document.removeEventListener("mouseenter", onEnter);
     };
-  }, []);
+  }, [enabled]);
+
+  // 手機/平板 viewport 完全不渲染 cursor（DOM 內也沒有殘影）
+  if (!enabled) return null;
 
   return (
     <>

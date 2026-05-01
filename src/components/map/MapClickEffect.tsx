@@ -83,6 +83,8 @@ export function MapClickEffect() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (window.matchMedia("(pointer: coarse)").matches) return;
+    // Mobile / tablet viewport（含 DevTools 模擬手機）
+    if (window.matchMedia("(max-width: 1023px)").matches) return;
 
     const arrowEl = arrowRef.current;
     if (!arrowEl) return;
