@@ -176,12 +176,12 @@ These rules carry over unchanged — don't regress them:
 |---|---|---|
 | terminal 主題（薄荷綠） | ✅ 已實作 | `src/app/globals.css` |
 | 4-theme token system | 🔄 設計中 | `themes.css`（**尚未建立**） |
-| 游標軌跡 + 點擊特效 | ✅ 已實作 | `MagneticCursor.tsx` / `MapClickEffect.tsx` |
+| 游標軌跡 + 點擊特效 | ✅ 已實作 | `MagneticCursor.tsx` / `MapClickEffect.tsx`；僅桌面 viewport 渲染，手機/平板完全不輸出 cursor DOM |
 | 頁面進場動畫 | ✅ 已實作 | `PageTransition.tsx` / `SpotDetailShell.tsx` |
 | 吉祥物 eye moods | ⏳ 待開始 | — |
 | 開場動畫序列 | ⏳ 待開始 | — |
 | Acid stickers / 貼紙 | ⏳ 待開始 | — |
-| Landing mobile globe | 🔄 調整中 | `GlobeSceneMobile.tsx` 使用 heightmap coastline + elevation/ridge contours，避免 triangle 海岸鋸齒並補地形起伏 |
+| Landing mobile globe | 🔄 調整中 | `GlobeSceneMobile.tsx` 使用 heightmap coastline + elevation/ridge contours；海洋拆成內層 `MobileOceanVolume` 與外層 tide shell |
 
 ## Files in this skill
 
