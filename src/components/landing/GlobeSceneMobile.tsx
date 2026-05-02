@@ -18,8 +18,8 @@ const MOON_ORBIT_PERIOD_SEC = 32;
 const MOON_RADIUS = 0.27;
 const MOON_ORBIT_INCLINE_RAD = (5.14 * Math.PI) / 180;
 
-// ─── 潮汐參數（強化版：所有效果都可肉眼辨識） ───────────────────────
-// D1 同心圓擴散：每 RIPPLE_INTERVAL 秒從月球 sub-lunar 點觸發一個圓圈
+// ─── Legacy D1 ripple 參數 ─────────────────────────────────────
+// 手機主視覺已改成跟月球同步的橢圓潮汐殼；D1 同心圓元件保留但不掛載。
 const RIPPLE_INTERVAL_SEC = 2.6;     // 強化：每 2.6 秒一波（之前 3.2）
 const RIPPLE_LIFE_SEC = 3.0;         // 強化：擴散更久（之前 2.4），尾巴看得清
 const RIPPLE_MAX_RADIUS_DEG = 130;   // 強化：擴更遠（之前 110）
@@ -163,7 +163,7 @@ function MoonLite({
   };
 
   const moonTerrain = useMemo(
-    () => buildMoonTerrainSphere({ moonRadius: MOON_RADIUS, segmentsW: 32, segmentsH: 16 }),
+    () => buildMoonTerrainSphere({ moonRadius: MOON_RADIUS, segmentsW: 48, segmentsH: 24 }),
     [],
   );
 
@@ -218,7 +218,7 @@ function MoonLite({
     // anchor 永遠公轉（grabbed 時也不停 — 軌道穩定）
     anchor.rotation.y = state.clock.elapsedTime * (2 * Math.PI / MOON_ORBIT_PERIOD_SEC);
     if (self) self.rotation.y += dt * MOON_SELF_ROTATION;
-    if (matWireRef.current) matWireRef.current.opacity = visibility * 0.18;
+    if (matWireRef.current) matWireRef.current.opacity = visibility * 0.07;
 
     const moonState = moonStateRef.current;
 
@@ -258,13 +258,13 @@ function MoonLite({
             accentColor={accentColor}
             visibility={visibility}
           />
-          {/* 輔助線框 opacity 0.18 — 主視覺交給 mesh shader */}
+          {/* 輔助線框降到極淡，主視覺交給 mesh shader 的 crater 分層。 */}
           <lineSegments geometry={moonTerrain.wireGeometry}>
             <lineBasicMaterial
               ref={matWireRef}
               color={accentColor}
               transparent
-              opacity={0.18}
+              opacity={0.07}
               depthWrite={false}
             />
           </lineSegments>
@@ -308,8 +308,7 @@ function MoonLite({
   );
 }
 
-// ─── Ripple state shared between TideRipples + MobileOceanShell ──
-// 提到外層讓 ocean shell 也讀同一份 wave-front 進度（不重複計時器）
+// ─── Legacy D1 ripple state（目前手機版不掛載）──────────────────
 type RippleState = {
   age: number;
   live: boolean;
@@ -317,7 +316,7 @@ type RippleState = {
   nextSpawnAt: number;
 };
 
-// ─── 同心圓潮汐元件（D1） ────────────────────────────────────────
+// ─── Legacy 同心圓潮汐元件（D1，手機版目前不掛載）───────────────
 // 從 sub-lunar 點觸發一個球面小圓，半徑 0 → MAX_RADIUS，時間 LIFE，淡出
 // 內部用一個 256 vertex 的「unit ring」geometry，每幀只更新 position scale + opacity
 function TideRipples({
@@ -589,7 +588,7 @@ function MobileTerrainShader({
           varying vec3 vSphereNormal;
 
           void main() {
-            if (vLandFactor < 0.035) discard;
+            if (vLandFactor < 0.02) discard;
 
             // 階梯化高程：12 階比 8 階更精細、地形分布更密
             // 配合三倍 segments 細分，陸地內部讀得出更多層次
@@ -597,22 +596,23 @@ function MobileTerrainShader({
 
             // Alpha 分層加深：低地 0.55 起跳、最高 1.10（會被 clamp）
             // 比之前更深，陸地實感更強
-            float edge = smoothstep(0.05, 0.35, vLandFactor);
-            float a = (0.55 + stepped * 0.55) * edge;
+            // 海岸邊緣拉寬淡出，避免 land fill 與 coastline/ocean mask 不完全吻合時出現硬鋸齒。
+            float edge = smoothstep(0.10, 0.58, vLandFactor);
+            float a = (0.48 + stepped * 0.46) * edge;
 
             // Lighting：朝月球面被照亮
             float dotSub = dot(vSphereNormal, uSubLunarLocal);
             float lit = max(dotSub * 0.5 + 0.5, 0.50);
 
             // Color：低地 0.50、高地 1.40（再加深）
-            float colorMul = (0.50 + stepped * 0.90) * lit;
+            float colorMul = (0.46 + stepped * 0.78) * lit;
             vec3 col = uAccent * colorMul;
 
             // 高地暖白 highlight 加強：山脊白光更亮（0.22 → 0.32）
             float highMask = smoothstep(0.40, 0.85, stepped);
-            col += vec3(1.0, 0.88, 0.50) * highMask * 0.32 * lit;
+            col += vec3(1.0, 0.88, 0.50) * highMask * 0.24 * lit;
 
-            gl_FragColor = vec4(col, clamp(a, 0.0, 0.96));
+            gl_FragColor = vec4(col, clamp(a, 0.0, 0.88));
           }
         `}
       />
@@ -661,10 +661,12 @@ function MobileMoonShader({
         vertexShader={/* glsl */ `
           attribute float aCrater;
           varying float vCrater;
-          varying vec3 vSphereNormal;
+          varying vec3 vViewNormal;
+          varying vec3 vLocalNormal;
           void main() {
             vCrater = aCrater;
-            vSphereNormal = normalize(position);
+            vLocalNormal = normalize(position);
+            vViewNormal = normalize(normalMatrix * normalize(position));
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `}
@@ -672,20 +674,25 @@ function MobileMoonShader({
           uniform vec3 uAccent;
           uniform float uOpacity;
           varying float vCrater;
-          varying vec3 vSphereNormal;
+          varying vec3 vViewNormal;
+          varying vec3 vLocalNormal;
 
           void main() {
-            // 整體淡化（網格顏色太明顯 → 降一階）
-            // bowl alpha 0.06、surface 0.20、rim 0.40（之前 0.10 / 0.32 / 0.65）
-            float a = mix(0.06, 0.40, vCrater);
-            float colorMul = mix(0.40, 0.78, vCrater);
+            float bowl = 1.0 - smoothstep(0.10, 0.48, vCrater);
+            float rim = smoothstep(0.62, 1.0, vCrater);
+            float surface = smoothstep(0.22, 0.72, vCrater);
 
-            // 簡單 view-rim highlight（球緣稍亮）
-            float fresnel = pow(1.0 - max(0.0, vSphereNormal.z), 2.0);
-            colorMul += fresnel * 0.10;
+            // 月球比地球更淡、更實體：用暖白混 accent，不靠線稿撐形體。
+            float light = max(dot(vLocalNormal, normalize(vec3(-0.35, 0.45, 0.82))) * 0.5 + 0.5, 0.38);
+            float fresnel = pow(1.0 - max(0.0, vViewNormal.z), 2.2);
+            vec3 moonBase = mix(uAccent * 0.28, vec3(0.92, 0.94, 0.84), 0.58);
+            vec3 col = moonBase * (0.52 + surface * 0.28 + light * 0.24);
+            col *= 1.0 - bowl * 0.28;
+            col += vec3(1.0, 0.94, 0.72) * rim * 0.14;
+            col += uAccent * fresnel * 0.08;
 
-            vec3 col = uAccent * colorMul;
-            gl_FragColor = vec4(col, a * uOpacity);
+            float a = (0.34 + surface * 0.18 + rim * 0.16 - bowl * 0.04 + fresnel * 0.05) * uOpacity;
+            gl_FragColor = vec4(col, clamp(a, 0.0, 0.66));
           }
         `}
       />
@@ -699,13 +706,11 @@ function MobileMoonShader({
 function MobileOceanVolume({
   accentColor,
   subLunarLocalRef,
-  rippleStateRef,
   visibility,
   landMaskTex,
 }: {
   accentColor: THREE.Color;
   subLunarLocalRef: React.RefObject<THREE.Vector3>;
-  rippleStateRef: React.RefObject<RippleState>;
   visibility: number;
   landMaskTex: THREE.DataTexture | null;
 }) {
@@ -713,8 +718,6 @@ function MobileOceanVolume({
     () => ({
       uAccent:       { value: accentColor.clone() },
       uSubLunar:     { value: new THREE.Vector3(1, 0, 0) },
-      uRippleOrigin: { value: new THREE.Vector3(1, 0, 0) },
-      uWaveFrontRad: { value: -1 },
       uBaseRadius:   { value: 1.018 },
       uOpacity:      { value: 0 },
       uLandMask:     { value: landMaskTex },
@@ -732,27 +735,18 @@ function MobileOceanVolume({
     uniforms.uLandMask.value = landMaskTex;
   }, [landMaskTex, uniforms]);
 
-  useFrame((state) => {
+  useFrame((state, dt) => {
     uniforms.uTime.value = state.clock.elapsedTime;
     uniforms.uOpacity.value = visibility;
-    uniforms.uSubLunar.value.copy(subLunarLocalRef.current).normalize();
-
-    const rs = rippleStateRef.current;
-    if (rs.live) {
-      uniforms.uRippleOrigin.value.set(rs.originX, rs.originY, rs.originZ).normalize();
-      const t = rs.age / RIPPLE_LIFE_SEC;
-      const eased = 1 - Math.pow(1 - t, 2);
-      uniforms.uWaveFrontRad.value = (eased * RIPPLE_MAX_RADIUS_DEG * Math.PI) / 180;
-    } else {
-      uniforms.uWaveFrontRad.value = -1;
-    }
+    const follow = 1 - Math.exp(-dt * 6.0);
+    uniforms.uSubLunar.value.lerp(subLunarLocalRef.current, follow).normalize();
   });
 
   if (!landMaskTex) return null;
 
   return (
     <mesh renderOrder={0}>
-      <sphereGeometry args={[1.0, 56, 32]} />
+      <sphereGeometry args={[1.0, 112, 64]} />
       <shaderMaterial
         uniforms={uniforms}
         transparent
@@ -770,7 +764,8 @@ function MobileOceanVolume({
           varying vec3  vViewNormal;
           varying float vOceanFactor;
           varying float vLegendre;
-          varying float vCurrent;
+          varying float vRelief;
+          varying float vTideLobe;
 
           void main() {
             vec3 n = normalize(position);
@@ -780,24 +775,35 @@ function MobileOceanVolume({
             float lng = atan(n.z, -n.x);
             vec2 maskUv = vec2((lng + PI) / (2.0 * PI), 0.5 - lat / PI);
             float landMask = texture2D(uLandMask, maskUv).r;
-            float oceanFactor = 1.0 - smoothstep(0.28, 0.54, landMask);
+            float oceanFactor = 1.0 - smoothstep(0.20, 0.66, landMask);
             vOceanFactor = oceanFactor;
 
             float c = dot(n, uSubLunar);
             float legendre = (3.0 * c * c - 1.0) * 0.5;
             vLegendre = legendre;
 
-            float angDist = acos(clamp(c, -1.0, 1.0));
-            float bandA = sin(angDist * 18.0 - uTime * 1.65 + n.y * 4.0) * 0.5 + 0.5;
-            float bandB = sin((n.x - n.z) * 13.0 + uTime * 0.85) * 0.5 + 0.5;
-            float current = smoothstep(0.50, 0.94, bandA) * 0.78 + smoothstep(0.62, 0.96, bandB) * 0.22;
-            current *= smoothstep(2.75, 0.25, angDist);
-            vCurrent = current * oceanFactor;
+            // 手機版不要把主要潮汐動畫綁在 vertex displacement，
+            // 否則低段數球體會把三角網格輪廓一起帶出來。
+            // 這裡保留低頻量體起伏，讓手機版能讀到真正的波峰/波谷。
+            float lobe = smoothstep(0.10, 0.96, abs(c));
+            vTideLobe = lobe;
+            float ellipsoid = legendre * 0.018;
 
-            float ellipsoid = legendre * 0.024;
-            float waveLift = current * 0.014 * oceanFactor;
-            vec3 displaced = n * (uBaseRadius * (1.0 + ellipsoid) + waveLift);
-            vViewNormal = normalize(normalMatrix * n);
+            float angDist = acos(clamp(c, -1.0, 1.0));
+            float swellA = sin(angDist * 3.4 - uTime * 0.88 + n.y * 1.5);
+            float swellB = sin((n.x - n.z) * 4.2 + n.y * 1.7 + uTime * 0.58);
+            float swellC = sin((n.x + n.y * 0.65) * 2.8 - angDist * 1.9 - uTime * 0.43);
+            float relief = (swellA * 0.52 + swellB * 0.30 + swellC * 0.18);
+            relief *= oceanFactor * (0.24 + lobe * 0.76);
+            vRelief = relief;
+
+            float breathe = sin(uTime * 0.34 + n.y * 2.1 + c * 1.7) * 0.0015 * oceanFactor;
+            float waveLift = relief * 0.0085;
+            vec3 displaced = n * (uBaseRadius * (1.0 + ellipsoid) + lobe * 0.0055 * oceanFactor + breathe + waveLift);
+
+            // 低成本假 normal：用起伏量微調亮暗方向，不真的重算法線。
+            vec3 viewN = normalize(normalMatrix * n);
+            vViewNormal = normalize(viewN + normalize(normalMatrix * vec3(relief * 0.10, relief * 0.04, -relief * 0.08)));
             gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
           }
         `}
@@ -805,50 +811,62 @@ function MobileOceanVolume({
           #define PI 3.14159265359
           uniform vec3      uAccent;
           uniform vec3      uSubLunar;
-          uniform vec3      uRippleOrigin;
-          uniform float     uWaveFrontRad;
           uniform float     uOpacity;
+          uniform float     uTime;
           varying vec3  vSphereNormal;
           varying vec3  vViewNormal;
           varying float vOceanFactor;
           varying float vLegendre;
-          varying float vCurrent;
+          varying float vRelief;
+          varying float vTideLobe;
 
           void main() {
-            if (vOceanFactor < 0.08) discard;
+            if (vOceanFactor < 0.035) discard;
 
-            float oceanEdge = smoothstep(0.08, 0.34, vOceanFactor);
+            float oceanEdge = smoothstep(0.14, 0.70, vOceanFactor);
             float dotSub = dot(vSphereNormal, uSubLunar);
             float axisWater = smoothstep(-0.25, 1.0, vLegendre);
-            float current = vCurrent;
+            float angDistSub = acos(clamp(dotSub, -1.0, 1.0));
+            float tideLobe = smoothstep(0.12, 0.96, abs(dotSub));
+            float frontLobe = smoothstep(1.75, 0.08, angDistSub);
+            float backLobe = smoothstep(1.75, 0.08, acos(clamp(-dotSub, -1.0, 1.0)));
 
-            float waveBand = 0.0;
-            if (uWaveFrontRad > 0.0) {
-              float waveDot = dot(vSphereNormal, uRippleOrigin);
-              float angDist = acos(clamp(waveDot, -1.0, 1.0));
-              float distFromFront = abs(angDist - uWaveFrontRad);
-              waveBand = max(0.0, 1.0 - distFromFront / 0.24);
-              waveBand = pow(waveBand, 1.15);
-            }
+            // 海洋表面紋理由 fragment 直接算，讓動畫在每個 pixel 上連續，
+            // 避免固定掃描環與斑馬紋；只保留低頻、寬面積的流體起伏。
+            float flowA = sin(angDistSub * 3.2 - uTime * 0.46 + vSphereNormal.y * 1.4) * 0.5 + 0.5;
+            float flowB = sin((vSphereNormal.x - vSphereNormal.z) * 3.8 + vSphereNormal.y * 1.8 + uTime * 0.31) * 0.5 + 0.5;
+            float flowC = sin((vSphereNormal.x + vSphereNormal.y * 0.7) * 2.7 - angDistSub * 1.6 - uTime * 0.24) * 0.5 + 0.5;
+            float current = smoothstep(0.18, 0.88, flowA * 0.46 + flowB * 0.34 + flowC * 0.20);
+            current *= oceanEdge * (0.35 + vTideLobe * 0.65);
 
             float facing = pow(max(0.0, dotSub), 1.5);
             float backFacing = pow(max(0.0, -dotSub), 1.9);
             float rim = pow(1.0 - max(0.0, vViewNormal.z), 2.6);
+            // 海岸附近只淡出，不再加亮；避免跟陸地鋸齒邊與海岸線錯位時互相衝突。
+            float coastFade = smoothstep(0.22, 0.82, vOceanFactor);
+            float reliefPeak = smoothstep(0.10, 0.74, vRelief * 0.5 + 0.5);
+            float reliefTrough = smoothstep(0.12, 0.70, -vRelief * 0.5 + 0.5);
+            float microGrain = sin((vSphereNormal.x * 43.0 + vSphereNormal.y * 67.0 + vSphereNormal.z * 31.0) + uTime * 0.18) * 0.5 + 0.5;
+            microGrain = smoothstep(0.36, 0.92, microGrain);
 
             float intensity =
-              0.28 +
-              axisWater * 0.44 +
-              current * 0.52 +
-              waveBand * 1.20 +
-              facing * 0.20 +
-              backFacing * 0.14 +
-              rim * 0.18;
+              0.14 +
+              axisWater * 0.18 +
+              current * 0.14 +
+              frontLobe * 0.16 +
+              backLobe * 0.10 +
+              reliefPeak * 0.14 -
+              reliefTrough * 0.08 +
+              facing * 0.08 +
+              backFacing * 0.05 +
+              rim * 0.10;
 
             vec3 col = uAccent * intensity;
-            col += vec3(1.0, 0.96, 0.78) * (waveBand * 0.55 + current * 0.18);
+            col += uAccent * microGrain * 0.035 * tideLobe;
+            col += vec3(1.0, 0.96, 0.78) * ((frontLobe + backLobe) * 0.09 + reliefPeak * 0.12 + current * 0.05);
 
-            float alpha = (0.34 + axisWater * 0.16 + current * 0.20 + waveBand * 0.34) * oceanEdge * uOpacity;
-            gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.82));
+            float alpha = (0.18 + axisWater * 0.07 + current * 0.06 + reliefPeak * 0.09 + (frontLobe + backLobe) * 0.06 + microGrain * 0.035) * oceanEdge * coastFade * uOpacity;
+            gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.52));
           }
         `}
       />
@@ -856,26 +874,24 @@ function MobileOceanVolume({
   );
 }
 
-// ─── 海洋薄膜 shell（D1/D2 之外的 ambient 潮汐視覺）──────────────
+// ─── 海洋薄膜 shell（外層橢圓潮汐包覆）─────────────────────────
 // 設計理念：用 ShaderMaterial 寫一層極薄的球殼，每幀只改 3 個 uniform float
 // 不每幀改 buffer、不加 lineSegments、不加 points → 對手機效能近乎免費
 //
 // Fragment shader 行為：
-//   1. 朝月球面 hemisphere → 微弱基底亮度（潮汐隆起區）
-//   2. wave-front 經過時 → 球面距離跟 uWaveFrontRad 接近的 fragment 提亮
+//   1. 朝月球面 + 反月球面 → 雙向潮汐隆起亮度
+//   2. 低頻流體起伏 → 避免斑馬紋與固定掃描環
 //   3. 邊緣 fresnel-ish rim → 球緣稍亮，加強海洋輪廓辨識
 function MobileOceanShell({
   accentColor,
   subLunarRef,
   earthSpinRef,
-  rippleStateRef,
   visibility,
   landMaskTex,
 }: {
   accentColor: THREE.Color;
   subLunarRef: React.RefObject<THREE.Vector3>;
   earthSpinRef: React.RefObject<THREE.Group | null>;
-  rippleStateRef: React.RefObject<RippleState>;
   /** boot 期間 0 → 1 淡入 */
   visibility: number;
   /** 256×128 land mask DataTexture（sample > threshold 視為陸地）
@@ -892,7 +908,6 @@ function MobileOceanShell({
       uAccent:       { value: accentColor.clone() },
       uSubLunar:     { value: new THREE.Vector3(1, 0, 0) },
       uBaseRadius:   { value: 1.145 },
-      uWaveFrontRad: { value: -1 },
       uOpacity:      { value: 0 },
       uLandMask:     { value: landMaskTex },
       uTime:         { value: 0 },
@@ -912,7 +927,7 @@ function MobileOceanShell({
     uniforms.uAccent.value.copy(accentColor);
   }, [accentColor, uniforms]);
 
-  useFrame((state) => {
+  useFrame((state, dt) => {
     if (!subLunarRef.current) return;
 
     // 把 sub-lunar world 方向轉成 earth-local（model space）
@@ -923,27 +938,17 @@ function MobileOceanShell({
     } else {
       tmpSubLLocal.current.copy(subLunarRef.current).normalize();
     }
-    uniforms.uSubLunar.value.copy(tmpSubLLocal.current);
-
-    // wave-front 進度從 ripple state 取（跟 D1 同步）
-    const rs = rippleStateRef.current;
-    if (rs.live) {
-      const t = rs.age / RIPPLE_LIFE_SEC;
-      const eased = 1 - Math.pow(1 - t, 2);
-      uniforms.uWaveFrontRad.value = (eased * RIPPLE_MAX_RADIUS_DEG * Math.PI) / 180;
-    } else {
-      uniforms.uWaveFrontRad.value = -1; // 哨兵：fragment 自己判斷不畫 wave band
-    }
+    const follow = 1 - Math.exp(-dt * 6.0);
+    uniforms.uSubLunar.value.lerp(tmpSubLLocal.current, follow).normalize();
 
     uniforms.uOpacity.value = visibility;
-    // 連續 wave bands + scanline 動畫驅動
     uniforms.uTime.value = state.clock.elapsedTime;
   });
 
   return (
     <mesh renderOrder={8}>
       {/* base radius 由 shader 的 uBaseRadius 控制，避免 geometry radius / vertex displacement 混用後難以判斷實際外殼位置。 */}
-      <sphereGeometry args={[1.0, 40, 28]} />
+      <sphereGeometry args={[1.0, 84, 52]} />
       <shaderMaterial
         ref={matRef}
         uniforms={uniforms}
@@ -963,8 +968,6 @@ function MobileOceanShell({
           varying vec3 vSphereNormal;
           varying vec3 vViewNormal;
           varying float vLegendre;       // P2 軸極隆起係數（fragment 用於水彩漸層）
-          varying float vTideHeight;     // 總 displacement（fragment 提亮波峰）
-          varying float vCurrentBand;     // 持續洋流 band，不依賴 D1 ripple event
 
           void main() {
             vec3 sphereN = normalize(position);
@@ -984,24 +987,9 @@ function MobileOceanShell({
             float c = dot(sphereN, uSubLunar);
             float legendre = (3.0 * c * c - 1.0) * 0.5;
             vLegendre = legendre;
-            float ellipsoid = legendre * 0.095;
-
-            // ─── 輕量同心波 height（保留波峰立體感）──────────────
-            float angDist = acos(clamp(c, -1.0, 1.0));
-            float bandPhase = angDist * 15.0 - uTime * 1.45;
-            float bands = sin(bandPhase) * 0.5 + 0.5;
-            bands = smoothstep(0.50, 0.93, bands);
-            float bandFade = smoothstep(2.6, 0.4, angDist);
-            float waveHeight = bands * bandFade * 0.018;
-            vCurrentBand = bands * bandFade;
-
-            // 注意：陸地處 displacement = 0（不擾動陸地下的海殼）
-            // 但 ellipsoid 是「殼整體變形」，陸地上方的殼也應跟著拉長 → 不乘 oceanFactor
-            // 只有 waveHeight (波峰起伏) 在陸地處抑制
-            float totalDisp = ellipsoid + waveHeight * oceanFactor;
-            vTideHeight = totalDisp;
-
-            vec3 displaced = sphereN * (uBaseRadius * (1.0 + ellipsoid) + waveHeight * oceanFactor);
+            // 外層殼的 silhouette 保持平滑穩定，只保留橢圓潮汐包覆感。
+            float ellipsoid = legendre * 0.058;
+            vec3 displaced = sphereN * (uBaseRadius * (1.0 + ellipsoid));
             vViewNormal = normalize(normalMatrix * normal);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
           }
@@ -1010,15 +998,12 @@ function MobileOceanShell({
           #define PI 3.14159265359
           uniform vec3      uAccent;
           uniform vec3      uSubLunar;
-          uniform float     uWaveFrontRad;
           uniform float     uOpacity;
           uniform float     uTime;
           uniform sampler2D uLandMask;
           varying vec3  vSphereNormal;
           varying vec3  vViewNormal;
           varying float vLegendre;     // P2 軸極隆起（vertex 已算）
-          varying float vTideHeight;
-          varying float vCurrentBand;
 
           void main() {
             // ─── Land mask 採樣 ─────────────────────────────────
@@ -1045,32 +1030,23 @@ function MobileOceanShell({
             float backFacing = max(0.0, -dotSub);
             float backGlow = pow(backFacing, 1.8) * 0.16;
 
-            // Wave-front band — D1 同心圓擴散
             float angDist = acos(clamp(dotSub, -1.0, 1.0));
-            float waveBand = 0.0;
-            if (uWaveFrontRad > 0.0) {
-              float distFromFront = abs(angDist - uWaveFrontRad);
-              float bandWidth = 0.32;
-              waveBand = max(0.0, 1.0 - distFromFront / bandWidth);
-              waveBand = pow(waveBand, 1.05) * 1.05;
-            }
+            float tideLobe = smoothstep(0.12, 0.96, abs(dotSub));
 
-            // 持續洋流，不依賴 rippleState.live；月球掃過時也會一直有淡淡波紋在水彩殼上漂移。
-            float current = vCurrentBand * 0.16;
-            current += (sin(angDist * 8.0 + vSphereNormal.y * 5.0 - uTime * 1.1) * 0.5 + 0.5) * 0.05;
+            // 外層只做低頻流體起伏，不再畫固定擴散環。
+            float flowA = sin(angDist * 2.8 - uTime * 0.34 + vSphereNormal.y * 1.2) * 0.5 + 0.5;
+            float flowB = sin((vSphereNormal.x - vSphereNormal.z) * 2.4 + uTime * 0.23) * 0.5 + 0.5;
+            float current = smoothstep(0.22, 0.84, flowA * 0.62 + flowB * 0.38) * (0.04 + tideLobe * 0.10);
 
             // Rim fresnel — 球緣輪廓
             float fresnel = pow(1.0 - max(0.0, vViewNormal.z), 2.5);
             float rim = fresnel * 0.16;
 
-            // Tide-peak 提亮
-            float peakBoost = clamp(vTideHeight * 12.0, 0.0, 1.0) * 0.20;
-
             // 合成：baseline 永遠存在 + 其他 term × oceanWeight
-            float intensity = baseline + (axisWatercolor + baseGlow + backGlow + waveBand + current + rim + peakBoost) * oceanWeight;
+            float intensity = baseline + (axisWatercolor + baseGlow + backGlow + current + rim) * oceanWeight;
             vec3 col = uAccent * intensity;
             // 波峰白光點綴
-            col += vec3(1.0, 1.0, 0.92) * (waveBand * 0.28 + current * 0.10 + peakBoost * 0.20) * oceanWeight;
+            col += vec3(1.0, 1.0, 0.92) * (current * 0.12 + tideLobe * 0.05) * oceanWeight;
 
             // alpha 保底：baseline × uOpacity 即可確保殼可見
             float a = clamp(intensity * uOpacity, 0.0, 0.46);
@@ -1102,13 +1078,6 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
   const subLunarLocalRef = useRef<THREE.Vector3>(new THREE.Vector3(1, 0, 0));
   // 月球狀態機（共享給地球 onPointerDown：避免月球 grabbed 時雙物件搶 drag）
   const moonStateRef = useRef<MoonState>("orbiting");
-  // 共享 ripple state（D1 LineSegments、ocean shell、terrain shader 都讀同一份）
-  const rippleStateRef = useRef<RippleState>({
-    age: 0, live: false,
-    originX: 0, originY: 1, originZ: 0,
-    nextSpawnAt: 0.5,
-  });
-
   // 經緯線背景
   const backdrop = useMemo(() => buildLatLngBackdrop(1.0), []);
   // Heightmap（給地形球 + 海岸線 + ocean shell land mask 用）
@@ -1435,11 +1404,10 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
 
             {/* Layer 2: 海洋 surface volume
                 位置在地球核心與陸地板塊之間；shader 用同一張 land mask 只顯示海洋。
-                這層承擔手機版可見的水面材質、洋流 band、D1 wave-front。 */}
+                這層承擔手機版可見的水面材質、低頻洋流與潮汐隆起。 */}
             <MobileOceanVolume
               accentColor={accentColor}
               subLunarLocalRef={subLunarLocalRef}
-              rippleStateRef={rippleStateRef}
               visibility={moonVisibility}
               landMaskTex={landMaskTex}
             />
@@ -1484,24 +1452,13 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
               </lineSegments>
             )}
 
-            {/* Layer 6: 同心圓潮汐 D1 + 台灣海岸線脈動 D2 */}
-            <TideRipples
-              accentColor={accentColor}
-              subLunarRef={subLunarRef}
-              earthSpinRef={earthSpinRef}
-              taiwanGeom={coastlines?.taiwan ?? null}
-              taiwanUnitVecs={coastlines?.taiwanUnitVecs ?? null}
-              stateRef={rippleStateRef}
-            />
-
-            {/* Layer 6b: 海洋 ambient 薄膜（shader-only，每幀只更新 3 個 uniform）
-                朝月球面有基底亮度、wave-front 經過時亮環擴散、球緣有 fresnel 提亮
+            {/* Layer 6: 海洋 ambient 薄膜（shader-only）
+                朝月球面有基底亮度、橢圓殼跟隨月球方向、球緣有 fresnel 提亮
                 uLandMask 採樣：陸地處 wave/glow 全部 fade，不蓋過海岸線 */}
             <MobileOceanShell
               accentColor={accentColor}
               subLunarRef={subLunarRef}
               earthSpinRef={earthSpinRef}
-              rippleStateRef={rippleStateRef}
               visibility={moonVisibility}
               landMaskTex={landMaskTex}
             />

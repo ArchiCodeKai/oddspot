@@ -146,11 +146,15 @@ lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(lineSegments,
 
 ### 4.5 Mobile ocean volume + tide shell 修正（2026-05-02）
 
-手機版潮汐不再只依賴 D1 ripple 事件的圓形掃描線，也不再把海面做成單純外層罩光。`GlobeSceneMobile` 現在拆成兩層：
+手機版潮汐不再渲染 D1 ripple 的固定擴散圓環，也不再把海面做成單純外層罩光。`GlobeSceneMobile` 現在拆成兩層：
 
-- `MobileOceanVolume`：位於地球核心與陸地板塊之間，使用同一張 land mask 只顯示海洋。這層負責可見的水面材質、持續洋流 bands、D1 wave-front 與海洋亮度。
+- `MobileOceanVolume`：位於地球核心與陸地板塊之間，使用同一張 land mask 只顯示海洋。這層負責可見的水面材質、低頻洋流、潮汐隆起、幾何波峰波谷與海洋亮度。
 - `MobileOceanShell`：位於地形外側，保留 P2 Legendre 橢圓潮汐包覆殼；`uBaseRadius = 1.145`，赤道內縮後仍在 terrain max 外側。
 - 兩層都沿 sub-lunar 軸使用 `P2(c) = (3c² - 1) / 2` 做雙向凸起，視覺上對應「月球把海洋拉成橢圓殼」。
+- 手機版海洋動畫以 fragment 為主、vertex 為輔：vertex 保留低幅度 ellipsoid / breathe / wave relief，fragment 用同一份 relief 強化波峰高光與波谷暗部，避免低段數球體把三角網格輪廓或斑馬紋一起帶出來。
+- 陸地與海洋的交界不做硬切：`MobileTerrainShader` 使用較寬的 land-factor fade，`MobileOceanVolume` 使用 `oceanEdge` + `coastFade` 壓低海岸附近的洋流 alpha，避免低解析度島嶼填色與高解析度海岸線 mismatch 時出現生硬亮邊。
+- 洋流材質不再以深色塊為主；低頻 relief 保留幾何起伏，fragment 只加很淡的 micro-grain / thin-film accent，讓潮汐像透明薄膜上的流動，而不是大片發光填色。
+- `MobileMoonShader` 以 crater mesh 為主、wireframe 為輔；月球使用較淡的實體材質、坑洞暗部與 rim 高光，並保留低於地球的透明度與亮度，避免搶走地球主視覺。
 - 手機 canvas 設定 `touch-action: none`，地球與月球拖拽用 pointer capture 維持連續追蹤，避免瀏覽器把手勢轉成頁面 pan。
 
 ---
