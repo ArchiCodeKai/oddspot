@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { buildMoonPoints, recolorMoonPoints } from "./buildMoonPoints";
 import { useAppStore } from "@/store/useAppStore";
 import { useJawMoonStore } from "@/store/useJawMoonStore";
+import { useGazeController } from "@/hooks/useGazeController";
 
 // ─── 月球參數 ─────────────────────────────────────────────────────────────────
 export const MOON_RADIUS = 0.25;
@@ -90,6 +91,11 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
   // Reused scratch vector for moon→screen projection (avoids per-frame alloc)
   const moonScreenProjRef = useRef(new THREE.Vector3());
 
+  // 月球↔眼球凝視控制器（跨桌機/手機共用）
+  const gaze = useGazeController();
+  // 把 moon screen NDC 轉成 pointer NDC 給 gaze.update 用（避免 alloc）
+  const pointerNDCForGazeRef = useRef(new THREE.Vector2(0, 0));
+
   // ─── 月球點雲幾何（只 build 一次，主題切換改走 recolorMoonPoints） ────────
   // 改動前：grabbed 每 1.5s cycleTheme → buildMoonPoints (22k candidates) ≈ 30-60ms 卡頓
   // 改動後：useMemo 只跑一次，主題切換時下方 useEffect 重算 colors ≈ 1ms
@@ -111,6 +117,125 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
   useEffect(() => {
     recolorMoonPoints(moonPointsGeom, accentColor);
   }, [accentColor, moonPointsGeom]);
+
+  // ─── 月球↔眼球 ShaderMaterial（取代 PointsMaterial）─────────────────
+  // 保留 vertexColors + AdditiveBlending；新增 uMorph/uGazeDir/uTime/uTremor/uAccent
+  // morph=0 → 月球（vertexColor 直接用）
+  // morph=1 → 眼球（依 aRole 染色 + iris/pupil 跟著 uGazeDir 偏轉）
+  const moonPointsMatUniforms = useMemo(
+    () => ({
+      uOpacity: { value: visibility },
+      uMorph:   { value: 0 },
+      uGazeDir: { value: new THREE.Vector2(0, 0) },
+      uTime:    { value: 0 },
+      uTremor:  { value: 1.0 },
+      uAccent:  { value: accentColor.clone() },
+      uSize:    { value: 0.008 * viewportSize.height },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  useEffect(() => {
+    moonPointsMatUniforms.uAccent.value.copy(accentColor);
+  }, [accentColor, moonPointsMatUniforms]);
+
+  const moonPointsMaterial = useMemo(() => {
+    const mat = new THREE.ShaderMaterial({
+      uniforms: moonPointsMatUniforms,
+      // 不開 vertexColors：手動 declare attribute vec3 color，避免 three.js prefix 重複宣告
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: /* glsl */ `
+        attribute float aRole;     // 0=sclera, 1=iris, 2=pupil
+        attribute vec3 color;      // 現有月球 vertexColor（recolorMoonPoints 寫入）
+        uniform float uMorph;
+        uniform vec2 uGazeDir;
+        uniform float uTime;
+        uniform float uTremor;
+        uniform float uSize;
+        varying vec3 vColor;
+        varying float vRole;
+        varying float vGazeDist;
+
+        // 繞任意軸旋轉一個向量（小角度近似 ok，這裡用 Rodrigues）
+        vec3 rotateAxisAngle(vec3 v, vec3 axis, float angle) {
+          float c = cos(angle);
+          float s = sin(angle);
+          return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
+        }
+
+        void main() {
+          vColor = color;
+          vRole = aRole;
+
+          vec3 unitPos = normalize(position);
+
+          // ── 凝視旋轉：iris 偏 0.5、pupil 偏 1.0、sclera 不動 ──
+          // gazeDir 是 view-space xy；轉成繞 (gazeDir.y, -gazeDir.x, 0) 軸的旋轉
+          float gazeWeight = (aRole >= 1.5) ? 1.0 : ((aRole >= 0.5) ? 0.5 : 0.0);
+          float gazeMag = length(uGazeDir);
+          vec3 morphedPos = position;
+          if (gazeMag > 0.001 && gazeWeight > 0.0 && uMorph > 0.001) {
+            vec3 axis = normalize(vec3(-uGazeDir.y, uGazeDir.x, 0.0));
+            float ang = gazeMag * 0.55 * uMorph * gazeWeight;
+            morphedPos = rotateAxisAngle(position, axis, ang);
+          }
+
+          // ── 顫動：高頻 noise displacement（沿法線）──
+          float jx = sin(uTime * 23.0 + position.x * 47.0);
+          float jy = cos(uTime * 19.0 + position.y * 53.0);
+          float jz = sin(uTime * 29.0 + position.z * 41.0);
+          float jitter = (jx + jy + jz) * 0.0012 * uMorph * uTremor;
+          morphedPos += unitPos * jitter;
+
+          // 給 fragment 用：與凝視軸的角距離（眼白染色用）
+          vec3 gazeAxis = normalize(vec3(uGazeDir.x * 0.55, uGazeDir.y * 0.55, 1.0));
+          vGazeDist = acos(clamp(dot(unitPos, gazeAxis), -1.0, 1.0));
+
+          vec4 mvPosition = modelViewMatrix * vec4(morphedPos, 1.0);
+          gl_Position = projectionMatrix * mvPosition;
+          // sizeAttenuation：等同 PointsMaterial 的 sizeAttenuation
+          gl_PointSize = uSize / -mvPosition.z;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uOpacity;
+        uniform float uMorph;
+        uniform vec3 uAccent;
+        varying vec3 vColor;
+        varying float vRole;
+        varying float vGazeDist;
+
+        void main() {
+          // 圓點 alpha mask（仿 PointsMaterial 圓形粒子）
+          vec2 uv = gl_PointCoord - vec2(0.5);
+          float r2 = dot(uv, uv);
+          if (r2 > 0.25) discard;
+          float pointAlpha = 1.0 - smoothstep(0.18, 0.25, r2);
+
+          // ── 月球色：直接用 vertexColor ──
+          vec3 moonCol = vColor;
+
+          // ── 眼球色：依 aRole 染色 ──
+          //   sclera：白偏冷 + 邊緣血絲（gazeDist 越大越紅）
+          //   iris：accent × 1.5（高飽和）
+          //   pupil：純黑
+          vec3 scleraCol = mix(vec3(0.94, 0.95, 0.88), uAccent * 0.4, 0.25);
+          float bloodshot = smoothstep(0.7, 1.4, vGazeDist);
+          scleraCol += vec3(0.5, 0.05, 0.08) * bloodshot * 0.55;
+          vec3 irisCol = uAccent * 1.6 + vec3(0.05, 0.0, 0.08);
+          vec3 pupilCol = vec3(0.02, 0.0, 0.05);
+          vec3 eyeCol = (vRole >= 1.5) ? pupilCol : ((vRole >= 0.5) ? irisCol : scleraCol);
+
+          vec3 col = mix(moonCol, eyeCol, uMorph);
+          gl_FragColor = vec4(col, pointAlpha * uOpacity);
+        }
+      `,
+    });
+    return mat;
+  }, [moonPointsMatUniforms]);
 
   // ─── 軌道虛線 geometry ────────────────────────────────────────────────────
   const orbitDashedGeom = useMemo(() => {
@@ -375,6 +500,17 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
     const screenX = (moonProj.x * 0.5 + 0.5) * viewportSize.width;
     const screenY = (-moonProj.y * 0.5 + 0.5) * viewportSize.height;
     useJawMoonStore.getState().setMoonFrame(screenX, screenY, state);
+
+    // ── Gaze controller：morph + saccade + 顫動 ──
+    // pointer NDC 用 pointerNDCRef（拖曳偵測也用同一份）；orbiting 時就讓眼球隨機掃視
+    pointerNDCForGazeRef.current.set(pointerNDCRef.current.x, pointerNDCRef.current.y);
+    gaze.setMoonState(state);
+    gaze.update(dt, pointerNDCForGazeRef.current);
+    moonPointsMatUniforms.uOpacity.value = visibility;
+    moonPointsMatUniforms.uMorph.value = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
+    moonPointsMatUniforms.uGazeDir.value.copy(gaze.gazeDir);
+    moonPointsMatUniforms.uTime.value = elapsed;
+    moonPointsMatUniforms.uSize.value = 0.008 * viewportSize.height;
   });
 
   return (
@@ -408,17 +544,10 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
             <meshBasicMaterial colorWrite={false} depthWrite />
           </mesh>
 
-          {/* 點雲月球（坑洞 rim 密集 / 碗底稀疏） */}
+          {/* 點雲月球（坑洞 rim 密集 / 碗底稀疏）+ 眼球 morph shader */}
+          {/* primitive attach 是最保險的 material 綁定法（R3F 對直接 material prop 不一定生效）*/}
           <points geometry={moonPointsGeom} frustumCulled={false}>
-            <pointsMaterial
-              vertexColors
-              size={0.008}
-              sizeAttenuation
-              transparent
-              opacity={visibility}
-              depthWrite={false}
-              blending={THREE.AdditiveBlending}
-            />
+            <primitive object={moonPointsMaterial} attach="material" />
           </points>
 
           {/* 互動碰撞球（略大於月球，透明，偵測 pointer down/over/out）

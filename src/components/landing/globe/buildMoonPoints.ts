@@ -110,6 +110,8 @@ export function recolorMoonPoints(
  * 結果 attributes：
  *   - position: 3D（球面座標 × moonRadius）
  *   - color:    per-vertex RGB（跟隨 accentColor）
+ *   - aRole:    Uint8 給眼球 morph 用（0=sclera, 1=iris, 2=pupil）
+ *               以局部 +Z 軸為「預設凝視方向」分類；shader 內 uGazeDir 動態偏移
  *
  * userData（給 recolorMoonPoints 用，主題切換時不重建）：
  *   - colorRecipes:    Uint8Array  0=accent, 1=white
@@ -123,6 +125,7 @@ export function buildMoonPoints({
   const positions: number[] = [];
   const recipesArr: number[] = [];
   const brightnessArr: number[] = [];
+  const rolesArr: number[] = [];
 
   for (let i = 0; i < candidateCount; i++) {
     // Uniform sphere sampling
@@ -171,6 +174,17 @@ export function buildMoonPoints({
     // 位置
     positions.push(x * moonRadius, y * moonRadius, z * moonRadius);
 
+    // 眼球角色：以 +Z 軸為預設凝視方向
+    //   pupil  ≈ cosA > 0.985 (~10 度)
+    //   iris   ≈ cosA > 0.91  (~24 度)
+    //   sclera 其餘
+    // shader 內凝視旋轉時，role 決定該點要不要跟著 gaze 偏轉
+    const cosA = z; // 跟 +Z 軸的 cos angle = unit z
+    let role = 0; // sclera
+    if (cosA > 0.985) role = 2;       // pupil
+    else if (cosA > 0.91) role = 1;   // iris
+    rolesArr.push(role);
+
     // 顏色 recipe（決策一次，主題切換時重用）
     if (region === "rim") {
       if (Math.random() < 0.05) {
@@ -196,11 +210,14 @@ export function buildMoonPoints({
   const recipes = new Uint8Array(recipesArr);
   const brightness = new Float32Array(brightnessArr);
   const colors = new Float32Array(recipes.length * 3);
+  const roles = new Uint8Array(rolesArr);
   applyMoonColors(colors, recipes, brightness, accentColor);
 
   const geom = new THREE.BufferGeometry();
   geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geom.setAttribute("color",    new THREE.BufferAttribute(colors, 3));
+  // aRole 給眼球 morph shader 用：0=sclera, 1=iris, 2=pupil
+  geom.setAttribute("aRole",    new THREE.BufferAttribute(roles, 1));
   geom.userData.colorRecipes = recipes;
   geom.userData.colorBrightness = brightness;
   return geom;
