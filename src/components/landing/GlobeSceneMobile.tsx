@@ -8,6 +8,8 @@ import { buildHeightmap } from "./globe/buildDisplacedSphere";
 import { buildCoastlines } from "./globe/buildCoastlines";
 import { buildTerrainSphere } from "./globe/buildTerrainSphere";
 import { buildMoonTerrainSphere } from "./globe/buildMoonTerrainSphere";
+import { useGazeController, type GazeController } from "@/hooks/useGazeController";
+import { useJawMoonStore } from "@/store/useJawMoonStore";
 
 // ─── 共用常數（與桌面版對齊：保證視覺敘事一致性） ────────────────
 const EARTH_AXIAL_TILT_RAD = (23.5 * Math.PI) / 180;
@@ -153,7 +155,13 @@ function MoonLite({
   const activePointerIdRef = useRef<number | null>(null);
   const captureTargetRef = useRef<Element | null>(null);
 
-  const { camera, gl } = useThree();
+  const { camera, gl, size: viewportSize } = useThree();
+
+  // 月球↔眼球凝視控制器（saccade + tremor + morph progress）
+  const gaze = useGazeController();
+
+  // 投影 moon 世界座標到螢幕像素，給跨 canvas 的 jaw 用（補桌機版漏掉的接線）
+  const moonScreenProjRef = useRef(new THREE.Vector3());
 
   const writePointerNDC = (clientX: number, clientY: number) => {
     const rect = gl.domElement.getBoundingClientRect();
@@ -246,6 +254,18 @@ function MoonLite({
     body.getWorldPosition(_moonScratchPos);
     _moonScratchPos.normalize();
     if (subLunarRef.current) subLunarRef.current.copy(_moonScratchPos);
+
+    // 凝視控制器更新（morph + gazeDir + saccade）
+    gaze.setMoonState(moonState);
+    gaze.update(dt, pointerNDCRef.current);
+
+    // 投影 moon → 螢幕像素，寫入跨 canvas 的 jaw store
+    // （桌機版有接、手機版之前漏接，這裡補上 → 手機也有 lunge-bite 互動）
+    body.getWorldPosition(moonScreenProjRef.current);
+    moonScreenProjRef.current.project(camera);
+    const screenX = (moonScreenProjRef.current.x * 0.5 + 0.5) * viewportSize.width;
+    const screenY = (-moonScreenProjRef.current.y * 0.5 + 0.5) * viewportSize.height;
+    useJawMoonStore.getState().setMoonFrame(screenX, screenY, moonState);
   });
 
   return (
@@ -257,6 +277,7 @@ function MoonLite({
             geometry={moonTerrain.meshGeometry}
             accentColor={accentColor}
             visibility={visibility}
+            gaze={gaze}
           />
           {/* 輔助線框降到極淡，主視覺交給 mesh shader 的 crater 分層。 */}
           <lineSegments geometry={moonTerrain.wireGeometry}>
@@ -620,23 +641,32 @@ function MobileTerrainShader({
   );
 }
 
-// ─── 月球 mesh shader（aCrater 分層 alpha）────────────────────────
-// 取代純 wireframe 月球：bowl 最透明、surface 中、rim 最不透明
+// ─── 月球 mesh shader（aCrater 分層 alpha + 眼球 morph）────────────
+// 月球態：bowl 最透明、surface 中、rim 最不透明
+// 眼球態：依 uGazeDir 算「距離凝視中心軸的角距離」分層染色 sclera/iris/pupil
+//
+// uMorph 0→1 由 useGazeController 推進；vertex 顫動 + fragment 染色都靠 uMorph 漸變
 function MobileMoonShader({
   geometry,
   accentColor,
   visibility,
+  gaze,
 }: {
   geometry: THREE.BufferGeometry;
   accentColor: THREE.Color;
   visibility: number;
+  gaze: GazeController;
 }) {
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
   const uniforms = useMemo(
     () => ({
-      uAccent:    { value: accentColor.clone() },
-      uOpacity:   { value: 0 },
+      uAccent:   { value: accentColor.clone() },
+      uOpacity:  { value: 0 },
+      uMorph:    { value: 0 },
+      uGazeDir:  { value: new THREE.Vector2(0, 0) },
+      uTime:     { value: 0 },
+      uTremor:   { value: 1.0 },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -646,8 +676,11 @@ function MobileMoonShader({
     uniforms.uAccent.value.copy(accentColor);
   }, [accentColor, uniforms]);
 
-  useFrame(() => {
+  useFrame((state) => {
     uniforms.uOpacity.value = visibility;
+    uniforms.uMorph.value = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
+    uniforms.uGazeDir.value.copy(gaze.gazeDir);
+    uniforms.uTime.value = state.clock.elapsedTime;
   });
 
   return (
@@ -660,29 +693,45 @@ function MobileMoonShader({
         side={THREE.FrontSide}
         vertexShader={/* glsl */ `
           attribute float aCrater;
+          uniform float uMorph;
+          uniform float uTime;
+          uniform float uTremor;
           varying float vCrater;
           varying vec3 vViewNormal;
           varying vec3 vLocalNormal;
+
           void main() {
             vCrater = aCrater;
-            vLocalNormal = normalize(position);
-            vViewNormal = normalize(normalMatrix * normalize(position));
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            vec3 unitPos = normalize(position);
+            vLocalNormal = unitPos;
+            vViewNormal = normalize(normalMatrix * unitPos);
+
+            // 顫動：高頻 noise 沿法線方向位移（只在 morph 顯著時生效）
+            // 三個質數頻率錯開相位 → 「肉在不安分」的 Cthulhu 感
+            float jx = sin(uTime * 23.0 + position.x * 47.0);
+            float jy = cos(uTime * 19.0 + position.y * 53.0);
+            float jz = sin(uTime * 29.0 + position.z * 41.0);
+            float jitter = (jx + jy + jz) * 0.0015 * uMorph * uTremor;
+
+            vec3 displaced = position + unitPos * jitter;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
           }
         `}
         fragmentShader={/* glsl */ `
           uniform vec3 uAccent;
           uniform float uOpacity;
+          uniform float uMorph;
+          uniform vec2 uGazeDir;
           varying float vCrater;
           varying vec3 vViewNormal;
           varying vec3 vLocalNormal;
 
-          void main() {
+          // ── 月球色（保留現有邏輯）──
+          vec4 moonShading() {
             float bowl = 1.0 - smoothstep(0.10, 0.48, vCrater);
             float rim = smoothstep(0.62, 1.0, vCrater);
             float surface = smoothstep(0.22, 0.72, vCrater);
 
-            // 月球比地球更淡、更實體：用暖白混 accent，不靠線稿撐形體。
             float light = max(dot(vLocalNormal, normalize(vec3(-0.35, 0.45, 0.82))) * 0.5 + 0.5, 0.38);
             float fresnel = pow(1.0 - max(0.0, vViewNormal.z), 2.2);
             vec3 moonBase = mix(uAccent * 0.28, vec3(0.92, 0.94, 0.84), 0.58);
@@ -691,8 +740,54 @@ function MobileMoonShader({
             col += vec3(1.0, 0.94, 0.72) * rim * 0.14;
             col += uAccent * fresnel * 0.08;
 
-            float a = (0.34 + surface * 0.18 + rim * 0.16 - bowl * 0.04 + fresnel * 0.05) * uOpacity;
-            gl_FragColor = vec4(col, clamp(a, 0.0, 0.66));
+            float a = (0.34 + surface * 0.18 + rim * 0.16 - bowl * 0.04 + fresnel * 0.05);
+            return vec4(col, clamp(a, 0.0, 0.66));
+          }
+
+          // ── 眼球色（gazeAxis 為中心軸，依角距離分 pupil/iris/sclera）──
+          vec4 eyeShading() {
+            // 預設凝視 +Z（朝攝影機），uGazeDir 在 view xy 偏移
+            vec3 gazeAxis = normalize(vec3(uGazeDir.x * 0.55, uGazeDir.y * 0.55, 1.0));
+
+            // vViewNormal 已是 view space 法線 → 直接跟 gazeAxis 比角距離
+            float cosA = clamp(dot(vViewNormal, gazeAxis), -1.0, 1.0);
+            float gazeAngle = acos(cosA);
+
+            // 半徑（角距離 rad）：< 0.18 = pupil, < 0.45 = iris, 其餘 sclera
+            float pupilMask  = 1.0 - smoothstep(0.13, 0.20, gazeAngle);
+            float irisOuter  = 1.0 - smoothstep(0.40, 0.50, gazeAngle);
+            float irisMask   = clamp(irisOuter - pupilMask, 0.0, 1.0);
+            float scleraMask = clamp(1.0 - irisOuter, 0.0, 1.0);
+
+            // 虹膜紋理：細放射條紋
+            float radial = sin(atan(uGazeDir.y - vViewNormal.y, uGazeDir.x - vViewNormal.x) * 18.0);
+            float irisDetail = 0.85 + radial * 0.15;
+
+            vec3 pupilCol  = vec3(0.02, 0.0, 0.04);
+            vec3 irisCol   = uAccent * 1.4 * irisDetail + vec3(0.05, 0.0, 0.08);
+            vec3 scleraBase = mix(vec3(0.94, 0.95, 0.88), uAccent * 0.35, 0.25);
+
+            // 眼白血絲：fresnel 偏紅
+            float fresnel = pow(1.0 - max(0.0, vViewNormal.z), 2.5);
+            vec3 scleraCol = scleraBase + vec3(0.45, 0.05, 0.08) * fresnel * 0.35;
+
+            vec3 col = pupilCol * pupilMask + irisCol * irisMask + scleraCol * scleraMask;
+
+            // 高光：靠近凝視軸有微反光
+            float specular = smoothstep(0.32, 0.42, gazeAngle) * (1.0 - smoothstep(0.42, 0.48, gazeAngle));
+            col += vec3(1.0, 1.0, 0.95) * specular * 0.25;
+
+            // 眼球比月球實體：alpha 更高
+            float a = mix(0.78, 0.92, fresnel);
+            return vec4(col, a);
+          }
+
+          void main() {
+            vec4 moon = moonShading();
+            vec4 eye = eyeShading();
+            vec3 col = mix(moon.rgb, eye.rgb, uMorph);
+            float a = mix(moon.a, eye.a, uMorph) * uOpacity;
+            gl_FragColor = vec4(col, a);
           }
         `}
       />
