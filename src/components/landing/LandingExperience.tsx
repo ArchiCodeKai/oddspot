@@ -450,6 +450,7 @@ export function LandingExperience() {
                 right: "6%",
                 maxWidth: 640,
                 zIndex: 10,
+                pointerEvents: "none",
               }}
             >
               <BrandTag dot glow style={{ marginBottom: 24 }}>
@@ -493,7 +494,15 @@ export function LandingExperience() {
               >
                 {t("lede")}
               </p>
-              <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 14,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  pointerEvents: "auto",
+                }}
+              >
                 <AcidButton
                   onClick={enterMap}
                   variant="accent"

@@ -8,8 +8,9 @@ import { buildHeightmap } from "./globe/buildDisplacedSphere";
 import { buildCoastlines } from "./globe/buildCoastlines";
 import { buildTerrainSphere } from "./globe/buildTerrainSphere";
 import { buildMoonTerrainSphere } from "./globe/buildMoonTerrainSphere";
-import { useGazeController, type GazeController } from "@/hooks/useGazeController";
+import { useAppStore } from "@/store/useAppStore";
 import { useJawMoonStore } from "@/store/useJawMoonStore";
+import { useGazeController, type GazeController } from "@/hooks/useGazeController";
 
 // ─── 共用常數（與桌面版對齊：保證視覺敘事一致性） ────────────────
 const EARTH_AXIAL_TILT_RAD = (23.5 * Math.PI) / 180;
@@ -29,7 +30,7 @@ const RIPPLE_BAND_DEG = 22;          // 強化：影響台灣脈動的頻寬更�
 const RIPPLE_PEAK_OPACITY = 1.0;     // 強化：最亮 1.0（之前 0.85）
 const RIPPLE_LINE_RADIUS = 1.045;    // 強化：圓圈離地球更外（之前 1.030），不被地形球遮
 const RIPPLE_SEGMENTS = 96;
-// D3 雙球體膨脹（同時作用於 backdrop 跟 terrain sphere，視覺更明顯）
+// D3 潮汐方向提示：只作用於背景網格；陸地/海岸線保持穩定，真正浮動交給海洋 shader。
 const D3_BULGE_AMOUNT = 0.045;       // 強化：膨脹兩倍（之前 0.022）
 const D3_BULGE_FALLOFF_DEG = 75;     // 強化：影響範圍稍大（之前 70）
 
@@ -132,6 +133,8 @@ const _moonScratchHit = new THREE.Vector3();
 const _moonRaycaster = new THREE.Raycaster();
 const _moonOrbitTarget = new THREE.Vector3(MOON_ORBIT_RADIUS, 0, 0);
 const _moonCamDir = new THREE.Vector3();
+const _moonCamPos = new THREE.Vector3();
+const _moonWorld = new THREE.Vector3();
 
 function MoonLite({
   accentColor,
@@ -155,11 +158,16 @@ function MoonLite({
   const activePointerIdRef = useRef<number | null>(null);
   const captureTargetRef = useRef<Element | null>(null);
 
-  const { camera, gl, size: viewportSize } = useThree();
+  const { camera, clock, gl, size: viewportSize } = useThree();
+  const cycleTheme = useAppStore((s) => s.cycleTheme);
 
   // 月球↔眼球凝視控制器（saccade + tremor + morph progress）
   const gaze = useGazeController();
-
+  const lastThemeSwitchRef = useRef(0);
+  // 視覺放大：grabbed 時補償透視，讓 apparent size = 軌道最近點
+  const visualScaleRef = useRef(1);
+  // 補償強度（0=自然透視, 1=軌道最近點 apparent size）— grabbed 拉到 1、returning 平滑回 0
+  const compensationRef = useRef(0);
   // 投影 moon 世界座標到螢幕像素，給跨 canvas 的 jaw 用（補桌機版漏掉的接線）
   const moonScreenProjRef = useRef(new THREE.Vector3());
 
@@ -226,7 +234,6 @@ function MoonLite({
     // anchor 永遠公轉（grabbed 時也不停 — 軌道穩定）
     anchor.rotation.y = state.clock.elapsedTime * (2 * Math.PI / MOON_ORBIT_PERIOD_SEC);
     if (self) self.rotation.y += dt * MOON_SELF_ROTATION;
-    if (matWireRef.current) matWireRef.current.opacity = visibility * 0.07;
 
     const moonState = moonStateRef.current;
 
@@ -239,6 +246,11 @@ function MoonLite({
       if (_moonRaycaster.ray.intersectPlane(dragPlaneRef.current, _moonScratchHit)) {
         anchor.worldToLocal(_moonScratchHit);
         body.position.copy(_moonScratchHit);
+      }
+
+      if (state.clock.elapsedTime - lastThemeSwitchRef.current >= 1.5) {
+        cycleTheme();
+        lastThemeSwitchRef.current = state.clock.elapsedTime;
       }
     } else if (moonState === "returning") {
       // Spring back 到軌道（local space lerp）
@@ -258,6 +270,63 @@ function MoonLite({
     // 凝視控制器更新（morph + gazeDir + saccade）
     gaze.setMoonState(moonState);
     gaze.update(dt, pointerNDCRef.current);
+
+    // ── 手機限定：grabbed 時直接強制 morph 拉到 1（不等共用 hook 的 lerp 收斂）──
+    // 桌機 Moon.tsx 不走這條路，所以不會被影響
+    if (moonState === "grabbed") {
+      const fastK = 1 - Math.exp(-dt * 22);
+      gaze.morph.current = THREE.MathUtils.lerp(gaze.morph.current, 1, fastK);
+    }
+    const morphAmt = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
+
+    // ── 手機 saccade noise：morph 高時疊加程序化漂移，模擬「不安分四處看」 ──
+    // 桌機在 useGazeController 內部已有 tremor，手機因 grabbed 時 gazeDir 直接被 pointer 蓋過
+    // 沒有 random saccade 空間 → 此處主動疊噪聲到 gaze.gazeDir
+    if (morphAmt > 0.05) {
+      const tNow = state.clock.elapsedTime;
+      // 慢頻大幅度漂移（基本「亂看」感）+ 高頻小幅度顫抖（眼球微跳）
+      const slowX = Math.sin(tNow * 0.83 + 1.7) * 0.45 + Math.cos(tNow * 0.51) * 0.30;
+      const slowY = Math.cos(tNow * 0.71 + 2.3) * 0.40 + Math.sin(tNow * 0.43 + 0.9) * 0.25;
+      const fastX = Math.sin(tNow * 7.3) * Math.cos(tNow * 11.1) * 0.18;
+      const fastY = Math.cos(tNow * 6.7 + 0.4) * Math.sin(tNow * 9.5) * 0.18;
+      // 偶發跳動：每 ~1.8s 一次大躍遷（saccade burst）
+      const burstPhase = Math.sin(tNow * 0.55) > 0.88 ? 1 : 0;
+      const burstX = burstPhase * Math.sin(tNow * 47.0) * 0.40;
+      const burstY = burstPhase * Math.cos(tNow * 53.0) * 0.40;
+      gaze.gazeDir.x = THREE.MathUtils.clamp(
+        gaze.gazeDir.x + (slowX + fastX + burstX) * morphAmt, -0.9, 0.9
+      );
+      gaze.gazeDir.y = THREE.MathUtils.clamp(
+        gaze.gazeDir.y + (slowY + fastY + burstY) * morphAmt, -0.9, 0.9
+      );
+    }
+    if (matWireRef.current) {
+      // 不再幾乎淡到 0：morph 時保留 0.04 線條，確保月海 / 坑洞 / 高低起伏仍可讀
+      matWireRef.current.opacity = visibility * THREE.MathUtils.lerp(0.07, 0.04, morphAmt);
+    }
+
+    // ── 視覺放大：grabbed = 軌道最近點 apparent size、returning 平滑回到自然透視 ──
+    // 軌道最近點距離 = |camera-to-origin| - 軌道半徑（不是 (2,0,0) world 距離）
+    camera.getWorldPosition(_moonCamPos);
+    const minOrbitDist = Math.max(0.1, _moonCamPos.length() - MOON_ORBIT_RADIUS);
+    body.getWorldPosition(_moonWorld);
+    const currentDist = _moonWorld.distanceTo(_moonCamPos);
+
+    const compTarget = moonState === "grabbed" ? 1 : 0;
+    const compSpeed = moonState === "grabbed" ? 24 : 3.8;
+    compensationRef.current = THREE.MathUtils.lerp(
+      compensationRef.current, compTarget, 1 - Math.exp(-dt * compSpeed),
+    );
+    const compensatedScale = currentDist / minOrbitDist;
+    const targetScale = THREE.MathUtils.lerp(1, compensatedScale, compensationRef.current);
+
+    const t = state.clock.elapsedTime;
+    const wobble = morphAmt > 0.05
+      ? (Math.sin(t * 31.0) * 0.004 + Math.cos(t * 23.0 + 1.3) * 0.003) * morphAmt
+      : 0;
+    const sk = 1 - Math.exp(-dt * (moonState === "grabbed" ? 28 : 12));
+    visualScaleRef.current = THREE.MathUtils.lerp(visualScaleRef.current, targetScale, sk);
+    body.scale.setScalar(Math.max(0.05, visualScaleRef.current + wobble));
 
     // 投影 moon → 螢幕像素，寫入跨 canvas 的 jaw store
     // （桌機版有接、手機版之前漏接，這裡補上 → 手機也有 lunge-bite 互動）
@@ -279,7 +348,7 @@ function MoonLite({
             visibility={visibility}
             gaze={gaze}
           />
-          {/* 輔助線框降到極淡，主視覺交給 mesh shader 的 crater 分層。 */}
+          {/* 輔助線框：保留可見 0.04 opacity，月海/坑洞/高低起伏全程可讀 */}
           <lineSegments geometry={moonTerrain.wireGeometry}>
             <lineBasicMaterial
               ref={matWireRef}
@@ -289,7 +358,23 @@ function MoonLite({
               depthWrite={false}
             />
           </lineSegments>
+          {/* 瞳孔線條密度層：用同一份 wireGeometry 疊加，瞳孔區線條更密 */}
+          <PupilWireOverlay
+            geometry={moonTerrain.wireGeometry}
+            accentColor={accentColor}
+            visibility={visibility}
+            gaze={gaze}
+          />
         </group>
+
+        {/* 眼球 billboard 要掛在 moon body，不掛在 moonSelfRef：
+            moonSelfRef 會自轉，會把 billboard 的前表面位移帶走，手機尺寸下瞳孔就會像漂在內部。 */}
+        <MobileEyeBillboard
+          radius={MOON_RADIUS}
+          accentColor={accentColor}
+          visibility={visibility}
+          gaze={gaze}
+        />
 
         {/* 互動碰撞球（略大於月球，透明）→ 觸碰/手指拿取月球
             ⚠️ 不呼叫 e.stopPropagation()：R3F 的 stopPropagation 會 cancel native event
@@ -318,6 +403,8 @@ function MoonLite({
             // 初始化 NDC（防止第一幀沒 pointermove 時 hit 跳到 (0,0)）
             writePointerNDC(e.nativeEvent.clientX, e.nativeEvent.clientY);
 
+            lastThemeSwitchRef.current = clock.elapsedTime;
+            compensationRef.current = 1;
             moonStateRef.current = "grabbed";
           }}
         >
@@ -646,6 +733,246 @@ function MobileTerrainShader({
 // 眼球態：依 uGazeDir 算「距離凝視中心軸的角距離」分層染色 sclera/iris/pupil
 //
 // uMorph 0→1 由 useGazeController 推進；vertex 顫動 + fragment 染色都靠 uMorph 漸變
+// ─── 手機眼球 billboard ──────────────────────────────────────
+// camera-facing 圓盤 + radial gradient shader，明確畫出瞳孔/虹膜/血絲。
+// 永遠正對相機（ref.current.lookAt(camera)），不被月球 tumble 影響。
+// 只在 morph > 0.15 時可見；morph=1 時完整顯示，morph=0 完全透明。
+function MobileEyeBillboard({
+  radius,
+  accentColor,
+  visibility,
+  gaze,
+}: {
+  radius: number;
+  accentColor: THREE.Color;
+  visibility: number;
+  gaze: GazeController;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const innerRef = useRef<THREE.Group>(null);
+  const camPosRef = useRef(new THREE.Vector3());
+
+  const uniforms = useMemo(
+    () => ({
+      uAccent:   { value: accentColor.clone() },
+      uOpacity:  { value: 0 },
+      uMorph:    { value: 0 },
+      uBlink:    { value: 0 },
+      uTime:     { value: 0 },
+      uGazeDir:  { value: new THREE.Vector2(0, 0) },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  useEffect(() => {
+    uniforms.uAccent.value.copy(accentColor);
+  }, [accentColor, uniforms]);
+
+  useFrame((state, dt) => {
+    const root = groupRef.current;
+    const inner = innerRef.current;
+    if (!root || !inner) return;
+    const morph = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
+    uniforms.uOpacity.value = visibility;
+    uniforms.uMorph.value = morph;
+    uniforms.uBlink.value = THREE.MathUtils.clamp(gaze.blink.current, 0, 1);
+    uniforms.uTime.value = state.clock.elapsedTime;
+    uniforms.uGazeDir.value.copy(gaze.gazeDir);
+    // 隱形時跳過 lookAt 計算；fade-in 稍早，避免手指按下後先看到空的半透明球。
+    // 門檻降到 0.001：grabbed 一瞬間就有瞳孔，不等 morph 慢慢 ramp
+    root.visible = visibility * morph > 0.001;
+    if (!root.visible) return;
+    state.camera.getWorldPosition(camPosRef.current);
+    root.lookAt(camPosRef.current);
+    const targetScale = 1 + morph * 0.06;
+    root.scale.setScalar(
+      THREE.MathUtils.lerp(root.scale.x, targetScale, 1 - Math.exp(-dt * 14)),
+    );
+    // gaze saccade：±15° 套在 inner，不抵銷 root 的 lookAt
+    const yaw = gaze.gazeDir.x * 0.20;
+    const pitch = -gaze.gazeDir.y * 0.17;
+    inner.rotation.y = THREE.MathUtils.lerp(inner.rotation.y, yaw, 1 - Math.exp(-dt * 10));
+    inner.rotation.x = THREE.MathUtils.lerp(inner.rotation.x, pitch, 1 - Math.exp(-dt * 10));
+  });
+
+  return (
+    <group ref={groupRef}>
+      <group ref={innerRef}>
+        {/* 圓盤直接覆在可見半球中心；depthTest=false，由 alpha 邊緣淡出避免貼紙感。 */}
+        <mesh renderOrder={8}>
+          <circleGeometry args={[radius * 1.16, 72]} />
+          <shaderMaterial
+            uniforms={uniforms}
+            transparent
+            depthWrite={false}
+            depthTest={false}
+            side={THREE.DoubleSide}
+            blending={THREE.NormalBlending}
+            vertexShader={/* glsl */ `
+              varying vec2 vUv;
+              void main() {
+                vUv = uv - vec2(0.5);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+            `}
+            fragmentShader={/* glsl */ `
+              uniform vec3 uAccent;
+              uniform float uOpacity;
+              uniform float uMorph;
+              uniform float uBlink;
+              uniform float uTime;
+              varying vec2 vUv;
+
+              float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+              }
+
+              void main() {
+                float r = length(vUv) * 2.0;
+                if (r > 1.0) discard;
+
+                float angle = atan(vUv.y, vUv.x);
+
+                // 手機尺寸下中心要讀得出來，但避免霓虹貼圖：黑瞳孔實、虹膜低彩度、邊緣散。
+                float pupilCore = 1.0 - smoothstep(0.13, 0.21, r);
+                float pupilFalloff = 1.0 - smoothstep(0.20, 0.36, r);
+                float irisInner = smoothstep(0.18, 0.28, r);
+                float irisOuter = 1.0 - smoothstep(0.48, 0.62, r);
+                float irisMask = clamp(irisInner * irisOuter, 0.0, 1.0);
+                float scleraMask = clamp(smoothstep(0.54, 0.68, r) * (1.0 - smoothstep(0.88, 1.0, r)), 0.0, 1.0);
+
+                // 虹膜放射紋低彩度化：保留 acid 條紋，不做發亮霓虹眼瞳。
+                float radialStripe = sin(angle * 18.0 + r * 16.0 + uTime * 0.28) * 0.5 + 0.5;
+                float irisGrain = hash(floor(vec2(angle * 18.0, r * 34.0)));
+                vec3 irisCol = mix(uAccent * (0.42 + radialStripe * 0.13), vec3(0.025, 0.020, 0.032), 0.34);
+                irisCol *= 0.86 + irisGrain * 0.16;
+
+                // 鞏膜：冷白偏 accent 浸染
+                vec3 scleraCol = mix(vec3(0.68, 0.74, 0.66), uAccent * 0.20, 0.26);
+
+                // 血絲：限制在虹膜外緣到鞏膜中段（r 0.45–0.85）
+                float veinWave = sin(angle * 17.0 + r * 42.0 + uTime * 0.32);
+                float veinBreak = hash(floor(vec2(angle * 26.0, r * 20.0)));
+                float veinZone = smoothstep(0.50, 0.64, r) * (1.0 - smoothstep(0.78, 0.94, r));
+                float vein = smoothstep(0.74, 0.96, veinWave * 0.5 + 0.5) * veinZone * step(0.24, veinBreak);
+                scleraCol += vec3(0.56, 0.035, 0.045) * vein * 0.92;
+
+                vec3 col = vec3(0.0);
+                col = mix(col, scleraCol, scleraMask);
+                col = mix(col, irisCol, irisMask);
+                col = mix(col, vec3(0.0), pupilFalloff); // 瞳孔過渡
+                col = mix(col, vec3(0.0), pupilCore);    // 瞳孔核心 100% 黑
+
+                // 鞏膜外緣淡出，保留球體感但不要變成方形/像素遮罩。
+                float edgeFade = 1.0 - smoothstep(0.90, 1.0, r);
+
+                // morph fade-in 大幅提早：grabbed 一瞬間瞳孔就明顯，不等 ramp
+                float morphFade = smoothstep(0.005, 0.30, uMorph);
+
+                // 眨眼：上下方向（vUv.y）壓扁 alpha
+                float lidOpen = mix(0.78, 0.04, uBlink);
+                float lidVisible = 1.0 - smoothstep(lidOpen, lidOpen + 0.06, abs(vUv.y));
+
+                // 整體 alpha：核心區實、虹膜明確、鞏膜半透明，讓手機尺寸下不再消失。
+                // 全面提升：grabbed 一瞬間瞳孔/虹膜就要清楚，不要慢慢 fade
+                float regionAlpha = pupilCore * 1.0 + pupilFalloff * 1.0 + irisMask * 0.98 + scleraMask * 0.62 + vein * 0.92;
+                regionAlpha = clamp(regionAlpha, 0.0, 1.0);
+                float alphaGrain = 0.90 + hash(floor(vUv * 96.0 + uTime * 2.0)) * 0.10;
+                float alpha = regionAlpha * edgeFade * morphFade * lidVisible * alphaGrain * uOpacity;
+
+                gl_FragColor = vec4(col, alpha);
+              }
+            `}
+          />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+// ─── 瞳孔線條密度疊加層 ────────────────────────────────────────
+// 重複使用月球的 wireGeometry，但用自訂 shader 只在瞳孔區顯示線條。
+// 結果：拖曳時，瞳孔範圍內的線條看起來「比其他區域更密集」（同一條線被疊兩次）
+// 加上很淡的瞳孔暈染色，符合「線條 + 淡淡上色畫出瞳孔」的需求。
+// 零新 geometry、零新 draw call cost（一個 lineSegments 多一份 material）
+function PupilWireOverlay({
+  geometry,
+  accentColor,
+  visibility,
+  gaze,
+}: {
+  geometry: THREE.BufferGeometry;
+  accentColor: THREE.Color;
+  visibility: number;
+  gaze: GazeController;
+}) {
+  const uniforms = useMemo(
+    () => ({
+      uAccent:   { value: accentColor.clone() },
+      uOpacity:  { value: 0 },
+      uMorph:    { value: 0 },
+      uGazeDir:  { value: new THREE.Vector2(0, 0) },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  useEffect(() => {
+    uniforms.uAccent.value.copy(accentColor);
+  }, [accentColor, uniforms]);
+
+  useFrame(() => {
+    uniforms.uOpacity.value = visibility;
+    uniforms.uMorph.value = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
+    uniforms.uGazeDir.value.copy(gaze.gazeDir);
+  });
+
+  return (
+    <lineSegments geometry={geometry}>
+      <shaderMaterial
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+        blending={THREE.NormalBlending}
+        vertexShader={/* glsl */ `
+          uniform vec2 uGazeDir;
+          varying float vGazeAngle;
+          void main() {
+            vec3 unitPos = normalize(position);
+            vec3 viewN = normalize(normalMatrix * unitPos);
+            vec3 gazeAxis = normalize(vec3(uGazeDir.x * 0.55, uGazeDir.y * 0.55, 1.0));
+            vGazeAngle = acos(clamp(dot(viewN, gazeAxis), -1.0, 1.0));
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={/* glsl */ `
+          uniform vec3 uAccent;
+          uniform float uOpacity;
+          uniform float uMorph;
+          varying float vGazeAngle;
+          void main() {
+            // 瞳孔區（gazeAngle < 0.32）線條完整顯示
+            // 虹膜過渡（0.32–0.50）線條淡出
+            // 鞏膜（> 0.50）完全透明，避免污染外圍
+            float pupilLines = 1.0 - smoothstep(0.18, 0.32, vGazeAngle);
+            float irisLines  = (1.0 - smoothstep(0.32, 0.50, vGazeAngle)) * smoothstep(0.16, 0.30, vGazeAngle);
+            float lineWeight = pupilLines * 0.85 + irisLines * 0.55;
+
+            // 顏色：瞳孔極淡（accent × 0.18，比鞏膜暗）+ 一絲冷白
+            // 使用者要的「很淡很淡的透明度上色」
+            vec3 col = mix(uAccent * 0.18, vec3(0.04, 0.04, 0.06), 0.55);
+
+            // 只在 morph 高時顯示，平時隱形
+            float alpha = lineWeight * uOpacity * smoothstep(0.20, 0.80, uMorph) * 0.42;
+            gl_FragColor = vec4(col, alpha);
+          }
+        `}
+      />
+    </lineSegments>
+  );
+}
+
 function MobileMoonShader({
   geometry,
   accentColor,
@@ -665,6 +992,7 @@ function MobileMoonShader({
       uOpacity:  { value: 0 },
       uMorph:    { value: 0 },
       uGazeDir:  { value: new THREE.Vector2(0, 0) },
+      uBlink:    { value: 0 },
       uTime:     { value: 0 },
       uTremor:   { value: 1.0 },
     }),
@@ -677,14 +1005,16 @@ function MobileMoonShader({
   }, [accentColor, uniforms]);
 
   useFrame((state) => {
+    // 手機不載 GLB；眼球與月球材質都在同一個 shader 內 morph，避免首拖載入成本。
     uniforms.uOpacity.value = visibility;
     uniforms.uMorph.value = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
     uniforms.uGazeDir.value.copy(gaze.gazeDir);
+    uniforms.uBlink.value = THREE.MathUtils.clamp(gaze.blink.current, 0, 1);
     uniforms.uTime.value = state.clock.elapsedTime;
   });
 
   return (
-    <mesh geometry={geometry}>
+    <mesh geometry={geometry} renderOrder={4} frustumCulled={false}>
       <shaderMaterial
         ref={matRef}
         uniforms={uniforms}
@@ -694,6 +1024,7 @@ function MobileMoonShader({
         vertexShader={/* glsl */ `
           attribute float aCrater;
           uniform float uMorph;
+          uniform float uBlink;
           uniform float uTime;
           uniform float uTremor;
           varying float vCrater;
@@ -706,14 +1037,15 @@ function MobileMoonShader({
             vLocalNormal = unitPos;
             vViewNormal = normalize(normalMatrix * unitPos);
 
-            // 顫動：高頻 noise 沿法線方向位移（只在 morph 顯著時生效）
-            // 三個質數頻率錯開相位 → 「肉在不安分」的 Cthulhu 感
+            // 顫動：只做微小法線位移，避免手機低段數球體變成膨脹色塊。
             float jx = sin(uTime * 23.0 + position.x * 47.0);
             float jy = cos(uTime * 19.0 + position.y * 53.0);
             float jz = sin(uTime * 29.0 + position.z * 41.0);
-            float jitter = (jx + jy + jz) * 0.0015 * uMorph * uTremor;
+            float blinkPulse = smoothstep(0.15, 0.75, uBlink);
+            float jitter = (jx + jy + jz) * (0.0018 + blinkPulse * 0.0012) * uMorph * uTremor;
+            float radialPush = uMorph * (0.018 + 0.004 * sin(uTime * 1.2 + position.x * 8.0));
 
-            vec3 displaced = position + unitPos * jitter;
+            vec3 displaced = position + unitPos * (jitter + radialPush);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
           }
         `}
@@ -721,16 +1053,27 @@ function MobileMoonShader({
           uniform vec3 uAccent;
           uniform float uOpacity;
           uniform float uMorph;
+          uniform float uBlink;
+          uniform float uTime;
           uniform vec2 uGazeDir;
           varying float vCrater;
           varying vec3 vViewNormal;
           varying vec3 vLocalNormal;
 
-          // ── 月球色（保留現有邏輯）──
+          float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+          }
+
+          // ── 月球色（保留現有邏輯 + halftone/posterize 漸進強化）──
           vec4 moonShading() {
             float bowl = 1.0 - smoothstep(0.10, 0.48, vCrater);
             float rim = smoothstep(0.62, 1.0, vCrater);
-            float surface = smoothstep(0.22, 0.72, vCrater);
+
+            // Posterize crater shading：軌道完全平滑（保留原本亮度）、放大才 5 階漫畫陰影
+            // 直接用 mix 在 raw 與 posterized 之間插值 — 避免 posterStep=2 時整體變暗
+            float surfaceRaw = smoothstep(0.22, 0.72, vCrater);
+            float posterized5 = floor(surfaceRaw * 5.0) / 5.0;
+            float surface = mix(surfaceRaw, posterized5, uMorph);
 
             float light = max(dot(vLocalNormal, normalize(vec3(-0.35, 0.45, 0.82))) * 0.5 + 0.5, 0.38);
             float fresnel = pow(1.0 - max(0.0, vViewNormal.z), 2.2);
@@ -740,8 +1083,8 @@ function MobileMoonShader({
             col += vec3(1.0, 0.94, 0.72) * rim * 0.14;
             col += uAccent * fresnel * 0.08;
 
-            float a = (0.34 + surface * 0.18 + rim * 0.16 - bowl * 0.04 + fresnel * 0.05);
-            return vec4(col, clamp(a, 0.0, 0.66));
+            float a = (0.56 + surface * 0.24 + rim * 0.14 - bowl * 0.015 + fresnel * 0.05);
+            return vec4(col, clamp(a, 0.0, 0.86));
           }
 
           // ── 眼球色（gazeAxis 為中心軸，依角距離分 pupil/iris/sclera）──
@@ -753,40 +1096,80 @@ function MobileMoonShader({
             float cosA = clamp(dot(vViewNormal, gazeAxis), -1.0, 1.0);
             float gazeAngle = acos(cosA);
 
-            // 半徑（角距離 rad）：< 0.18 = pupil, < 0.45 = iris, 其餘 sclera
-            float pupilMask  = 1.0 - smoothstep(0.13, 0.20, gazeAngle);
-            float irisOuter  = 1.0 - smoothstep(0.40, 0.50, gazeAngle);
+            // 半徑（角距離 rad）：手機尺寸下放大瞳孔與虹膜，避免只剩線稿和小灰圈。
+            float pupilMask  = 1.0 - smoothstep(0.21, 0.34, gazeAngle);
+            float irisOuter  = 1.0 - smoothstep(0.52, 0.74, gazeAngle);
             float irisMask   = clamp(irisOuter - pupilMask, 0.0, 1.0);
             float scleraMask = clamp(1.0 - irisOuter, 0.0, 1.0);
 
-            // 虹膜紋理：細放射條紋
-            float radial = sin(atan(uGazeDir.y - vViewNormal.y, uGazeDir.x - vViewNormal.x) * 18.0);
-            float irisDetail = 0.85 + radial * 0.15;
+            // 虹膜紋理：低彩度放射 + 表面粒子感；不用 screen-space 方格遮罩。
+            vec2 eyeCoord = vViewNormal.xy - uGazeDir * 0.22;
+            float angle = atan(eyeCoord.y, eyeCoord.x);
+            float radial = sin(angle * 9.0 + gazeAngle * 18.0 + uTime * 0.28) * 0.5 + 0.5;
+            float surfaceSpeckle = hash(floor((vLocalNormal.xy + vLocalNormal.zz) * 46.0));
+            float particleGrain = 0.68 + step(0.42, surfaceSpeckle) * 0.32;
+            float centerMass = 1.0 - smoothstep(0.54, 1.12, gazeAngle);
 
-            vec3 pupilCol  = vec3(0.02, 0.0, 0.04);
-            vec3 irisCol   = uAccent * 1.4 * irisDetail + vec3(0.05, 0.0, 0.08);
-            vec3 scleraBase = mix(vec3(0.94, 0.95, 0.88), uAccent * 0.35, 0.25);
+            vec3 pupilCol  = vec3(0.0);
+            vec3 irisCol   = mix(uAccent * (0.30 + radial * 0.10), vec3(0.025, 0.018, 0.036), 0.48);
+            vec3 scleraBase = mix(vec3(0.70, 0.76, 0.68), uAccent * 0.24, 0.28);
 
             // 眼白血絲：fresnel 偏紅
             float fresnel = pow(1.0 - max(0.0, vViewNormal.z), 2.5);
-            vec3 scleraCol = scleraBase + vec3(0.45, 0.05, 0.08) * fresnel * 0.35;
+            float veinWave = sin(angle * 11.0 + gazeAngle * 28.0 + uTime * 0.35);
+            float veinBreak = hash(floor(vec2(angle * 18.0, gazeAngle * 26.0)));
+            float vein = smoothstep(0.84, 0.98, veinWave * 0.5 + 0.5) * smoothstep(0.28, 0.82, gazeAngle);
+            vein *= step(0.35, veinBreak);
+            vec3 scleraCol = scleraBase + vec3(0.36, 0.025, 0.045) * vein * 0.54 + vec3(0.18, 0.02, 0.04) * fresnel * 0.16;
 
             vec3 col = pupilCol * pupilMask + irisCol * irisMask + scleraCol * scleraMask;
+            col *= mix(particleGrain, 1.0, centerMass);
+            col = mix(col, vec3(0.0), pupilMask * 0.92);
 
             // 高光：靠近凝視軸有微反光
-            float specular = smoothstep(0.32, 0.42, gazeAngle) * (1.0 - smoothstep(0.42, 0.48, gazeAngle));
-            col += vec3(1.0, 1.0, 0.95) * specular * 0.25;
+            float specular = smoothstep(0.36, 0.44, gazeAngle) * (1.0 - smoothstep(0.44, 0.54, gazeAngle));
+            col += vec3(0.80, 0.88, 0.74) * specular * 0.06 * (1.0 - pupilMask);
 
-            // 眼球比月球實體：alpha 更高
-            float a = mix(0.78, 0.92, fresnel);
+            float lidOpen = mix(0.84, 0.055, uBlink);
+            float lidVisible = 1.0 - smoothstep(lidOpen, lidOpen + 0.08, abs(vViewNormal.y - uGazeDir.y * 0.18));
+            col = mix(vec3(0.0, 0.01, 0.01), col, lidVisible);
+
+            // 眼球比月球實體：中心保持黑洞聚集感，外圍是表面粒子質地。
+            // alpha baseline 從 0.22 提到 0.55 → morph 高時整顆球不再變半透明消失
+            float dottedAlpha = mix(0.78 + particleGrain * 0.14, 0.98, centerMass);
+            float a = dottedAlpha * (0.55 + lidVisible * 0.45);
             return vec4(col, a);
           }
 
           void main() {
             vec4 moon = moonShading();
             vec4 eye = eyeShading();
-            vec3 col = mix(moon.rgb, eye.rgb, uMorph);
-            float a = mix(moon.a, eye.a, uMorph) * uOpacity;
+            float m = smoothstep(0.08, 0.86, uMorph);
+            vec3 col = mix(moon.rgb, eye.rgb, m);
+            // alpha 不做兩端 mix（眼球 alpha 比月球低就會在 morph 時整體變透明）
+            // 改用 max → 永遠取較實的那個，月球本體在 morph 任何階段都保持可見
+            float bodyFloor = mix(0.58, 0.86, m);
+            float a = max(max(moon.a, eye.a), bodyFloor) * uOpacity;
+
+            // ── Screen-space halftone：永遠在最上層、不被 morph mix 吃掉 ──
+            // 點密度按 pixel 算，月球放大幾倍每 pixel 仍維持同樣覆蓋率
+            // 注意：故意排除瞳孔/虹膜中心區，避免污染眼球的純黑瞳孔
+            vec3 gazeAxisHT = normalize(vec3(uGazeDir.x * 0.55, uGazeDir.y * 0.55, 1.0));
+            float gazeAngHT = acos(clamp(dot(vViewNormal, gazeAxisHT), -1.0, 1.0));
+            float pupilExclude = 1.0 - smoothstep(0.34, 0.58, gazeAngHT) * m;
+
+            vec2 pix = gl_FragCoord.xy;
+            float cellSize = 5.0;
+            vec2 cell = floor(pix / cellSize);
+            vec2 cellUv = fract(pix / cellSize) - 0.5;
+            float dotR = length(cellUv);
+            float dotRadius = 0.30 + uMorph * 0.20;
+            float halftoneDot = 1.0 - smoothstep(dotRadius - 0.10, dotRadius + 0.04, dotR);
+            halftoneDot *= 0.80 + hash(cell) * 0.40;
+            vec3 dotCol = mix(uAccent * 0.65, vec3(0.03, 0.02, 0.06), 0.40);
+            float halftoneStrength = 0.28 + uMorph * 0.30;
+            col = mix(col, dotCol, halftoneDot * halftoneStrength * pupilExclude);
+
             gl_FragColor = vec4(col, a);
           }
         `}
@@ -813,7 +1196,10 @@ function MobileOceanVolume({
     () => ({
       uAccent:       { value: accentColor.clone() },
       uSubLunar:     { value: new THREE.Vector3(1, 0, 0) },
-      uBaseRadius:   { value: 1.018 },
+      // 海洋 base radius = 1.000：在陸地板塊下方，受 land mask 切割只在海域顯示。
+      // 位移上限 ≈ +0.018（ellipsoid 0.008 + lobe 0.0035 + waveLift 0.005 + breathe 0.001 + 餘量）
+      // → 海洋最高約 1.018 < terrain peak 約 1.096，且低於大氣層 1.06，符合視覺層級。
+      uBaseRadius:   { value: 1.000 },
       uOpacity:      { value: 0 },
       uLandMask:     { value: landMaskTex },
       uTime:         { value: 0 },
@@ -841,12 +1227,15 @@ function MobileOceanVolume({
 
   return (
     <mesh renderOrder={0}>
-      <sphereGeometry args={[1.0, 112, 64]} />
+      {/* 海洋層 base radius = 1.000：低於 terrain base radius，
+          land mask discard 讓海洋只在海域繪製、不蓋過陸地。
+          波峰位移加總上限 ~+0.018 → 永遠低於板塊峰值，且不碰到大氣層 1.06。 */}
+      <sphereGeometry args={[1.000, 112, 64]} />
       <shaderMaterial
         uniforms={uniforms}
         transparent
         depthWrite={false}
-        depthTest={false}
+        depthTest={true}
         side={THREE.FrontSide}
         blending={THREE.NormalBlending}
         vertexShader={/* glsl */ `
@@ -879,10 +1268,10 @@ function MobileOceanVolume({
 
             // 手機版不要把主要潮汐動畫綁在 vertex displacement，
             // 否則低段數球體會把三角網格輪廓一起帶出來。
-            // 這裡保留低頻量體起伏，讓手機版能讀到真正的波峰/波谷。
+            // 這裡保留低頻量體起伏，但限制在板塊層下方，避免像大氣層被拉成橄欖球。
             float lobe = smoothstep(0.10, 0.96, abs(c));
             vTideLobe = lobe;
-            float ellipsoid = legendre * 0.018;
+            float ellipsoid = legendre * 0.008;
 
             float angDist = acos(clamp(c, -1.0, 1.0));
             float swellA = sin(angDist * 3.4 - uTime * 0.88 + n.y * 1.5);
@@ -892,9 +1281,11 @@ function MobileOceanVolume({
             relief *= oceanFactor * (0.24 + lobe * 0.76);
             vRelief = relief;
 
-            float breathe = sin(uTime * 0.34 + n.y * 2.1 + c * 1.7) * 0.0015 * oceanFactor;
-            float waveLift = relief * 0.0085;
-            vec3 displaced = n * (uBaseRadius * (1.0 + ellipsoid) + lobe * 0.0055 * oceanFactor + breathe + waveLift);
+            // 波浪實體位移：waveLift 加大，配合 fragment 的 reliefPeak alpha
+            // 讓海面真的有「凸起 + 凹陷」的物理感，而不只是亮度漸層
+            float breathe = sin(uTime * 0.34 + n.y * 2.1 + c * 1.7) * 0.0010 * oceanFactor;
+            float waveLift = relief * 0.005;
+            vec3 displaced = n * (uBaseRadius * (1.0 + ellipsoid) + lobe * 0.0035 * oceanFactor + breathe + waveLift);
 
             // 低成本假 normal：用起伏量微調亮暗方向，不真的重算法線。
             vec3 viewN = normalize(normalMatrix * n);
@@ -944,24 +1335,35 @@ function MobileOceanVolume({
             float microGrain = sin((vSphereNormal.x * 43.0 + vSphereNormal.y * 67.0 + vSphereNormal.z * 31.0) + uTime * 0.18) * 0.5 + 0.5;
             microGrain = smoothstep(0.36, 0.92, microGrain);
 
+            // 暗底海洋：基底亮度低，亮度主要來自波峰 + 潮汐軸 + 流場，
+            // 讓「波浪」成為主視覺、不再像一塊均勻光斑。
             float intensity =
-              0.14 +
-              axisWater * 0.18 +
-              current * 0.14 +
+              0.06 +
+              axisWater * 0.14 +
+              current * 0.18 +
               frontLobe * 0.16 +
-              backLobe * 0.10 +
-              reliefPeak * 0.14 -
-              reliefTrough * 0.08 +
-              facing * 0.08 +
-              backFacing * 0.05 +
-              rim * 0.10;
+              backLobe * 0.08 +
+              reliefPeak * 0.32 -
+              reliefTrough * 0.14 +
+              facing * 0.05 +
+              rim * 0.06;
 
             vec3 col = uAccent * intensity;
-            col += uAccent * microGrain * 0.035 * tideLobe;
-            col += vec3(1.0, 0.96, 0.78) * ((frontLobe + backLobe) * 0.09 + reliefPeak * 0.12 + current * 0.05);
+            col += uAccent * microGrain * 0.05 * tideLobe;
+            // 白色高光：只給波峰跟流場條紋，讓水面有「亮線」感
+            col += vec3(1.0, 0.96, 0.78) * (reliefPeak * 0.26 + current * 0.08);
 
-            float alpha = (0.18 + axisWater * 0.07 + current * 0.06 + reliefPeak * 0.09 + (frontLobe + backLobe) * 0.06 + microGrain * 0.035) * oceanEdge * coastFade * uOpacity;
-            gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.52));
+            // 透明度漸層：波峰實、波谷淡，配合 vertex 的 waveLift 起伏 → 真水面感
+            // 海洋拉回正常海面後微提整體 baseline，讓水面實際讀得出來、不再像幽靈
+            float alpha = (
+              0.14 +
+              axisWater * 0.10 +
+              reliefPeak * 0.32 +
+              current * 0.10 +
+              (frontLobe + backLobe) * 0.07 +
+              microGrain * 0.05
+            ) * oceanEdge * coastFade * uOpacity;
+            gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.55));
           }
         `}
       />
@@ -969,12 +1371,12 @@ function MobileOceanVolume({
   );
 }
 
-// ─── 海洋薄膜 shell（外層橢圓潮汐包覆）─────────────────────────
+// ─── 海洋薄膜 shell（板塊下方的低幅度潮汐提示）─────────────────────────
 // 設計理念：用 ShaderMaterial 寫一層極薄的球殼，每幀只改 3 個 uniform float
 // 不每幀改 buffer、不加 lineSegments、不加 points → 對手機效能近乎免費
 //
 // Fragment shader 行為：
-//   1. 朝月球面 + 反月球面 → 雙向潮汐隆起亮度
+//   1. 朝月球面 + 反月球面 → 雙向潮汐亮度提示
 //   2. 低頻流體起伏 → 避免斑馬紋與固定掃描環
 //   3. 邊緣 fresnel-ish rim → 球緣稍亮，加強海洋輪廓辨識
 function MobileOceanShell({
@@ -1002,7 +1404,7 @@ function MobileOceanShell({
     () => ({
       uAccent:       { value: accentColor.clone() },
       uSubLunar:     { value: new THREE.Vector3(1, 0, 0) },
-      uBaseRadius:   { value: 1.145 },
+      uBaseRadius:   { value: 0.999 },
       uOpacity:      { value: 0 },
       uLandMask:     { value: landMaskTex },
       uTime:         { value: 0 },
@@ -1040,16 +1442,18 @@ function MobileOceanShell({
     uniforms.uTime.value = state.clock.elapsedTime;
   });
 
+  if (!landMaskTex) return null;
+
   return (
-    <mesh renderOrder={8}>
-      {/* base radius 由 shader 的 uBaseRadius 控制，避免 geometry radius / vertex displacement 混用後難以判斷實際外殼位置。 */}
+    <mesh renderOrder={0}>
+      {/* base radius 由 shader 的 uBaseRadius 控制；這層位於板塊下方，不再作為外層大氣橢圓殼。 */}
       <sphereGeometry args={[1.0, 84, 52]} />
       <shaderMaterial
         ref={matRef}
         uniforms={uniforms}
         transparent
         depthWrite={false}
-        depthTest={false}
+        depthTest={true}
         side={THREE.DoubleSide}
         // NormalBlending：dark theme + light theme 都看得到 shell
         // Additive 在白底上會完全消失（白 + accent ≈ 白）
@@ -1075,15 +1479,15 @@ function MobileOceanShell({
             float landMask = texture2D(uLandMask, maskUv).r;
             float oceanFactor = 1.0 - smoothstep(0.30, 0.55, landMask);
 
-            // ─── P2 Legendre 橢圓拉長（科學潮汐模型）──────────────
+            // ─── P2 Legendre 低幅度潮汐位移 ──────────────
             //   沿 sub-lunar 軸的兩極都凸（朝月球面 + 反面），赤道腰部凹
             //   公式：(3·cos²θ − 1) / 2 ← 軸極=1、赤道=−0.5
-            //   AMP 0.095 = 軸極明顯凸出；赤道內縮後仍在 terrain max 外側
+            //   位移上限保持在大陸板塊最高點以下，避免看起來像大氣層變形。
             float c = dot(sphereN, uSubLunar);
             float legendre = (3.0 * c * c - 1.0) * 0.5;
             vLegendre = legendre;
-            // 外層殼的 silhouette 保持平滑穩定，只保留橢圓潮汐包覆感。
-            float ellipsoid = legendre * 0.058;
+            // silhouette 保持低幅度，主視覺交給海洋 volume 的亮度與材質。
+            float ellipsoid = legendre * 0.006;
             vec3 displaced = sphereN * (uBaseRadius * (1.0 + ellipsoid));
             vViewNormal = normalize(normalMatrix * normal);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
@@ -1108,22 +1512,22 @@ function MobileOceanShell({
             float landMask = texture2D(uLandMask, maskUv).r;
             float landFactor = smoothstep(0.30, 0.55, landMask);
             float oceanFactor = 1.0 - landFactor;
-            // 海洋 1.0 / 陸地 0.35：殼仍跨過整顆球，但陸地上較淡，不搶海岸線。
-            float oceanWeight = mix(0.35, 1.0, oceanFactor);
+            if (oceanFactor < 0.06) discard;
+            float oceanWeight = smoothstep(0.08, 0.72, oceanFactor);
 
-            // 外層只做潮汐包覆輪廓；海面材質由 MobileOceanVolume 負責。
-            float baseline = 0.11;
+            // 只做低幅度潮汐方向提示；海面材質由 MobileOceanVolume 負責。
+            float baseline = 0.07;
 
             // 軸極水彩（軸極區最深、赤道淡）
-            float axisWatercolor = smoothstep(-0.35, 1.0, vLegendre) * 0.48;
+            float axisWatercolor = smoothstep(-0.35, 1.0, vLegendre) * 0.24;
 
             // 朝月球面 hemisphere
             float dotSub = dot(vSphereNormal, uSubLunar);
             float facing = max(0.0, dotSub);
-            float baseGlow = pow(facing, 1.4) * 0.22;
+            float baseGlow = pow(facing, 1.4) * 0.10;
             // 反月球面（背面潮汐軸極）
             float backFacing = max(0.0, -dotSub);
-            float backGlow = pow(backFacing, 1.8) * 0.16;
+            float backGlow = pow(backFacing, 1.8) * 0.08;
 
             float angDist = acos(clamp(dotSub, -1.0, 1.0));
             float tideLobe = smoothstep(0.12, 0.96, abs(dotSub));
@@ -1131,20 +1535,19 @@ function MobileOceanShell({
             // 外層只做低頻流體起伏，不再畫固定擴散環。
             float flowA = sin(angDist * 2.8 - uTime * 0.34 + vSphereNormal.y * 1.2) * 0.5 + 0.5;
             float flowB = sin((vSphereNormal.x - vSphereNormal.z) * 2.4 + uTime * 0.23) * 0.5 + 0.5;
-            float current = smoothstep(0.22, 0.84, flowA * 0.62 + flowB * 0.38) * (0.04 + tideLobe * 0.10);
+            float current = smoothstep(0.22, 0.84, flowA * 0.62 + flowB * 0.38) * (0.02 + tideLobe * 0.05);
 
             // Rim fresnel — 球緣輪廓
             float fresnel = pow(1.0 - max(0.0, vViewNormal.z), 2.5);
-            float rim = fresnel * 0.16;
+            float rim = fresnel * 0.06;
 
-            // 合成：baseline 永遠存在 + 其他 term × oceanWeight
-            float intensity = baseline + (axisWatercolor + baseGlow + backGlow + current + rim) * oceanWeight;
+            // 合成：殼層只做極淡的潮汐方向提示，主視覺交給 OceanVolume 的波浪
+            float intensity = baseline * 0.4 + (axisWatercolor * 0.55 + baseGlow * 0.6 + backGlow * 0.6 + current + rim) * oceanWeight;
             vec3 col = uAccent * intensity;
-            // 波峰白光點綴
-            col += vec3(1.0, 1.0, 0.92) * (current * 0.12 + tideLobe * 0.05) * oceanWeight;
+            col += vec3(1.0, 1.0, 0.92) * (current * 0.10 + tideLobe * 0.04) * oceanWeight;
 
-            // alpha 保底：baseline × uOpacity 即可確保殼可見
-            float a = clamp(intensity * uOpacity, 0.0, 0.46);
+            // alpha 上限壓到 0.08，避免誤讀為最外層大氣。
+            float a = clamp(intensity * uOpacity, 0.0, 0.08);
             gl_FragColor = vec4(col, a);
           }
         `}
@@ -1387,9 +1790,10 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
       (halo2Ref.current.material as THREE.MeshBasicMaterial).opacity = 0.45 * Math.sin(p * Math.PI);
     }
 
-    // ─── D3 · 球體 outward 位移（同時作用於 backdrop 跟 terrain sphere） ──
+    // ─── D3 · 潮汐方向更新 ───────────────────────────────────────
     // 把 sub-lunar 從 world 轉到 earth-local（earthSpin 內部的座標系）
-    // 同時把這個值寫進 subLunarLocalRef，給 terrain shader / ocean shell 共用
+    // 同時把這個值寫進 subLunarLocalRef，給 terrain shader / ocean shell 共用。
+    // 注意：陸地板塊與海岸線不再做 vertex 位移；潮汐只讓海洋 surface volume 浮動。
     eg.getWorldQuaternion(tmpEarthQuatInv.current).invert();
     tmpSubLLocal.current.copy(subLunarRef.current).applyQuaternion(tmpEarthQuatInv.current).normalize();
     subLunarLocalRef.current.copy(tmpSubLLocal.current);
@@ -1421,7 +1825,7 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
       }
     };
 
-    // 1) 背景網格（淡，但有 D3 起伏）
+    // 1) 背景網格（淡，但有 D3 方向提示；不代表陸地浮動）
     applyD3(
       backdrop.geom.attributes.position.array as Float32Array,
       backdrop.unitVecs,
@@ -1429,30 +1833,8 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
     );
     backdrop.geom.attributes.position.needsUpdate = true;
 
-    // 2a) 地形 mesh（板塊面 + flatShading 陰影 + D3）
-    //     mesh 跟 wireframe 各自獨立 geometry，需分別 D3
-    if (terrainSphere) {
-      applyD3(
-        terrainSphere.meshGeometry.attributes.position.array as Float32Array,
-        terrainSphere.meshUnitVecs,
-        terrainSphere.meshBaseRadii,
-      );
-      terrainSphere.meshGeometry.attributes.position.needsUpdate = true;
-
-      // 2b) 同源海岸邊線（marching squares 從 land mask 抽）— 主視覺保留
-      applyD3(
-        terrainSphere.coastlineGeometry.attributes.position.array as Float32Array,
-        terrainSphere.coastlineUnitVecs,
-        terrainSphere.coastlineBaseRadii,
-      );
-      terrainSphere.coastlineGeometry.attributes.position.needsUpdate = true;
-
-      // wireGeometry / ridgeGeometry 已不渲染（同心圓等高線視覺太假已棄用）
-      // geometry 仍由 buildTerrainSphere 產出但不在此更新 D3，省每幀 CPU
-    }
-
-    // (光照已從 directionalLight 改成 terrain shader 內部用 uSubLunarLocal 算
-    //  陰影對齊 D3 隆起的板塊，視覺一致且零 GPU lighting overhead)
+    // (光照已從 directionalLight 改成 terrain shader 內部用 uSubLunarLocal 算；
+    //  陸地只改亮暗，不做潮汐浮動。)
   });
 
   const moonVisibility = (() => {

@@ -148,14 +148,24 @@ lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(lineSegments,
 
 手機版潮汐不再渲染 D1 ripple 的固定擴散圓環，也不再把海面做成單純外層罩光。`GlobeSceneMobile` 現在拆成兩層：
 
-- `MobileOceanVolume`：位於地球核心與陸地板塊之間，使用同一張 land mask 只顯示海洋。這層負責可見的水面材質、低頻洋流、潮汐隆起、幾何波峰波谷與海洋亮度。
-- `MobileOceanShell`：位於地形外側，保留 P2 Legendre 橢圓潮汐包覆殼；`uBaseRadius = 1.145`，赤道內縮後仍在 terrain max 外側。
+- `MobileOceanVolume`：位於地球核心與陸地板塊之間，使用同一張 land mask 只顯示海洋。這層負責可見的水面材質、低頻洋流、潮汐隆起、幾何波峰波谷與海洋亮度；`uBaseRadius = 1.000`，波峰位移約到 `1.018`，仍低於 terrain peak 約 `1.096` 與大氣層 `1.06`。
+- `MobileOceanShell`：不再是地形外側的橢圓包覆殼，改為板塊下方的低幅度潮汐方向提示；`uBaseRadius = 0.999`、開啟 `depthTest`，避免被誤讀為大氣層或外層光暈。
 - 兩層都沿 sub-lunar 軸使用 `P2(c) = (3c² - 1) / 2` 做雙向凸起，視覺上對應「月球把海洋拉成橢圓殼」。
 - 手機版海洋動畫以 fragment 為主、vertex 為輔：vertex 保留低幅度 ellipsoid / breathe / wave relief，fragment 用同一份 relief 強化波峰高光與波谷暗部，避免低段數球體把三角網格輪廓或斑馬紋一起帶出來。
 - 陸地與海洋的交界不做硬切：`MobileTerrainShader` 使用較寬的 land-factor fade，`MobileOceanVolume` 使用 `oceanEdge` + `coastFade` 壓低海岸附近的洋流 alpha，避免低解析度島嶼填色與高解析度海岸線 mismatch 時出現生硬亮邊。
 - 洋流材質不再以深色塊為主；低頻 relief 保留幾何起伏，fragment 只加很淡的 micro-grain / thin-film accent，讓潮汐像透明薄膜上的流動，而不是大片發光填色。
 - `MobileMoonShader` 以 crater mesh 為主、wireframe 為輔；月球使用較淡的實體材質、坑洞暗部與 rim 高光，並保留低於地球的透明度與亮度，避免搶走地球主視覺。
 - 手機 canvas 設定 `touch-action: none`，地球與月球拖拽用 pointer capture 維持連續追蹤，避免瀏覽器把手勢轉成頁面 pan。
+
+### 4.6 Mobile tide correction（2026-05-03）
+
+手機版潮汐語義修正為「只有海洋表面浮動」：
+
+- `terrainSphere.meshGeometry` 與 `coastlineGeometry` 不再套 D3 vertex displacement。陸地板塊與海岸線保持固定，只接收 `uSubLunarLocal` 做亮暗方向感。
+- `MobileOceanVolume` 承擔主要潮汐可視化：提高 ocean-only alpha、低頻 relief、雙向 tide lobe 與波峰高光，讓手機尺寸下拖曳月球時能看到海洋色塊/texture 反應。
+- `MobileOceanShell` 改成 ocean-only、板塊下方的低幅度提示；陸地 mask 命中時直接 discard，不再讓外層潮汐殼淡淡覆蓋陸地或超出大氣層。
+- 背景經緯線仍可保留極淡 D3 方向提示，但不代表陸地在浮動。
+- `MoonLite` 拖曳期間補上與桌機一致的 `cycleTheme()` 節奏（每 1.5 秒），主題色切換由既有 CSS token / MutationObserver 同步到 mobile shader，不新增資源或 buffer。
 
 ---
 

@@ -240,10 +240,30 @@ vec3 jitteredPos = position + normalize(position) *
 
 | 技巧 | 實作位置 | 細節 |
 |---|---|---|
-| 不規律 saccade | `useGazeController` | 間隔 random(0.8, 2.5) 秒，不是固定節拍 |
-| 盯人偏向 | `useGazeController` | 80% 朝 pointer，20% 朝隨機方向 |
+| 不規律 saccade | `useGazeController` | idle 間隔 random(0.8, 2.5) 秒；grabbed 加速為 random(0.18, 0.78) 秒 |
+| 拖曳時更失控 | `useGazeController` | grabbed 時降低 pointer 追蹤比例，讓視線更多跳往隨機方向 |
 | 顫動相位錯開 | shader vertex | sin freq 用 23（質數），不同 axis 用不同 multiplier |
-| Morph 非線性 | `useGazeController` | morph 用 ease curve，途中略微 overshoot 再回穩 |
+| 偶發眨眼 | `useGazeController` + shader | grabbed 眼球態每 1.2–3.8 秒觸發約 160ms blink，shader 用 eyelid mask 壓暗/收窄眼球 |
+
+### 7.1 View-facing eye correction（2026-05-03）
+
+原本桌機點雲用 `aRole` 固定分類 pupil / iris / sclera，月球 tumble 後瞳孔會被轉到側面或背面。修正後：
+
+- 桌機 `Moon.tsx` 的眼球角色改由 view-space 球面方向與 `uGazeDir` 動態計算，不再依賴固定 local `+Z` 角色。
+- 桌機材質改為 `NormalBlending`，避免 `AdditiveBlending` 讓黑色瞳孔不可見。
+- 手機 `MobileMoonShader` 同步接 `uBlink`，並放大 pupil / iris 角距離範圍，手機尺寸下拖曳也能讀到眼球。
+- 眼球視線與眨眼都只靠 uniform 更新；不新增 geometry、texture、GLB 或每幀 buffer upload。
+
+### 7.2 Acid graphic tuning（2026-05-03）
+
+使用者回饋 GLB/發光虹膜太生硬、桌機散逸太強、手機只剩線稿。修正後：
+
+- 桌機 `Moon.tsx` 改成「同一份月球點雲的第二層 point shader overlay」：中心純黑黑洞、低彩度虹膜、血絲與眼白全部由粒子點聚集，不再使用球面遮罩或 screen-space 方格網點。
+- 桌機 dust 生成量與粒子尺寸下修，保留顫動但避免散逸雲蓋掉完整眼球輪廓；基礎點雲在 morph 時不再降到過低 opacity。
+- 手機 `MobileMoonShader` 放大 pupil / iris，改用 surface-normal hash 做粒子質感，不使用模糊像素遮罩；morph 時輔助 wireframe 只退到背景可讀程度，並鎖住 mesh alpha 下限，避免拖曳時只剩半透明線框。
+- 手機眼球中心另有 `MobileEyeBillboard`，掛在 `moonBodyRef` 而不是 `moonSelfRef`，因此不會被月球自轉帶走。這層用低彩度 iris、純黑 pupil、淡血絲與 edge fade 補足手機尺寸下的辨識度。
+- 拖曳尺寸補償仍以「攝影機到軌道最近點」作最大 apparent size；grabbed 進入速度提高，pointer down 時先把 compensation 設為 `1`，釋放後再平滑回自然軌道尺寸。
+- `useGazeController` 降低 tremor 頻率與振幅，讓眼球震顫更接近不穩定的自然微動，而不是機械式高頻抖動。
 
 ---
 
@@ -268,5 +288,128 @@ vec3 jitteredPos = position + normalize(position) *
 ---
 
 ## 十、待 user 確認後動工
+
+---
+
+## 十一、後續迭代：Mobile Moon Halftone 表面強化（2026-05-04）
+
+### 背景問題
+
+手機版月球被拖拽放大時，表面變得透明、無明顯紋理。物理根因：
+- mesh 段數低（48×24），shader 的 fresnel/crater 漸層是低頻訊號 — 放大 2–3 倍後同一張圖填更大畫面，視覺密度被稀釋
+- wireframe 在 morph 時刻意降到 0.04（為了不打擾眼球），放大後線條間距變更大、密度進一步崩潰
+- `MobileEyeBillboard` 是 camera-facing 圓盤，會等比放大 — billboard 內的瞳孔有提升，但月球**本體表面**沒有任何「按 pixel 算密度」的訊號
+
+### 方向選擇（user 確認）
+
+採「**漸進式強化**」：軌道狀態就有微弱底紋、隨 morph 加重。符合 acid 風格「物件本來就有紋理，只是被注意到的時機不同」直覺，避免突兀感。
+
+### 技術方案：Screen-space Halftone + Posterize
+
+**為什麼是 screen-space halftone**：
+
+只有 screen-space 圖樣是真正 scale-invariant 的解 — 點密度按 pixel 算、不按 mesh area 算，月球放大幾倍每個 pixel 仍維持同樣覆蓋率。其他兩個方案（local-position cellular noise、稀疏點雲粒子）在某個 zoom level 又會稀掉。
+
+**改動範圍**：
+
+- 唯一檔案：`src/components/landing/GlobeSceneMobile.tsx`
+- 唯一函式：`MobileMoonShader` 的 fragment shader（約 +25 行 GLSL）
+- 不動：`MobileEyeBillboard`、`PupilWireOverlay`、wireframe `lineSegments`、`MobileOceanVolume`、`MobileOceanShell`、桌機 `Moon.tsx`
+
+### Shader 設計
+
+#### Halftone 點陣
+
+```glsl
+vec2 pix = gl_FragCoord.xy;
+float cellSize = 4.0;                 // 4×4 px 一格，DPR=2~3 下不馬賽克
+vec2 cell = floor(pix / cellSize);
+vec2 cellUv = fract(pix / cellSize) - 0.5;
+float dotR = length(cellUv);
+
+float dotRadius = 0.18 + uMorph * 0.22;   // 軌道 0.18、放大 0.40
+float dot = 1.0 - smoothstep(dotRadius - 0.08, dotRadius + 0.05, dotR);
+dot *= 0.85 + hash(cell) * 0.30;          // ±15% 抖動防 banding
+```
+
+#### Halftone 顏色
+
+```glsl
+vec3 dotCol = mix(uAccent * 0.45, vec3(0.04, 0.04, 0.07), 0.55);
+```
+
+- accent × 0.45：壓暗的主題色，不發光
+- 混 55% 暗灰：點看起來「印在表面」而非「浮在表面」
+- 不加 fresnel / emissive / rim — 避免任何霓虹傾向
+
+#### 強度曲線（隨 morph 漸進）
+
+```glsl
+float halftoneStrength = 0.10 + uMorph * 0.22;   // 軌道 0.10、放大 0.32
+```
+
+- 軌道狀態：alpha ≈ 0.10 — 隱約底紋，正常瀏覽不搶 Earth
+- 拖拽放大：alpha ≈ 0.32 — 明確網點質感
+- 線性插值，無「突然出現」感
+
+#### Posterize crater shading
+
+```glsl
+float surfaceRaw = smoothstep(0.22, 0.72, vCrater);
+float posterStep = mix(1.0, 4.0, uMorph);          // 軌道 1（不變）、放大 4 階
+float surface = floor(surfaceRaw * posterStep) / posterStep;
+```
+
+軌道狀態維持現在外觀；放大時 crater 變 4 階「漫畫陰影」，跟 halftone 配套。
+
+#### 與既有 alpha 合成的順序
+
+在現有 `moonShading()` 回傳前注入：
+
+```glsl
+vec3 col = ...                                     // 現有計算
+col = mix(col, dotCol, dot * halftoneStrength);    // halftone 疊加
+return vec4(col, a);
+```
+
+- 在 `moonShading()` 內部 → 跟 `eyeShading()` 的 mix 自動相容
+- 不影響 `max(moon.a, eye.a, bodyFloor)` 的 alpha 邏輯
+- 月球被眼球 morph 取代時，halftone 自然淡出（`mix(moon.rgb, eye.rgb, m)` 接管）
+
+### 對 Earth 的影響評估
+
+- Earth 是獨立 mesh + 獨立 shader（`MobileEarthShader`）— 完全不共享
+- 月球 halftone alpha 上限 0.32，且只在 morph 拉到 1 時才到上限 — 軌道狀態 0.10 比 wireframe 還弱
+- 視覺重量：halftone 是中頻訊號（4×4 px 點），Earth 是低頻訊號（連續 mesh + ocean）— 頻率不重疊、不競爭注意力
+
+### 效能
+
+- Fragment 多 1 次 hash、1 次 length、1 次 smoothstep、1 次 floor — 可忽略
+- 沒新 uniform / attribute / draw call
+- 對手機 GPU 影響：< 0.1 ms / frame
+
+### 可調參數
+
+| 參數 | 預設 | 想要更明顯 | 想要更低調 |
+|------|------|------------|------------|
+| `cellSize` | 4.0 | 5.0–6.0 | 3.0 |
+| `dotRadius` 上限 | 0.40 | 0.50 | 0.30 |
+| `halftoneStrength` 上限 | 0.32 | 0.45 | 0.20 |
+| `uAccent × 0.45` | 0.45 | 0.65 | 0.30 |
+| `posterStep` 上限 | 4.0 | 3.0（更扁平） | 6.0（更細） |
+
+### 不在這次範圍
+
+- 不動桌機 `Moon.tsx`（user 對桌機表現滿意）
+- 不動 `MobileEyeBillboard`、`PupilWireOverlay`、wireframe layer
+- 不調整海洋層或大氣層
+- 不引入新 uniform 或新 geometry
+
+### 驗證
+
+- `npx tsc --noEmit` 通過
+- `npm run build` 通過（不跑 dev — port 8083 限制）
+- 視覺驗證留給 user 在瀏覽器親眼看
+
 
 設計就緒，等 OK 後直接實作。
