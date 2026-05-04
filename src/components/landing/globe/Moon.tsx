@@ -44,6 +44,13 @@ const _orbitTarget   = new THREE.Vector3(MOON_ORBIT_RADIUS, 0, 0);
 const _rayHit        = new THREE.Vector3();
 const _raycaster     = new THREE.Raycaster();
 const _camDir        = new THREE.Vector3();
+const _camPos        = new THREE.Vector3();
+
+// ─── 拖曳放大：讓月球在 grabbed 期間「視覺尺寸」永遠等於軌道最近點時的尺寸 ──
+// 軌道最近點 = 月球公轉到攝影機正前方時 → world distance ≈ |camera.z - MOON_ORBIT_RADIUS|
+// 透視投影：apparent size ∝ 1 / distance；要在任意距離 d 維持「最近點 apparent size」
+// → 補償縮放 = d / minDist。grabbed/returning 時即時計算。
+const MOON_FRONT_DIST_HINT = 2.0; // 攝影機 z=4、軌道 r=2 → 最近點距離 ≈ 2，初始 fallback
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 interface MoonProps {
@@ -95,6 +102,7 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
   const gaze = useGazeController();
   // 把 moon screen NDC 轉成 pointer NDC 給 gaze.update 用（避免 alloc）
   const pointerNDCForGazeRef = useRef(new THREE.Vector2(0, 0));
+  const moonPointsBaseMatRef = useRef<THREE.PointsMaterial>(null);
 
   // ─── 月球點雲幾何（只 build 一次，主題切換改走 recolorMoonPoints） ────────
   // 改動前：grabbed 每 1.5s cycleTheme → buildMoonPoints (22k candidates) ≈ 30-60ms 卡頓
@@ -118,124 +126,167 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
     recolorMoonPoints(moonPointsGeom, accentColor);
   }, [accentColor, moonPointsGeom]);
 
-  // ─── 月球↔眼球 ShaderMaterial（取代 PointsMaterial）─────────────────
-  // 保留 vertexColors + AdditiveBlending；新增 uMorph/uGazeDir/uTime/uTremor/uAccent
-  // morph=0 → 月球（vertexColor 直接用）
-  // morph=1 → 眼球（依 aRole 染色 + iris/pupil 跟著 uGazeDir 偏轉）
-  const moonPointsMatUniforms = useMemo(
+  // ─── 粒子化眼球 overlay ───────────────────────────────────────
+  // 眼球不使用球面遮罩或 GLB；直接用同一份月球點雲疊一層 view-facing point shader。
+  // 中心黑洞、低彩度虹膜與血絲都由粒子點聚集出來，避免像模糊像素遮罩。
+  const eyeParticleUniforms = useMemo(
     () => ({
       uOpacity: { value: visibility },
       uMorph:   { value: 0 },
       uGazeDir: { value: new THREE.Vector2(0, 0) },
+      uBlink:   { value: 0 },
       uTime:    { value: 0 },
-      uTremor:  { value: 1.0 },
       uAccent:  { value: accentColor.clone() },
-      uSize:    { value: 0.008 * viewportSize.height },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
   useEffect(() => {
-    moonPointsMatUniforms.uAccent.value.copy(accentColor);
-  }, [accentColor, moonPointsMatUniforms]);
+    eyeParticleUniforms.uAccent.value.copy(accentColor);
+  }, [accentColor, eyeParticleUniforms]);
 
-  const moonPointsMaterial = useMemo(() => {
+  const eyeParticleMaterial = useMemo(() => {
     const mat = new THREE.ShaderMaterial({
-      uniforms: moonPointsMatUniforms,
-      // 不開 vertexColors：手動 declare attribute vec3 color，避免 three.js prefix 重複宣告
+      uniforms: eyeParticleUniforms,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      depthTest: false,
+      blending: THREE.NormalBlending,
       vertexShader: /* glsl */ `
-        attribute float aRole;     // 0=sclera, 1=iris, 2=pupil
-        attribute vec3 color;      // 現有月球 vertexColor（recolorMoonPoints 寫入）
         uniform float uMorph;
-        uniform vec2 uGazeDir;
+        uniform float uBlink;
         uniform float uTime;
-        uniform float uTremor;
-        uniform float uSize;
-        varying vec3 vColor;
-        varying float vRole;
-        varying float vGazeDist;
-
-        // 繞任意軸旋轉一個向量（小角度近似 ok，這裡用 Rodrigues）
-        vec3 rotateAxisAngle(vec3 v, vec3 axis, float angle) {
-          float c = cos(angle);
-          float s = sin(angle);
-          return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
-        }
+        uniform vec2 uGazeDir;
+        attribute vec3 color;
+        varying vec3 vBaseColor;
+        varying vec3 vViewNormal;
+        varying float vDepthShade;
+        varying float vCenterMask;   // 中心區（pupil+iris）vs 邊緣區，給 fragment 增 alpha
 
         void main() {
-          vColor = color;
-          vRole = aRole;
-
           vec3 unitPos = normalize(position);
+          float jx = sin(uTime * 17.0 + position.x * 43.0);
+          float jy = cos(uTime * 19.0 + position.y * 37.0);
+          float jz = sin(uTime * 13.0 + position.z * 41.0);
+          float blinkPulse = smoothstep(0.15, 0.75, uBlink);
+          float jitter = (jx * 0.45 + jy * 0.35 + jz * 0.20) * (0.0014 + blinkPulse * 0.0008) * uMorph;
+          vec3 displaced = position + unitPos * jitter;
+          vec4 mvPosition = modelViewMatrix * vec4(displaced, 1.0);
+          vBaseColor = color;
+          vec3 viewN = normalize(mat3(modelViewMatrix) * unitPos);
+          vViewNormal = viewN;
+          vDepthShade = 0.58 + clamp(viewN.z * 0.5 + 0.5, 0.0, 1.0) * 0.42;
 
-          // ── 凝視旋轉：iris 偏 0.5、pupil 偏 1.0、sclera 不動 ──
-          // gazeDir 是 view-space xy；轉成繞 (gazeDir.y, -gazeDir.x, 0) 軸的旋轉
-          float gazeWeight = (aRole >= 1.5) ? 1.0 : ((aRole >= 0.5) ? 0.5 : 0.0);
-          float gazeMag = length(uGazeDir);
-          vec3 morphedPos = position;
-          if (gazeMag > 0.001 && gazeWeight > 0.0 && uMorph > 0.001) {
-            vec3 axis = normalize(vec3(-uGazeDir.y, uGazeDir.x, 0.0));
-            float ang = gazeMag * 0.55 * uMorph * gazeWeight;
-            morphedPos = rotateAxisAngle(position, axis, ang);
-          }
+          // ── 視覺密度重分配：中心粒子放大、外圍縮小 ──
+          // 不增加粒子總數的前提下，讓 pupil/iris 區的點放大 → 視覺上更密更實
+          vec3 gazeAxis = normalize(vec3(uGazeDir.x * 0.48, uGazeDir.y * 0.48, 1.0));
+          float gazeAngle = acos(clamp(dot(viewN, gazeAxis), -1.0, 1.0));
+          // pupilZone: gazeAngle < 0.30 → 1.0；> 0.45 → 0.0
+          float pupilZone = 1.0 - smoothstep(0.10, 0.30, gazeAngle);
+          // irisZone:   gazeAngle 0.20–0.55 → 1.0；外圍快速降
+          float irisZone  = (1.0 - smoothstep(0.46, 0.68, gazeAngle)) * smoothstep(0.16, 0.32, gazeAngle);
+          float centerMask = clamp(pupilZone + irisZone * 0.8, 0.0, 1.0);
+          vCenterMask = centerMask;
 
-          // ── 顫動：高頻 noise displacement（沿法線）──
-          float jx = sin(uTime * 23.0 + position.x * 47.0);
-          float jy = cos(uTime * 19.0 + position.y * 53.0);
-          float jz = sin(uTime * 29.0 + position.z * 41.0);
-          float jitter = (jx + jy + jz) * 0.0012 * uMorph * uTremor;
-          morphedPos += unitPos * jitter;
+          // 點大小：中心區放大 1.9x、邊緣 1.0x；morph 漸進混合
+          float baseSize = mix(1.35, 2.35, uMorph);
+          float centerBoost = 1.0 + centerMask * 0.95 * uMorph;
+          gl_PointSize = baseSize * centerBoost;
 
-          // 給 fragment 用：與凝視軸的角距離（眼白染色用）
-          vec3 gazeAxis = normalize(vec3(uGazeDir.x * 0.55, uGazeDir.y * 0.55, 1.0));
-          vGazeDist = acos(clamp(dot(unitPos, gazeAxis), -1.0, 1.0));
-
-          vec4 mvPosition = modelViewMatrix * vec4(morphedPos, 1.0);
           gl_Position = projectionMatrix * mvPosition;
-          // sizeAttenuation：等同 PointsMaterial 的 sizeAttenuation
-          gl_PointSize = uSize / -mvPosition.z;
         }
       `,
       fragmentShader: /* glsl */ `
         uniform float uOpacity;
         uniform float uMorph;
+        uniform float uBlink;
+        uniform float uTime;
         uniform vec3 uAccent;
-        varying vec3 vColor;
-        varying float vRole;
-        varying float vGazeDist;
+        uniform vec2 uGazeDir;
+        varying vec3 vBaseColor;
+        varying vec3 vViewNormal;
+        varying float vDepthShade;
+        varying float vCenterMask;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
 
         void main() {
-          // 圓點 alpha mask（仿 PointsMaterial 圓形粒子）
-          vec2 uv = gl_PointCoord - vec2(0.5);
-          float r2 = dot(uv, uv);
-          if (r2 > 0.25) discard;
-          float pointAlpha = 1.0 - smoothstep(0.18, 0.25, r2);
+          vec2 pointUv = gl_PointCoord - vec2(0.5);
+          float pointDist = length(pointUv);
+          if (pointDist > 0.5) discard;
+          float pointAlpha = 1.0 - smoothstep(0.34, 0.5, pointDist);
 
-          // ── 月球色：直接用 vertexColor ──
-          vec3 moonCol = vColor;
+          vec3 n = normalize(vViewNormal);
+          float frontMask = smoothstep(-0.10, 0.24, n.z);
+          if (frontMask <= 0.001 || uMorph <= 0.001) discard;
 
-          // ── 眼球色：依 aRole 染色 ──
-          //   sclera：白偏冷 + 邊緣血絲（gazeDist 越大越紅）
-          //   iris：accent × 1.5（高飽和）
-          //   pupil：純黑
-          vec3 scleraCol = mix(vec3(0.94, 0.95, 0.88), uAccent * 0.4, 0.25);
-          float bloodshot = smoothstep(0.7, 1.4, vGazeDist);
-          scleraCol += vec3(0.5, 0.05, 0.08) * bloodshot * 0.55;
-          vec3 irisCol = uAccent * 1.6 + vec3(0.05, 0.0, 0.08);
-          vec3 pupilCol = vec3(0.02, 0.0, 0.05);
-          vec3 eyeCol = (vRole >= 1.5) ? pupilCol : ((vRole >= 0.5) ? irisCol : scleraCol);
+          vec3 gazeAxis = normalize(vec3(uGazeDir.x * 0.48, uGazeDir.y * 0.48, 1.0));
+          float gazeAngle = acos(clamp(dot(n, gazeAxis), -1.0, 1.0));
+          vec2 eyeCoord = n.xy - uGazeDir * 0.18;
 
-          vec3 col = mix(moonCol, eyeCol, uMorph);
-          gl_FragColor = vec4(col, pointAlpha * uOpacity);
+          float pupilCore = 1.0 - smoothstep(0.12, 0.24, gazeAngle);
+          float pupilFalloff = 1.0 - smoothstep(0.22, 0.42, gazeAngle);
+          float irisOuter = 1.0 - smoothstep(0.46, 0.72, gazeAngle);
+          float irisInner = smoothstep(0.20, 0.36, gazeAngle);
+          float irisMask = clamp(irisOuter * irisInner, 0.0, 1.0);
+          float scleraMask = clamp(1.0 - irisOuter, 0.0, 1.0);
+
+          float angle = atan(eyeCoord.y, eyeCoord.x);
+          float radial = sin(angle * 9.0 + gazeAngle * 18.0 + uTime * 0.28) * 0.5 + 0.5;
+          // 血絲：頻率提高、break 門檻放寬 → 更密集可見的微血管
+          float veinWave = sin(angle * 13.0 + gazeAngle * 32.0 + uTime * 0.42);
+          float veinBreak = hash(floor(vec2(angle * 22.0, gazeAngle * 30.0)));
+          // 血絲分佈：在 sclera 內側到中段（離瞳孔近）最強，外緣弱
+          float veinZone = smoothstep(0.32, 0.55, gazeAngle) * (1.0 - smoothstep(0.62, 0.86, gazeAngle));
+          float vein = smoothstep(0.78, 0.96, veinWave * 0.5 + 0.5) * veinZone;
+          vein *= step(0.22, veinBreak); // 0.35 → 0.22，更多血絲不被打斷
+
+          vec3 scleraCol = mix(vec3(0.68, 0.74, 0.66), uAccent * 0.24, 0.28) * vDepthShade;
+          // 血絲色更紅更明顯（0.36→0.55、係數 0.58→0.85）
+          scleraCol += vec3(0.55, 0.04, 0.06) * vein * 0.85;
+
+          // 虹膜：飽和度大幅提高，accent 主導不再被混暗成幾乎黑
+          // 原本 mix(accent×0.28..., dark, 0.48) → 改成 accent×0.65 為基底，少量混暗保留陰影感
+          vec3 irisBase = uAccent * (0.65 + radial * 0.22);
+          irisBase = mix(irisBase, vec3(0.04, 0.02, 0.06), 0.20);
+          // 虹膜放射條紋更明顯：用 angular 分區做亮暗 stripe
+          float irisStripe = sin(angle * 24.0) * 0.5 + 0.5;
+          vec3 irisCol = irisBase * (0.88 + irisStripe * 0.18);
+
+          // 瞳孔：純黑（移除原本 vec3(0,0,0.012) 微藍偏移）
+          vec3 pupilCol = vec3(0.0);
+
+          vec3 eyeCol = vBaseColor * 0.45;
+          eyeCol = mix(eyeCol, scleraCol, scleraMask);
+          eyeCol = mix(eyeCol, irisCol, irisMask);
+          eyeCol = mix(eyeCol, pupilCol, pupilFalloff);
+          eyeCol = mix(eyeCol, vec3(0.0), pupilCore);
+
+          float rimDepth = pow(1.0 - max(0.0, n.z), 2.2);
+          eyeCol += uAccent * rimDepth * 0.08 * (1.0 - pupilCore);
+
+          float lidOpen = mix(0.92, 0.055, uBlink);
+          float lidVisible = 1.0 - smoothstep(lidOpen, lidOpen + 0.075, abs(eyeCoord.y));
+          eyeCol = mix(vec3(0.0, 0.005, 0.008), eyeCol, lidVisible);
+
+          // ── Alpha 重分配：中心區（pupil+iris）拉到接近全不透明、sclera 維持半透 ──
+          // pupilCore alpha 1.0、irisMask alpha ~0.96、scleraMask 0.42（之前 0.58）
+          // 加上 vCenterMask（vertex 算的視覺中心 zone）再 boost +30%
+          float cluster = max(pupilCore * 1.0,
+                              max(irisMask * 0.96,
+                                  max(vein * 0.85, scleraMask * 0.42)));
+          cluster *= 1.0 + vCenterMask * 0.30;
+          cluster = clamp(cluster, 0.0, 1.0);
+          float alpha = uOpacity * uMorph * frontMask * pointAlpha * cluster * (0.24 + lidVisible * 0.76);
+          gl_FragColor = vec4(eyeCol, alpha);
         }
       `,
     });
     return mat;
-  }, [moonPointsMatUniforms]);
+  }, [eyeParticleUniforms]);
 
   // ─── 軌道虛線 geometry ────────────────────────────────────────────────────
   const orbitDashedGeom = useMemo(() => {
@@ -325,6 +376,13 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
   const angularVelRef      = useRef(new THREE.Vector3());
   const lastThemeSwitchRef = useRef(0);
   const prevPointerRef     = useRef({ x: 0, y: 0 });
+  // 視覺放大：grabbed 時補償透視縮放 + 顫動；orbiting 時 = 1
+  const visualScaleRef     = useRef(1);
+  // 軌道最近點（攝影機到軌道的最短距離）— mount 時用 camera.z 推算，之後不變
+  const minOrbitDistRef    = useRef(MOON_FRONT_DIST_HINT);
+  // 補償強度（0 = 完全自然透視、1 = 補償到軌道最近點 apparent size）
+  // grabbed 立刻拉到 1；returning 平滑回到 0；orbiting = 0
+  const compensationRef    = useRef(0);
 
   // ─── Window-level pointer events ─────────────────────────────────────────
   useEffect(() => {
@@ -397,6 +455,14 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
     const state = moonStateRef.current;
     const elapsed = clock.elapsedTime;
 
+    // 軌道最近點距離：軌道是半徑 MOON_ORBIT_RADIUS 的圓，圓心在 origin。
+    // 攝影機在 origin 的距離 = |camPos|；軌道最近點到攝影機 = |camPos| - MOON_ORBIT_RADIUS
+    // （這才是月球公轉中視覺最大時的距離；之前用 (2,0,0) world 位置算錯成 4.47）
+    camera.getWorldPosition(_camPos);
+    const camToOrigin = _camPos.length();
+    const minOrbitDist = Math.max(0.1, camToOrigin - MOON_ORBIT_RADIUS);
+    minOrbitDistRef.current = minOrbitDist;
+
     // ── 位置與旋轉更新（依狀態） ────────────────────────────────────────────
     if (state === "orbiting") {
       moon.position.copy(_orbitTarget);
@@ -439,6 +505,34 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
       }
     }
 
+    // ── 視覺放大：grabbed/returning 時補償透視，讓月球 apparent size = 軌道最近點 ──
+    //   compensationRef：1 = 完整補償到「軌道最近點 apparent size」（拖曳態最大值）
+    //                    0 = 完全自然透視（軌道態）
+    //   grabbed → 快速拉到 1（fast lerp 24/s）
+    //   returning → 平滑回到 0（slow lerp 3.8/s，與 position spring 4.5/s 同步）
+    //   orbiting → 0
+    moon.getWorldPosition(_moonWorldPos);
+    const currentDist = _moonWorldPos.distanceTo(_camPos);
+    const compTarget = state === "grabbed" ? 1 : 0;
+    const compSpeed = state === "grabbed" ? 24 : 3.8;
+    compensationRef.current = THREE.MathUtils.lerp(
+      compensationRef.current, compTarget, 1 - Math.exp(-dt * compSpeed),
+    );
+    // 自然 scale = 1；最大 scale = currentDist / minOrbitDist
+    // 用 compensationRef 在兩者之間 lerp → 從拖曳最大尺寸 → 自然透視 一條線平滑過渡
+    const compensatedScale = currentDist / minOrbitDistRef.current;
+    const targetScale = THREE.MathUtils.lerp(1, compensatedScale, compensationRef.current);
+    // 顫動 wobble：只在 morph 顯著時生效，幅度保持很小，避免整顆點雲暴衝成色塊。
+    const morphAmt = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
+    const wobble = morphAmt > 0.05
+      ? (Math.sin(elapsed * 31.0) * 0.004 + Math.cos(elapsed * 23.0 + 1.3) * 0.003) * morphAmt
+      : 0;
+    // 視覺 scale 用快速跟隨 target，避免兩層阻尼 lerp 疊加造成「卡頓後才縮回」
+    const sk = 1 - Math.exp(-dt * (state === "grabbed" ? 28 : 12));
+    visualScaleRef.current = THREE.MathUtils.lerp(visualScaleRef.current, targetScale, sk);
+    const finalScale = Math.max(0.05, visualScaleRef.current + wobble);
+    moon.scale.setScalar(finalScale);
+
     // ── Trail opacity 淡出（grabbed 時淡出，returning/orbiting 時恢復）──────
     if (trailMatRef.current) {
       const targetOp = state === "grabbed" ? 0 : 0.7 * visibility;
@@ -452,7 +546,8 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
     // ── Dust 粒子：grabbed 時持續生成，其他狀態停止 ─────────────────────────
     if (state === "grabbed") {
       dustSpawnAccRef.current += dt;
-      const SPAWN_INTERVAL = 1 / 28; // ~28 顆/秒，穩態約 14-18 顆同時存在
+      // 降低散逸密度：保留顫動與能量漏出，但不讓外圈點雲蓋掉完整眼球輪廓。
+      const SPAWN_INTERVAL = 1 / 28;
       while (dustSpawnAccRef.current >= SPAWN_INTERVAL) {
         spawnDust();
         dustSpawnAccRef.current -= SPAWN_INTERVAL;
@@ -506,11 +601,18 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
     pointerNDCForGazeRef.current.set(pointerNDCRef.current.x, pointerNDCRef.current.y);
     gaze.setMoonState(state);
     gaze.update(dt, pointerNDCForGazeRef.current);
-    moonPointsMatUniforms.uOpacity.value = visibility;
-    moonPointsMatUniforms.uMorph.value = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
-    moonPointsMatUniforms.uGazeDir.value.copy(gaze.gazeDir);
-    moonPointsMatUniforms.uTime.value = elapsed;
-    moonPointsMatUniforms.uSize.value = 0.008 * viewportSize.height;
+    const morphClamped = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
+
+    if (moonPointsBaseMatRef.current) {
+      moonPointsBaseMatRef.current.opacity = visibility * THREE.MathUtils.lerp(1, 0.62, morphClamped);
+      moonPointsBaseMatRef.current.size = THREE.MathUtils.lerp(0.008, 0.0065, morphClamped);
+    }
+
+    eyeParticleUniforms.uOpacity.value = visibility;
+    eyeParticleUniforms.uMorph.value = morphClamped;
+    eyeParticleUniforms.uGazeDir.value.copy(gaze.gazeDir);
+    eyeParticleUniforms.uBlink.value = THREE.MathUtils.clamp(gaze.blink.current, 0, 1);
+    eyeParticleUniforms.uTime.value = elapsed;
   });
 
   return (
@@ -544,10 +646,23 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
             <meshBasicMaterial colorWrite={false} depthWrite />
           </mesh>
 
-          {/* 點雲月球（坑洞 rim 密集 / 碗底稀疏）+ 眼球 morph shader */}
-          {/* primitive attach 是最保險的 material 綁定法（R3F 對直接 material prop 不一定生效）*/}
+          {/* 點雲月球（坑洞 rim 密集 / 碗底稀疏） */}
           <points geometry={moonPointsGeom} frustumCulled={false}>
-            <primitive object={moonPointsMaterial} attach="material" />
+            <pointsMaterial
+              ref={moonPointsBaseMatRef}
+              vertexColors
+              size={0.008}
+              sizeAttenuation
+              transparent
+              opacity={visibility}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </points>
+
+          {/* 粒子化眼球 overlay：跟原月球共用點雲，只用 shader 改色與聚集。 */}
+          <points geometry={moonPointsGeom} frustumCulled={false} renderOrder={4}>
+            <primitive object={eyeParticleMaterial} attach="material" />
           </points>
 
           {/* 互動碰撞球（略大於月球，透明，偵測 pointer down/over/out）
@@ -578,6 +693,7 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
               // 計時器重置：第一次主題切換在 1.5s 後
               lastThemeSwitchRef.current = clock.elapsedTime;
 
+              compensationRef.current = 1;
               moonStateRef.current = "grabbed";
               document.body.style.cursor = "grabbing";
             }}
@@ -604,7 +720,7 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
         <primitive object={dustGeom} attach="geometry" />
         <pointsMaterial
           vertexColors
-          size={0.014}
+          size={0.01}
           sizeAttenuation
           transparent
           opacity={1}
