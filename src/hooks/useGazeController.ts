@@ -54,8 +54,15 @@ function nextBlinkDelay(): number {
 }
 
 function pickRandomTarget(out: THREE.Vector2): void {
-  const a = Math.random() * Math.PI * 2;
-  const r = TARGET_RADIUS * (0.4 + Math.random() * 0.6);
+  // 向下偏 bias：60% 機率落在下半圓（左下/正下/右下），上半圓 40%
+  // 並且向下時的振幅範圍更大（0.55–1.0 × TARGET_RADIUS），避免「往下看」永遠是淺角度
+  const lookDown = Math.random() < 0.60;
+  const a = lookDown
+    ? Math.PI + Math.random() * Math.PI    // 下半圓 π..2π（sin < 0）
+    : Math.random() * Math.PI;              // 上半圓 0..π（sin > 0）
+  const r = TARGET_RADIUS * (lookDown
+    ? 0.55 + Math.random() * 0.45    // 向下：0.55–1.00（更大）
+    : 0.40 + Math.random() * 0.50);  // 向上：0.40–0.90（原值）
   out.set(Math.cos(a) * r, Math.sin(a) * r);
 }
 
