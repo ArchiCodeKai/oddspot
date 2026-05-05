@@ -279,30 +279,12 @@ function MoonLite({
     }
     const morphAmt = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
 
-    // ── 手機 saccade noise：morph 高時疊加程序化漂移，模擬「不安分四處看」 ──
-    // 桌機在 useGazeController 內部已有 tremor，手機因 grabbed 時 gazeDir 直接被 pointer 蓋過
-    // 沒有 random saccade 空間 → 此處主動疊噪聲到 gaze.gazeDir
-    if (morphAmt > 0.05) {
-      const tNow = state.clock.elapsedTime;
-      // 慢頻大幅度漂移（基本「亂看」感）+ 高頻小幅度顫抖（眼球微跳）
-      const slowX = Math.sin(tNow * 0.83 + 1.7) * 0.45 + Math.cos(tNow * 0.51) * 0.30;
-      const slowY = Math.cos(tNow * 0.71 + 2.3) * 0.40 + Math.sin(tNow * 0.43 + 0.9) * 0.25;
-      const fastX = Math.sin(tNow * 7.3) * Math.cos(tNow * 11.1) * 0.18;
-      const fastY = Math.cos(tNow * 6.7 + 0.4) * Math.sin(tNow * 9.5) * 0.18;
-      // 偶發跳動：每 ~1.8s 一次大躍遷（saccade burst）
-      const burstPhase = Math.sin(tNow * 0.55) > 0.88 ? 1 : 0;
-      const burstX = burstPhase * Math.sin(tNow * 47.0) * 0.40;
-      const burstY = burstPhase * Math.cos(tNow * 53.0) * 0.40;
-      gaze.gazeDir.x = THREE.MathUtils.clamp(
-        gaze.gazeDir.x + (slowX + fastX + burstX) * morphAmt, -0.9, 0.9
-      );
-      gaze.gazeDir.y = THREE.MathUtils.clamp(
-        gaze.gazeDir.y + (slowY + fastY + burstY) * morphAmt, -0.9, 0.9
-      );
-    }
+    // ── Saccade 完全交給 useGazeController（桌機同款）──
+    // controller 內建：spring 朝隨機 target（0.18–0.78s）+ tremor 高頻顫動（0.052）
+    // 不再疊加任何手機端 noise，gaze.gazeDir 直接走 controller，行為跟桌機一致
     if (matWireRef.current) {
-      // 不再幾乎淡到 0：morph 時保留 0.04 線條，確保月海 / 坑洞 / 高低起伏仍可讀
-      matWireRef.current.opacity = visibility * THREE.MathUtils.lerp(0.07, 0.04, morphAmt);
+      // morph 時 wireframe 退場（不歸零、保留 0.025 暗示輪廓），讓 billboard 主導視覺
+      matWireRef.current.opacity = visibility * THREE.MathUtils.lerp(0.07, 0.025, morphAmt);
     }
 
     // ── 視覺放大：grabbed = 軌道最近點 apparent size、returning 平滑回到自然透視 ──
@@ -321,12 +303,14 @@ function MoonLite({
     const targetScale = THREE.MathUtils.lerp(1, compensatedScale, compensationRef.current);
 
     const t = state.clock.elapsedTime;
-    const wobble = morphAmt > 0.05
+    // wobble：振幅對齊桌機 Moon.tsx（0.004 + 0.003），不再加 position jitter
+    // 桌機只動 scale，手機之前 position 三軸 47/53/41Hz 疊加 0.014 → 高頻閃爍把眼球分裂蓋掉
+    const scaleWobble = morphAmt > 0.05
       ? (Math.sin(t * 31.0) * 0.004 + Math.cos(t * 23.0 + 1.3) * 0.003) * morphAmt
       : 0;
     const sk = 1 - Math.exp(-dt * (moonState === "grabbed" ? 28 : 12));
     visualScaleRef.current = THREE.MathUtils.lerp(visualScaleRef.current, targetScale, sk);
-    body.scale.setScalar(Math.max(0.05, visualScaleRef.current + wobble));
+    body.scale.setScalar(Math.max(0.05, visualScaleRef.current + scaleWobble));
 
     // 投影 moon → 螢幕像素，寫入跨 canvas 的 jaw store
     // （桌機版有接、手機版之前漏接，這裡補上 → 手機也有 lunge-bite 互動）
@@ -749,17 +733,66 @@ function MobileEyeBillboard({
   gaze: GazeController;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const innerRef = useRef<THREE.Group>(null);
-  const camPosRef = useRef(new THREE.Vector3());
+  // Mitosis 計時：morph < 0.05 → ≥ 0.05 邊緣 reset，cycle 8s
+  const mitosisTimeRef = useRef(0);
+  const prevMorphRef = useRef(0);
+
+  // ── 散亂線條集中在瞳孔區（克蘇魯式不規則線網，避免 icosa 球面感）──
+  // 支援 annular（innerRadius > 0）→ 形成環狀分布，模擬虹膜外環圍繞瞳孔黑洞
+  const buildScribbleGeo = (
+    segCount: number,
+    outerRadius: number,
+    segLen: number,
+    centerBias: number,    // 0..1，越大越往中心集中（innerRadius=0 時生效）
+    zScale: number,        // 0..1，越小越扁平
+    innerRadius = 0,       // > 0 時改 annular 分布（環狀，中央留洞）
+  ) => {
+    const positions = new Float32Array(segCount * 6);
+    for (let i = 0; i < segCount; i++) {
+      let r: number;
+      if (innerRadius > 0) {
+        // Annular：均勻分布在 inner..outer 之間 → 形成環
+        r = innerRadius + (outerRadius - innerRadius) * Math.random();
+      } else {
+        // 原本的 power-law center bias
+        r = outerRadius * Math.pow(Math.random(), 1.0 + centerBias * 2.5);
+      }
+      const t = Math.random() * Math.PI * 2;
+      const p = Math.acos(2 * Math.random() - 1);
+      const x1 = r * Math.sin(p) * Math.cos(t);
+      const y1 = r * Math.sin(p) * Math.sin(t);
+      const z1 = r * Math.cos(p) * zScale;
+      const dx = (Math.random() - 0.5) * segLen;
+      const dy = (Math.random() - 0.5) * segLen;
+      const dz = (Math.random() - 0.5) * segLen * zScale;
+      positions[i * 6]     = x1;
+      positions[i * 6 + 1] = y1;
+      positions[i * 6 + 2] = z1;
+      positions[i * 6 + 3] = x1 + dx;
+      positions[i * 6 + 4] = y1 + dy;
+      positions[i * 6 + 5] = z1 + dz;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    return geo;
+  };
+  // Iris：背景 hint 用，60 段、無 centerBias、低 opacity → 不再淹沒中央瞳孔結構
+  // 之前 200 段 + centerBias 0.4 + opacity 0.72 把瞳孔分裂視覺完全蓋掉
+  const irisScribbleGeo = useMemo(
+    () => buildScribbleGeo(60, radius * 0.78, radius * 0.16, 0.0, 0.22),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [radius],
+  );
 
   const uniforms = useMemo(
     () => ({
-      uAccent:   { value: accentColor.clone() },
-      uOpacity:  { value: 0 },
-      uMorph:    { value: 0 },
-      uBlink:    { value: 0 },
-      uTime:     { value: 0 },
-      uGazeDir:  { value: new THREE.Vector2(0, 0) },
+      uAccent:        { value: accentColor.clone() },
+      uOpacity:       { value: 0 },
+      uMorph:         { value: 0 },
+      uTime:          { value: 0 },
+      uMitosisCycle:  { value: 0 },
+      uBlink:         { value: 0 },
+      uGazeDir:       { value: new THREE.Vector2(0, 0) },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -769,124 +802,258 @@ function MobileEyeBillboard({
     uniforms.uAccent.value.copy(accentColor);
   }, [accentColor, uniforms]);
 
+  // ─── 整顆眼球 shader：3D 球體 + per-cell gaze axis + smin 黏滯融合 ─────────
+  // 從 flat circleGeometry 換成 sphereGeometry → 眼球真正貼合球面（像桌機）
+  // shader 用 view normal 計算每 cell 的 gazeAngle（geodesic）→ 自然立體感
+  const eyeShaderMaterial = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      side: THREE.FrontSide,
+      blending: THREE.NormalBlending,
+      vertexShader: /* glsl */ `
+        varying vec3 vViewNormal;
+        void main() {
+          vec3 unitPos = normalize(position);
+          vec3 viewN = normalize(mat3(modelViewMatrix) * unitPos);
+          vViewNormal = viewN;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        varying vec3 vViewNormal;
+        uniform vec3 uAccent;
+        uniform float uOpacity;
+        uniform float uMorph;
+        uniform float uTime;
+        uniform float uMitosisCycle;
+        uniform float uBlink;
+        uniform vec2 uGazeDir;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        float vnoise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          return mix(
+            mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+            mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+            u.y
+          );
+        }
+
+        float fbm(vec2 p) {
+          float v = 0.0;
+          float a = 0.5;
+          for (int i = 0; i < 4; i++) {
+            v += a * vnoise(p);
+            p *= 2.03;
+            a *= 0.5;
+          }
+          return v;
+        }
+
+        float smin(float a, float b, float k) {
+          float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+          return mix(b, a, h) - k * h * (1.0 - h);
+        }
+
+        // 立方 ease-in：開頭慢、結尾快（細胞質「卡住→突然彈開」感）
+        float easeIn(float a, float b, float t) {
+          float x = clamp((t - a) / (b - a), 0.0, 1.0);
+          return x * x * x;
+        }
+        float easeOut(float a, float b, float t) {
+          float x = clamp((t - a) / (b - a), 0.0, 1.0);
+          return 1.0 - pow(1.0 - x, 3.0);
+        }
+
+        void main() {
+          // ── 用 view normal（球體曲面）取代 flat UV ──
+          // 立體感：每 fragment 的 view normal 反映其在球面上的位置（自然 foreshortening）
+          vec3 n = normalize(vViewNormal);
+
+          // Front hemisphere only
+          float frontMask = smoothstep(-0.05, 0.20, n.z);
+          if (frontMask < 0.001) discard;
+
+          // ── Mitosis cells with per-cell gaze axis（複製桌機做法）──
+          float cycle = uMitosisCycle;
+          float twoSep = easeIn(0.05, 0.30, cycle) - easeOut(0.82, 1.00, cycle);
+          float threeSep = easeIn(0.38, 0.55, cycle) - easeOut(0.62, 0.82, cycle);
+
+          // SPACING 在 uGazeDir-space → ×0.48 變 n.xy 偏移
+          // 0.28 → 0.40：n.xy 偏移從 0.134 → 0.192，分裂視覺明顯
+          // 3-cell 垂直 multiplier 0.40 → 0.65：c1/c2 上下分得更開
+          float SPACING = 0.40;
+          vec2 c0_off = vec2(-SPACING * twoSep, 0.0);
+          vec2 c1_off = vec2( SPACING * twoSep, -SPACING * 0.65 * threeSep);
+          vec2 c2_off = vec2( SPACING * twoSep,  SPACING * 0.65 * threeSep);
+
+          // 慢速旋轉 ±8.6°
+          float rotAngle = sin(uTime * 0.25) * 0.15;
+          float ca = cos(rotAngle), sa = sin(rotAngle);
+          mat2 rot = mat2(ca, -sa, sa, ca);
+          c0_off = rot * c0_off;
+          c1_off = rot * c1_off;
+          c2_off = rot * c2_off;
+
+          // 每 cell 微浮動
+          vec2 j0 = vec2(vnoise(vec2(uTime * 0.5, 0.0)) - 0.5, vnoise(vec2(0.0, uTime * 0.5)) - 0.5) * 0.012;
+          vec2 j1 = vec2(vnoise(vec2(uTime * 0.5, 2.3)) - 0.5, vnoise(vec2(2.3, uTime * 0.5)) - 0.5) * 0.012;
+          vec2 j2 = vec2(vnoise(vec2(uTime * 0.5, 4.6)) - 0.5, vnoise(vec2(4.6, uTime * 0.5)) - 0.5) * 0.012;
+          c0_off += j0; c1_off += j1; c2_off += j2;
+
+          // 每 cell 的 effective gaze axis（gaze 方向 + cell 偏移）
+          vec3 ga0 = normalize(vec3((uGazeDir + c0_off) * 0.48, 1.0));
+          vec3 ga1 = normalize(vec3((uGazeDir + c1_off) * 0.48, 1.0));
+          vec3 ga2 = normalize(vec3((uGazeDir + c2_off) * 0.48, 1.0));
+
+          // 每 cell 的 gazeAngle（geodesic on sphere）
+          float gAngle0 = acos(clamp(dot(n, ga0), -1.0, 1.0));
+          float gAngle1 = acos(clamp(dot(n, ga1), -1.0, 1.0));
+          float gAngle2 = acos(clamp(dot(n, ga2), -1.0, 1.0));
+
+          // smin k 0.05 → 0.08：cells 分得更開時仍保留可見牽絲帶
+          float gazeAngle = smin(smin(gAngle0, gAngle1, 0.08), gAngle2, 0.08);
+
+          // 自然脈動 ±5%
+          float pulse = 1.0 + 0.05 * sin(uTime * 0.5);
+
+          // ── Per-cell pupil（黑核）──
+          // coreR 0.18 rad ≈ 10° angular pupil radius
+          float coreR = 0.18 * pulse;
+          float pp0 = 1.0 - smoothstep(coreR * 0.7, coreR, gAngle0);
+          float pp1 = 1.0 - smoothstep(coreR * 0.7, coreR, gAngle1);
+          float pp2 = 1.0 - smoothstep(coreR * 0.7, coreR, gAngle2);
+          float pupilCore = max(pp0, max(pp1, pp2));
+
+          // ── Per-cell pupil falloff（黑→暗 iris 過渡）──
+          float falloffR = 0.30 * pulse;
+          float pf0 = 1.0 - smoothstep(coreR, falloffR, gAngle0);
+          float pf1 = 1.0 - smoothstep(coreR, falloffR, gAngle1);
+          float pf2 = 1.0 - smoothstep(coreR, falloffR, gAngle2);
+          float pupilFalloff = max(pf0, max(pf1, pf2));
+
+          // ── Iris（用 smin gazeAngle，整顆「黑眼球」邊界一起分裂）──
+          // iris 從中心一路擴張到接近球體 silhouette（gazeAngle ~1.30 ≈ 75°）
+          float irisOuter = 1.0 - smoothstep(1.15, 1.40, gazeAngle);
+          float irisInner = smoothstep(0.20, 0.34, gazeAngle);
+          float irisMask = clamp(irisOuter * irisInner, 0.0, 1.0);
+          irisMask = clamp(irisMask - pupilFalloff * 0.7, 0.0, 1.0);
+
+          // ── Iris 邊界亮環（gaussian peak 在 silhouette 附近）──
+          float irisRing = exp(-pow((gazeAngle - 1.25) * 14.0, 2.0));
+
+          // ── Iris fibers（用 view normal 投影出 angle）──
+          float angle = atan(n.y, n.x);
+          float irisFiber = fbm(vec2(angle * 6.0, gazeAngle * 8.0) + uTime * 0.06);
+          float irisStripe = sin(angle * 22.0 + irisFiber * 4.0) * 0.5 + 0.5;
+
+          // ── 顏色組合 ──
+          vec3 col = vec3(0.0);
+          col = mix(col, uAccent * (0.32 + irisFiber * 0.28) * (0.85 + irisStripe * 0.20), irisMask);
+          col = mix(col, uAccent, irisRing);
+          col = mix(col, vec3(0.0), pupilCore);
+
+          // CRT scanline + grain
+          float scanline = 0.94 + 0.06 * sin(gl_FragCoord.y * 1.2 + uTime * 5.0);
+          col *= scanline;
+          float grain = (hash(gl_FragCoord.xy + floor(uTime * 14.0)) - 0.5) * 0.06;
+          col += grain;
+
+          // Alpha
+          float alpha = max(irisMask * 0.92, max(pupilCore, irisRing));
+          alpha *= frontMask;
+
+          // Procedural blink mask：用 view-space n.y → 眼瞼以螢幕水平方向合上
+          // blink=0：lidEdge 0.95（lid 在球體頂底，看不到）；blink=1：lidEdge 0.05（剩下中央薄帶）
+          float lidEdge = mix(0.95, 0.05, uBlink);
+          float lidVisible = 1.0 - smoothstep(lidEdge, lidEdge + 0.06, abs(n.y));
+          alpha *= lidVisible;
+
+          gl_FragColor = vec4(col, alpha * uOpacity * uMorph);
+        }
+      `,
+    });
+  }, [uniforms]);
+
   useFrame((state, dt) => {
     const root = groupRef.current;
-    const inner = innerRef.current;
-    if (!root || !inner) return;
+    if (!root) return;
     const morph = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
+
+    // ── Mitosis 計時器 ──
+    if (prevMorphRef.current < 0.05 && morph >= 0.05) {
+      mitosisTimeRef.current = 0;
+    }
+    if (morph > 0.05) {
+      mitosisTimeRef.current += dt;
+    }
+    prevMorphRef.current = morph;
+    const cycle = (mitosisTimeRef.current % 8.0) / 8.0;
+
     uniforms.uOpacity.value = visibility;
     uniforms.uMorph.value = morph;
-    uniforms.uBlink.value = THREE.MathUtils.clamp(gaze.blink.current, 0, 1);
     uniforms.uTime.value = state.clock.elapsedTime;
+    uniforms.uMitosisCycle.value = cycle;
+    uniforms.uBlink.value = THREE.MathUtils.clamp(gaze.blink.current, 0, 1);
     uniforms.uGazeDir.value.copy(gaze.gazeDir);
-    // 隱形時跳過 lookAt 計算；fade-in 稍早，避免手指按下後先看到空的半透明球。
-    // 門檻降到 0.001：grabbed 一瞬間就有瞳孔，不等 morph 慢慢 ramp
-    root.visible = visibility * morph > 0.001;
+
+    // ── 拖放絲滑淡出 ──
+    // 不做 lookAt：球體對稱，由 shader viewN + camera-aligned gazeAxis 處理朝向
+    // → 眼球跟月球本體同軸心、同步旋轉（複製桌機做法）
+    const morphFade = THREE.MathUtils.smoothstep(morph, 0.05, 0.55);
+    root.visible = visibility * morphFade > 0.005;
     if (!root.visible) return;
-    state.camera.getWorldPosition(camPosRef.current);
-    root.lookAt(camPosRef.current);
-    const targetScale = 1 + morph * 0.06;
+    const targetScale = morphFade * 1.06;
     root.scale.setScalar(
       THREE.MathUtils.lerp(root.scale.x, targetScale, 1 - Math.exp(-dt * 14)),
     );
-    // gaze saccade：±15° 套在 inner，不抵銷 root 的 lookAt
-    const yaw = gaze.gazeDir.x * 0.20;
-    const pitch = -gaze.gazeDir.y * 0.17;
-    inner.rotation.y = THREE.MathUtils.lerp(inner.rotation.y, yaw, 1 - Math.exp(-dt * 10));
-    inner.rotation.x = THREE.MathUtils.lerp(inner.rotation.x, pitch, 1 - Math.exp(-dt * 10));
   });
 
   return (
     <group ref={groupRef}>
-      <group ref={innerRef}>
-        {/* 圓盤直接覆在可見半球中心；depthTest=false，由 alpha 邊緣淡出避免貼紙感。 */}
-        <mesh renderOrder={8}>
-          <circleGeometry args={[radius * 1.16, 72]} />
-          <shaderMaterial
-            uniforms={uniforms}
-            transparent
-            depthWrite={false}
-            depthTest={false}
-            side={THREE.DoubleSide}
-            blending={THREE.NormalBlending}
-            vertexShader={/* glsl */ `
-              varying vec2 vUv;
-              void main() {
-                vUv = uv - vec2(0.5);
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-              }
-            `}
-            fragmentShader={/* glsl */ `
-              uniform vec3 uAccent;
-              uniform float uOpacity;
-              uniform float uMorph;
-              uniform float uBlink;
-              uniform float uTime;
-              varying vec2 vUv;
+      {/* 1. Sclera/Cornea wireframe */}
+      <mesh renderOrder={996}>
+        <sphereGeometry args={[radius * 0.92, 24, 16]} />
+        <meshBasicMaterial
+          color={accentColor}
+          wireframe
+          transparent
+          opacity={0.38}
+          depthWrite={false}
+          depthTest={false}
+        />
+      </mesh>
 
-              float hash(vec2 p) {
-                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-              }
+      {/* 2. Iris scribble：背景 hint */}
+      <lineSegments
+        geometry={irisScribbleGeo}
+        renderOrder={997}
+        position={[0, 0, radius * 0.20]}
+      >
+        <lineBasicMaterial
+          color={accentColor}
+          transparent
+          opacity={0.28}
+          depthWrite={false}
+          depthTest={false}
+        />
+      </lineSegments>
 
-              void main() {
-                float r = length(vUv) * 2.0;
-                if (r > 1.0) discard;
-
-                float angle = atan(vUv.y, vUv.x);
-
-                // 手機尺寸下中心要讀得出來，但避免霓虹貼圖：黑瞳孔實、虹膜低彩度、邊緣散。
-                float pupilCore = 1.0 - smoothstep(0.13, 0.21, r);
-                float pupilFalloff = 1.0 - smoothstep(0.20, 0.36, r);
-                float irisInner = smoothstep(0.18, 0.28, r);
-                float irisOuter = 1.0 - smoothstep(0.48, 0.62, r);
-                float irisMask = clamp(irisInner * irisOuter, 0.0, 1.0);
-                float scleraMask = clamp(smoothstep(0.54, 0.68, r) * (1.0 - smoothstep(0.88, 1.0, r)), 0.0, 1.0);
-
-                // 虹膜放射紋低彩度化：保留 acid 條紋，不做發亮霓虹眼瞳。
-                float radialStripe = sin(angle * 18.0 + r * 16.0 + uTime * 0.28) * 0.5 + 0.5;
-                float irisGrain = hash(floor(vec2(angle * 18.0, r * 34.0)));
-                vec3 irisCol = mix(uAccent * (0.42 + radialStripe * 0.13), vec3(0.025, 0.020, 0.032), 0.34);
-                irisCol *= 0.86 + irisGrain * 0.16;
-
-                // 鞏膜：冷白偏 accent 浸染
-                vec3 scleraCol = mix(vec3(0.68, 0.74, 0.66), uAccent * 0.20, 0.26);
-
-                // 血絲：限制在虹膜外緣到鞏膜中段（r 0.45–0.85）
-                float veinWave = sin(angle * 17.0 + r * 42.0 + uTime * 0.32);
-                float veinBreak = hash(floor(vec2(angle * 26.0, r * 20.0)));
-                float veinZone = smoothstep(0.50, 0.64, r) * (1.0 - smoothstep(0.78, 0.94, r));
-                float vein = smoothstep(0.74, 0.96, veinWave * 0.5 + 0.5) * veinZone * step(0.24, veinBreak);
-                scleraCol += vec3(0.56, 0.035, 0.045) * vein * 0.92;
-
-                vec3 col = vec3(0.0);
-                col = mix(col, scleraCol, scleraMask);
-                col = mix(col, irisCol, irisMask);
-                col = mix(col, vec3(0.0), pupilFalloff); // 瞳孔過渡
-                col = mix(col, vec3(0.0), pupilCore);    // 瞳孔核心 100% 黑
-
-                // 鞏膜外緣淡出，保留球體感但不要變成方形/像素遮罩。
-                float edgeFade = 1.0 - smoothstep(0.90, 1.0, r);
-
-                // morph fade-in 大幅提早：grabbed 一瞬間瞳孔就明顯，不等 ramp
-                float morphFade = smoothstep(0.005, 0.30, uMorph);
-
-                // 眨眼：上下方向（vUv.y）壓扁 alpha
-                float lidOpen = mix(0.78, 0.04, uBlink);
-                float lidVisible = 1.0 - smoothstep(lidOpen, lidOpen + 0.06, abs(vUv.y));
-
-                // 整體 alpha：核心區實、虹膜明確、鞏膜半透明，讓手機尺寸下不再消失。
-                // 全面提升：grabbed 一瞬間瞳孔/虹膜就要清楚，不要慢慢 fade
-                float regionAlpha = pupilCore * 1.0 + pupilFalloff * 1.0 + irisMask * 0.98 + scleraMask * 0.62 + vein * 0.92;
-                regionAlpha = clamp(regionAlpha, 0.0, 1.0);
-                float alphaGrain = 0.90 + hash(floor(vUv * 96.0 + uTime * 2.0)) * 0.10;
-                float alpha = regionAlpha * edgeFade * morphFade * lidVisible * alphaGrain * uOpacity;
-
-                gl_FragColor = vec4(col, alpha);
-              }
-            `}
-          />
-        </mesh>
-      </group>
+      {/* 3. 整顆眼球 shader mesh：球體 + per-cell gaze axis（複製桌機的立體做法）
+          從 circleGeometry → sphereGeometry：眼球真正貼合球面、有 foreshortening、隨 gaze 自然旋轉
+          radius * 0.39：直徑 ≈ 月球直徑 39%（比之前 0.90r 平面版小約 20%）
+          位於月球中心（z=0），球體本身就是 3D，不需要 z 前移避免穿插 */}
+      <mesh renderOrder={999} material={eyeShaderMaterial}>
+        <sphereGeometry args={[radius * 0.39, 32, 16]} />
+      </mesh>
     </group>
   );
 }
@@ -2103,6 +2270,14 @@ export function GlobeSceneMobile({ phase, skipBoot, dissolveProgress, style }: G
         onCreated={({ gl }) => {
           gl.setClearColor(0x000000, 0);
           gl.domElement.style.touchAction = "none";
+          // WebGL context lost 救援：dev 階段 HMR 累積容易爆 context 上限
+          // 監聽 lost → preventDefault 阻止瀏覽器永久放棄 → 自動 reload 整頁
+          const onContextLost = (e: Event) => {
+            e.preventDefault();
+            console.warn("[oddspot] WebGL context lost — reloading page");
+            setTimeout(() => window.location.reload(), 100);
+          };
+          gl.domElement.addEventListener("webglcontextlost", onContextLost, false);
         }}
       >
         <GlobeInner

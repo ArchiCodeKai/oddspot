@@ -137,10 +137,17 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
       uBlink:   { value: 0 },
       uTime:    { value: 0 },
       uAccent:  { value: accentColor.clone() },
+      // Mitosis cycle 0..1：JS 端控制（grabbed 起跳時 reset，只在 morph > 0.05 推進）
+      // 0.10–0.25 開為 2、0.40–0.55 開為 4、0.70–0.85 收回 2、0.85–1.00 收回 1
+      uMitosisCycle: { value: 0 },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
+
+  // Mitosis 計時器：跟手機版同邏輯 — morph 從 0 → 顯著時 reset，cycle 4s 一輪
+  const mitosisTimeRef = useRef(0);
+  const prevMorphRef = useRef(0);
 
   useEffect(() => {
     eyeParticleUniforms.uAccent.value.copy(accentColor);
@@ -204,6 +211,7 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
         uniform float uTime;
         uniform vec3 uAccent;
         uniform vec2 uGazeDir;
+        uniform float uMitosisCycle;
         varying vec3 vBaseColor;
         varying vec3 vViewNormal;
         varying float vDepthShade;
@@ -211,6 +219,34 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
 
         float hash(vec2 p) {
           return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        // 2D value noise（用於 domain warping）
+        float vnoise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          return mix(
+            mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+            mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+            u.y
+          );
+        }
+
+        // Inigo Quilez polynomial smin：兩 SDF 邊界平滑融合
+        float smin(float a, float b, float k) {
+          float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+          return mix(b, a, h) - k * h * (1.0 - h);
+        }
+
+        // 立方 ease-in / ease-out：開頭慢→結尾快（細胞分裂的彈開感）
+        float easeIn(float a, float b, float t) {
+          float x = clamp((t - a) / (b - a), 0.0, 1.0);
+          return x * x * x;
+        }
+        float easeOut(float a, float b, float t) {
+          float x = clamp((t - a) / (b - a), 0.0, 1.0);
+          return 1.0 - pow(1.0 - x, 3.0);
         }
 
         void main() {
@@ -223,15 +259,73 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
           float frontMask = smoothstep(-0.10, 0.24, n.z);
           if (frontMask <= 0.001 || uMorph <= 0.001) discard;
 
-          vec3 gazeAxis = normalize(vec3(uGazeDir.x * 0.48, uGazeDir.y * 0.48, 1.0));
-          float gazeAngle = acos(clamp(dot(n, gazeAxis), -1.0, 1.0));
+          // ── Mitosis：每 cell 有自己的 gaze axis，整顆「黑眼球」（iris+pupil）做一個整體分裂 ──
+          // 1→2→3→2→1（max 3 cells），8 秒一輪、ease-in 分裂、ease-out 合回
+          float cycle = uMitosisCycle;
+          float twoSep = easeIn(0.05, 0.30, cycle) - easeOut(0.82, 1.00, cycle);
+          float threeSep = easeIn(0.38, 0.55, cycle) - easeOut(0.62, 0.82, cycle);
+
+          // SPACING 在 uGazeDir-space → n.xy 偏移 = SPACING × 0.48
+          // 0.20 → 0.32：n.xy 偏移從 0.096 → 0.154（約 9° 角偏移），分裂視覺更明顯
+          float SPACING = 0.32;
+          vec2 c0_off = vec2(-SPACING * twoSep, 0.0);
+          vec2 c1_off = vec2( SPACING * twoSep, -SPACING * 0.40 * threeSep);
+          vec2 c2_off = vec2( SPACING * twoSep,  SPACING * 0.40 * threeSep);
+
+          // 中間分裂部分慢速旋轉 ±0.15 rad ≈ ±8.6°（驚悚感）
+          float rotAngle = sin(uTime * 0.25) * 0.15;
+          float ca = cos(rotAngle), sa = sin(rotAngle);
+          mat2 rot = mat2(ca, -sa, sa, ca);
+          c0_off = rot * c0_off;
+          c1_off = rot * c1_off;
+          c2_off = rot * c2_off;
+
+          // 每 cell 微浮動
+          vec2 j0 = vec2(vnoise(vec2(uTime * 0.5, 0.0)) - 0.5, vnoise(vec2(0.0, uTime * 0.5)) - 0.5) * 0.012;
+          vec2 j1 = vec2(vnoise(vec2(uTime * 0.5, 2.3)) - 0.5, vnoise(vec2(2.3, uTime * 0.5)) - 0.5) * 0.012;
+          vec2 j2 = vec2(vnoise(vec2(uTime * 0.5, 4.6)) - 0.5, vnoise(vec2(4.6, uTime * 0.5)) - 0.5) * 0.012;
+          c0_off += j0; c1_off += j1; c2_off += j2;
+
+          // 每 cell 的 effective gaze axis
+          vec3 ga0 = normalize(vec3((uGazeDir + c0_off) * 0.48, 1.0));
+          vec3 ga1 = normalize(vec3((uGazeDir + c1_off) * 0.48, 1.0));
+          vec3 ga2 = normalize(vec3((uGazeDir + c2_off) * 0.48, 1.0));
+
+          // 每 cell 的 gazeAngle（geodesic）
+          float gAngle0 = acos(clamp(dot(n, ga0), -1.0, 1.0));
+          float gAngle1 = acos(clamp(dot(n, ga1), -1.0, 1.0));
+          float gAngle2 = acos(clamp(dot(n, ga2), -1.0, 1.0));
+
+          // smin 融合 → 整體 iris/sclera 邊界（黏滯地像 polycoria）
+          float gazeAngle = smin(smin(gAngle0, gAngle1, 0.05), gAngle2, 0.05);
+
+          // 整體 iris 用 toGaze（gaze-shifted 在 fragment 內坐標，給纖維/血絲用）
+          vec2 toGaze = n.xy - uGazeDir * 0.48;
           vec2 eyeCoord = n.xy - uGazeDir * 0.18;
 
-          float pupilCore = 1.0 - smoothstep(0.12, 0.24, gazeAngle);
-          float pupilFalloff = 1.0 - smoothstep(0.22, 0.42, gazeAngle);
+          // 自然脈動 ±5%
+          float pulse = 1.0 + 0.05 * sin(uTime * 0.5);
+
+          // 每 cell 自己的 pupil（黑核）— 放大：coreR 0.16 → 0.20，falloffR 0.28 → 0.32
+          // 解剖學：瞳孔在正常光線下 1/4–1/3 於虹膜，這裡放在較大端讓視覺明顯
+          float coreR = 0.20 * pulse;
+          float pp0 = 1.0 - smoothstep(coreR * 0.7, coreR, gAngle0);
+          float pp1 = 1.0 - smoothstep(coreR * 0.7, coreR, gAngle1);
+          float pp2 = 1.0 - smoothstep(coreR * 0.7, coreR, gAngle2);
+          float pupilCore = max(pp0, max(pp1, pp2));
+
+          // 每 cell 自己的 pupilFalloff（黑→暗 iris 過渡）
+          float falloffR = 0.32 * pulse;
+          float pf0 = 1.0 - smoothstep(coreR, falloffR, gAngle0);
+          float pf1 = 1.0 - smoothstep(coreR, falloffR, gAngle1);
+          float pf2 = 1.0 - smoothstep(coreR, falloffR, gAngle2);
+          float pupilFalloff = max(pf0, max(pf1, pf2));
+
+          // Iris/sclera 用 smin-merged gazeAngle → 整顆「黑眼球」邊界一起分裂
           float irisOuter = 1.0 - smoothstep(0.46, 0.72, gazeAngle);
           float irisInner = smoothstep(0.20, 0.36, gazeAngle);
           float irisMask = clamp(irisOuter * irisInner, 0.0, 1.0);
+          irisMask = clamp(irisMask - pupilFalloff * 0.7, 0.0, 1.0);
           float scleraMask = clamp(1.0 - irisOuter, 0.0, 1.0);
 
           float angle = atan(eyeCoord.y, eyeCoord.x);
@@ -613,6 +707,19 @@ export const Moon = forwardRef<THREE.Group, MoonProps>(function Moon(
     eyeParticleUniforms.uGazeDir.value.copy(gaze.gazeDir);
     eyeParticleUniforms.uBlink.value = THREE.MathUtils.clamp(gaze.blink.current, 0, 1);
     eyeParticleUniforms.uTime.value = elapsed;
+
+    // ── Mitosis cycle：跟手機版同邏輯 ──
+    // morph 邊緣（< 0.05 → ≥ 0.05）reset 到 0；只在 morph > 0.05 時推進
+    // → 使用者每次抓月球都從 cycle 起點看到完整 1→2→4→2→1
+    if (prevMorphRef.current < 0.05 && morphClamped >= 0.05) {
+      mitosisTimeRef.current = 0;
+    }
+    if (morphClamped > 0.05) {
+      mitosisTimeRef.current += dt;
+    }
+    prevMorphRef.current = morphClamped;
+    // 8 秒一輪：用戶要求分裂速度較慢
+    eyeParticleUniforms.uMitosisCycle.value = (mitosisTimeRef.current % 8.0) / 8.0;
   });
 
   return (
