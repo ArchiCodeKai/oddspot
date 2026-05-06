@@ -20,6 +20,7 @@ const MOON_ORBIT_RADIUS = 2.0;
 const MOON_ORBIT_PERIOD_SEC = 32;
 const MOON_RADIUS = 0.27;
 const MOON_ORBIT_INCLINE_RAD = (5.14 * Math.PI) / 180;
+const BUDDING_CYCLE_SEC = 23.0;
 
 // ─── Legacy D1 ripple 參數 ─────────────────────────────────────
 // 手機主視覺已改成跟月球同步的橢圓潮汐殼；D1 同心圓元件保留但不掛載。
@@ -127,6 +128,28 @@ function buildStarPositions(): Float32Array {
 const MOON_SELF_ROTATION = 0.12; // rad/sec
 type MoonState = "orbiting" | "grabbed" | "returning";
 
+function mitosisSplitAmount(cycle: number): number {
+  const easeInCubic = (x: number) => {
+    const c = THREE.MathUtils.clamp(x, 0, 1);
+    return c * c * c;
+  };
+  const easeOutExpo = (x: number) => {
+    const c = THREE.MathUtils.clamp(x, 0, 1);
+    return c >= 1 ? 1 : 1 - Math.pow(2, -10 * c);
+  };
+  const easeOutSine = (x: number) => Math.sin(THREE.MathUtils.clamp(x, 0, 1) * Math.PI * 0.5);
+  const forwardCycle = THREE.MathUtils.clamp(cycle / 0.68, 0, 1);
+  const reverseT = THREE.MathUtils.clamp((cycle - 0.705) / 0.06, 0, 1);
+  const resist = easeInCubic(forwardCycle / 0.30);
+  const release = easeOutExpo((forwardCycle - 0.30) / 0.50);
+  let amount = THREE.MathUtils.lerp(0.12 * resist, 1, release);
+  if (cycle > 0.705) {
+    const damp = 1 - easeOutSine(reverseT) + Math.sin(reverseT * Math.PI * 3) * Math.exp(-reverseT * 5) * 0.045;
+    amount = THREE.MathUtils.clamp(damp, 0, 1);
+  }
+  return THREE.MathUtils.clamp(amount, 0, 1);
+}
+
 // Module-level scratch（避免每幀 GC）
 const _moonScratchPos = new THREE.Vector3();
 const _moonScratchHit = new THREE.Vector3();
@@ -135,6 +158,9 @@ const _moonOrbitTarget = new THREE.Vector3(MOON_ORBIT_RADIUS, 0, 0);
 const _moonCamDir = new THREE.Vector3();
 const _moonCamPos = new THREE.Vector3();
 const _moonWorld = new THREE.Vector3();
+const _moonDragNDC = new THREE.Vector2();
+// 拖月球時把月球往指尖「上方」偏移：避免手指擋住瞳孔
+const MOON_DRAG_NDC_Y_OFFSET = 0.18;
 
 function MoonLite({
   accentColor,
@@ -170,6 +196,8 @@ function MoonLite({
   const compensationRef = useRef(0);
   // 投影 moon 世界座標到螢幕像素，給跨 canvas 的 jaw 用（補桌機版漏掉的接線）
   const moonScreenProjRef = useRef(new THREE.Vector3());
+  const shellMitosisTimeRef = useRef(0);
+  const shellPrevMorphRef = useRef(0);
 
   const writePointerNDC = (clientX: number, clientY: number) => {
     const rect = gl.domElement.getBoundingClientRect();
@@ -233,16 +261,41 @@ function MoonLite({
 
     // anchor 永遠公轉（grabbed 時也不停 — 軌道穩定）
     anchor.rotation.y = state.clock.elapsedTime * (2 * Math.PI / MOON_ORBIT_PERIOD_SEC);
-    if (self) self.rotation.y += dt * MOON_SELF_ROTATION;
 
     const moonState = moonStateRef.current;
+
+    const morphForTremor = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
+    if (shellPrevMorphRef.current < 0.05 && morphForTremor >= 0.05) {
+      shellMitosisTimeRef.current = 0;
+    }
+    if (morphForTremor > 0.05) {
+      shellMitosisTimeRef.current += dt;
+    }
+    shellPrevMorphRef.current = morphForTremor;
+    const splitBoost = 1 + mitosisSplitAmount((shellMitosisTimeRef.current % BUDDING_CYCLE_SEC) / BUDDING_CYCLE_SEC) * 0.10;
+
+    // moonSelf 自轉：grabbed 時暫停 + 改成 z 軸高頻微震。
+    // 慢速 iris drift 交給 shader 禁用，這裡只保留整顆眼球共同的恐懼 tremor。
+    if (self) {
+      if (moonState === "grabbed") {
+        const t = state.clock.elapsedTime;
+        const tremorGate = gaze.tremor.current * morphForTremor * splitBoost;
+        // 到定點停留後才出現高頻小幅微震；saccade 運動中保持乾淨轉向。
+        self.rotation.z = (Math.sin(t * 42.0) * 0.0035 + Math.sin(t * 31.0 + 1.7) * 0.00225) * tremorGate;
+      } else {
+        // 軌道時恢復自轉，z 慢慢 lerp 回 0
+        self.rotation.y += dt * MOON_SELF_ROTATION;
+        self.rotation.z = THREE.MathUtils.lerp(self.rotation.z, 0, 1 - Math.exp(-dt * 4));
+      }
+    }
 
     if (moonState === "orbiting") {
       // 月球綁在軌道目標位置
       body.position.copy(_moonOrbitTarget);
     } else if (moonState === "grabbed") {
-      // raycaster 從相機朝 NDC 方向射 ray，跟 drag plane 求交點
-      _moonRaycaster.setFromCamera(pointerNDCRef.current, camera);
+      // raycaster 用「指尖往上偏移 0.18 NDC」當射線方向 → 月球出現在指尖上方，瞳孔不被手指擋住
+      _moonDragNDC.set(pointerNDCRef.current.x, pointerNDCRef.current.y + MOON_DRAG_NDC_Y_OFFSET);
+      _moonRaycaster.setFromCamera(_moonDragNDC, camera);
       if (_moonRaycaster.ray.intersectPlane(dragPlaneRef.current, _moonScratchHit)) {
         anchor.worldToLocal(_moonScratchHit);
         body.position.copy(_moonScratchHit);
@@ -260,6 +313,23 @@ function MoonLite({
         body.position.copy(_moonOrbitTarget);
         moonStateRef.current = "orbiting";
       }
+    }
+
+    // ── Body rotation 跟 gaze 連動：grabbed 時眼球轉向虹膜看的方向 ──
+    // 替代慢速逆時針自轉（self.rotation.y 已在 grabbed 時暫停）
+    // 整顆眼球（wireframe + eye sphere shader）一起 tilt → 看起來像真實眼球轉頭
+    if (moonState === "grabbed") {
+      const morphAmtBody = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
+      const gazeBodyRotY = -gaze.gazeDir.x * 0.55 * morphAmtBody;
+      const gazeBodyRotX = gaze.gazeDir.y * 0.55 * morphAmtBody;
+      const lerpK = 1 - Math.exp(-dt * 5);
+      body.rotation.y = THREE.MathUtils.lerp(body.rotation.y, gazeBodyRotY, lerpK);
+      body.rotation.x = THREE.MathUtils.lerp(body.rotation.x, gazeBodyRotX, lerpK);
+    } else {
+      // 軌道/返航時 lerp 回 0
+      const lerpK = 1 - Math.exp(-dt * 3);
+      body.rotation.y = THREE.MathUtils.lerp(body.rotation.y, 0, lerpK);
+      body.rotation.x = THREE.MathUtils.lerp(body.rotation.x, 0, lerpK);
     }
 
     // 寫 sub-lunar
@@ -733,7 +803,7 @@ function MobileEyeBillboard({
   gaze: GazeController;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  // Mitosis 計時：morph < 0.05 → ≥ 0.05 邊緣 reset，cycle 8s
+  // Budding 計時：morph < 0.05 → ≥ 0.05 邊緣 reset，cycle 約 23s
   const mitosisTimeRef = useRef(0);
   const prevMorphRef = useRef(0);
 
@@ -802,6 +872,43 @@ function MobileEyeBillboard({
     uniforms.uAccent.value.copy(accentColor);
   }, [accentColor, uniforms]);
 
+  // ─── 鞏膜 wireframe shader：跟 eye 共用 uBlink → 整顆眼球一起眨 ─────────────
+  // 取代之前的 meshBasicMaterial，加上跟 eye shader 一樣的 lid mask
+  const scleraShaderMaterial = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms,
+      transparent: true,
+      wireframe: true,
+      depthWrite: false,
+      depthTest: false,
+      side: THREE.DoubleSide,
+      vertexShader: /* glsl */ `
+        varying vec3 vViewNormal;
+        void main() {
+          vec3 unitPos = normalize(position);
+          vViewNormal = normalize(mat3(modelViewMatrix) * unitPos);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        varying vec3 vViewNormal;
+        uniform vec3 uAccent;
+        uniform float uOpacity;
+        uniform float uBlink;
+        void main() {
+          vec3 n = normalize(vViewNormal);
+          float frontMask = smoothstep(-0.10, 0.20, n.z);
+          if (frontMask < 0.001) discard;
+          // 跟 eye shader 同款 procedural blink mask（用 view-space n.y）
+          float lidEdge = mix(0.95, 0.05, uBlink);
+          float lidVisible = 1.0 - smoothstep(lidEdge, lidEdge + 0.06, abs(n.y));
+          float alpha = 0.38 * uOpacity * frontMask * lidVisible;
+          gl_FragColor = vec4(uAccent, alpha);
+        }
+      `,
+    });
+  }, [uniforms]);
+
   // ─── 整顆眼球 shader：3D 球體 + per-cell gaze axis + smin 黏滯融合 ─────────
   // 從 flat circleGeometry 換成 sphereGeometry → 眼球真正貼合球面（像桌機）
   // shader 用 view normal 計算每 cell 的 gazeAngle（geodesic）→ 自然立體感
@@ -863,14 +970,17 @@ function MobileEyeBillboard({
           return mix(b, a, h) - k * h * (1.0 - h);
         }
 
-        // 立方 ease-in：開頭慢、結尾快（細胞質「卡住→突然彈開」感）
-        float easeIn(float a, float b, float t) {
-          float x = clamp((t - a) / (b - a), 0.0, 1.0);
+        float easeInCubic01(float x) {
+          x = clamp(x, 0.0, 1.0);
           return x * x * x;
         }
-        float easeOut(float a, float b, float t) {
-          float x = clamp((t - a) / (b - a), 0.0, 1.0);
-          return 1.0 - pow(1.0 - x, 3.0);
+        float easeOutExpo01(float x) {
+          x = clamp(x, 0.0, 1.0);
+          return x >= 1.0 ? 1.0 : 1.0 - pow(2.0, -10.0 * x);
+        }
+        float easeOutSine01(float x) {
+          x = clamp(x, 0.0, 1.0);
+          return sin(x * 1.57079632679);
         }
 
         void main() {
@@ -882,77 +992,79 @@ function MobileEyeBillboard({
           float frontMask = smoothstep(-0.05, 0.20, n.z);
           if (frontMask < 0.001) discard;
 
-          // ── Mitosis cells with per-cell gaze axis（複製桌機做法）──
+          // ── Budding cells：主瞳孔固定，副瞳孔出芽滑出，保持黏橋後阻尼合體 ──
           float cycle = uMitosisCycle;
-          float twoSep = easeIn(0.05, 0.30, cycle) - easeOut(0.82, 1.00, cycle);
-          float threeSep = easeIn(0.38, 0.55, cycle) - easeOut(0.62, 0.82, cycle);
+          float forwardCycle = clamp(cycle / 0.68, 0.0, 1.0);
+          float reverseT = clamp((cycle - 0.705) / 0.06, 0.0, 1.0);
+          float resist = easeInCubic01(forwardCycle / 0.30);
+          float release = easeOutExpo01((forwardCycle - 0.30) / 0.50);
+          float maxSep = 0.92;
+          float budSep = mix(0.080 * resist, maxSep, release);
+          if (cycle > 0.705) {
+            float damp = 1.0 - easeOutSine01(reverseT);
+            damp += sin(reverseT * 9.42477796) * exp(-reverseT * 5.0) * 0.045;
+            budSep = maxSep * clamp(damp, 0.0, 1.0);
+          }
+          vec2 budDir = normalize(vec2(1.0, -0.10));
+          vec2 c0_off = vec2(0.0);
+          vec2 c1_off = budDir * budSep;
 
-          // SPACING 在 uGazeDir-space → ×0.48 變 n.xy 偏移
-          // 0.28 → 0.40：n.xy 偏移從 0.134 → 0.192，分裂視覺明顯
-          // 3-cell 垂直 multiplier 0.40 → 0.65：c1/c2 上下分得更開
-          float SPACING = 0.40;
-          vec2 c0_off = vec2(-SPACING * twoSep, 0.0);
-          vec2 c1_off = vec2( SPACING * twoSep, -SPACING * 0.65 * threeSep);
-          vec2 c2_off = vec2( SPACING * twoSep,  SPACING * 0.65 * threeSep);
+          // 手機尺寸下，cell 自己的旋轉/低頻漂移會被看成虹膜在中心慢慢晃。
+          // 分裂軸固定在同一顆球面上，震顫只由外層 moonSelf 剛體 rotation.z 統一提供。
 
-          // 慢速旋轉 ±8.6°
-          float rotAngle = sin(uTime * 0.25) * 0.15;
-          float ca = cos(rotAngle), sa = sin(rotAngle);
-          mat2 rot = mat2(ca, -sa, sa, ca);
-          c0_off = rot * c0_off;
-          c1_off = rot * c1_off;
-          c2_off = rot * c2_off;
+          float warpRise = resist * (1.0 - reverseT);
+          float warpHold = (0.35 + release * 0.65) * (1.0 - reverseT);
+          float warpAmp = mix(0.0, 0.038, max(warpRise, warpHold));
+          vec2 warp = vec2(
+            fbm(n.xy * 7.5 + vec2(uTime * 0.21, cycle * 3.1)),
+            fbm(n.yx * 7.5 + vec2(4.7, uTime * 0.17))
+          ) - 0.5;
+          vec3 nw = normalize(vec3(n.xy + warp * warpAmp, n.z));
 
-          // 每 cell 微浮動
-          vec2 j0 = vec2(vnoise(vec2(uTime * 0.5, 0.0)) - 0.5, vnoise(vec2(0.0, uTime * 0.5)) - 0.5) * 0.012;
-          vec2 j1 = vec2(vnoise(vec2(uTime * 0.5, 2.3)) - 0.5, vnoise(vec2(2.3, uTime * 0.5)) - 0.5) * 0.012;
-          vec2 j2 = vec2(vnoise(vec2(uTime * 0.5, 4.6)) - 0.5, vnoise(vec2(4.6, uTime * 0.5)) - 0.5) * 0.012;
-          c0_off += j0; c1_off += j1; c2_off += j2;
+          // 每 cell 的 effective gaze axis（2 cells only）
+          // 副 cell offset 倍率提高：讓「虹膜 + 瞳孔」整體出芽，不只黑色瞳孔裂開。
+          vec3 ga0 = normalize(vec3(uGazeDir * 1.6 + c0_off * 1.05, 1.0));
+          vec3 ga1 = normalize(vec3(uGazeDir * 1.6 + c1_off * 1.05, 1.0));
 
-          // 每 cell 的 effective gaze axis（gaze 方向 + cell 偏移）
-          vec3 ga0 = normalize(vec3((uGazeDir + c0_off) * 0.48, 1.0));
-          vec3 ga1 = normalize(vec3((uGazeDir + c1_off) * 0.48, 1.0));
-          vec3 ga2 = normalize(vec3((uGazeDir + c2_off) * 0.48, 1.0));
+          float gAngle0 = acos(clamp(dot(nw, ga0), -1.0, 1.0));
+          float gAngle1 = acos(clamp(dot(nw, ga1), -1.0, 1.0));
 
-          // 每 cell 的 gazeAngle（geodesic on sphere）
-          float gAngle0 = acos(clamp(dot(n, ga0), -1.0, 1.0));
-          float gAngle1 = acos(clamp(dot(n, ga1), -1.0, 1.0));
-          float gAngle2 = acos(clamp(dot(n, ga2), -1.0, 1.0));
+          // 分開兩套距離場：
+          // 1. pupil 用原始 gAngle0 / gAngle1，確保黑瞳孔在最外段完全斷開。
+          // 2. iris 用 smin 融合，讓虹膜外環仍保留約 20% 黏橋。
+          float irisMergeK = mix(0.080, 0.155, release);
+          irisMergeK = mix(irisMergeK, 0.22, reverseT * (1.0 - smoothstep(0.14, 0.42, budSep)));
+          float irisAngle = smin(gAngle0, gAngle1, irisMergeK);
 
-          // smin k 0.05 → 0.08：cells 分得更開時仍保留可見牽絲帶
-          float gazeAngle = smin(smin(gAngle0, gAngle1, 0.08), gAngle2, 0.08);
+          // ── 瞳孔放大縮小：±25%、period 約 5.2 秒 → 視覺明顯的 dilation/contraction ──
+          // 不再是之前 ±5% 微小變化（看不出來）
+          float pulse = 1.0 + 0.25 * sin(uTime * 1.2);
 
-          // 自然脈動 ±5%
-          float pulse = 1.0 + 0.05 * sin(uTime * 0.5);
-
-          // ── Per-cell pupil（黑核）──
-          // coreR 0.18 rad ≈ 10° angular pupil radius
-          float coreR = 0.18 * pulse;
+          // ── Pupil 黑核（per-cell，max 取并集）──
+          float coreR = 0.13 * pulse;
           float pp0 = 1.0 - smoothstep(coreR * 0.7, coreR, gAngle0);
           float pp1 = 1.0 - smoothstep(coreR * 0.7, coreR, gAngle1);
-          float pp2 = 1.0 - smoothstep(coreR * 0.7, coreR, gAngle2);
-          float pupilCore = max(pp0, max(pp1, pp2));
+          float pupilCore = max(pp0, pp1);
 
-          // ── Per-cell pupil falloff（黑→暗 iris 過渡）──
-          float falloffR = 0.30 * pulse;
+          // ── Pupil falloff（黑→暗 iris 過渡）──
+          float falloffR = 0.22 * pulse;
           float pf0 = 1.0 - smoothstep(coreR, falloffR, gAngle0);
           float pf1 = 1.0 - smoothstep(coreR, falloffR, gAngle1);
-          float pf2 = 1.0 - smoothstep(coreR, falloffR, gAngle2);
-          float pupilFalloff = max(pf0, max(pf1, pf2));
+          float pupilFalloff = max(pf0, pf1);
 
-          // ── Iris（用 smin gazeAngle，整顆「黑眼球」邊界一起分裂）──
-          // iris 從中心一路擴張到接近球體 silhouette（gazeAngle ~1.30 ≈ 75°）
-          float irisOuter = 1.0 - smoothstep(1.15, 1.40, gazeAngle);
-          float irisInner = smoothstep(0.20, 0.34, gazeAngle);
+          // ── Iris（用 irisAngle 的 smin 融合，整個虹膜跟瞳孔一起 budding）──
+          // 最外段：pupil 完全分開；iris 透過 irisMergeK 保留約 20% 的黏橋。
+          float irisOuter = 1.0 - smoothstep(0.43, 0.55, irisAngle);
+          float irisInner = smoothstep(0.05, 0.18, irisAngle);
           float irisMask = clamp(irisOuter * irisInner, 0.0, 1.0);
           irisMask = clamp(irisMask - pupilFalloff * 0.7, 0.0, 1.0);
 
-          // ── Iris 邊界亮環（gaussian peak 在 silhouette 附近）──
-          float irisRing = exp(-pow((gazeAngle - 1.25) * 14.0, 2.0));
+          // ── Iris 邊界亮環（gaussian peak 在 boundary 附近）──
+          float irisRing = exp(-pow((irisAngle - 0.50) * 18.0, 2.0));
 
           // ── Iris fibers（用 view normal 投影出 angle）──
           float angle = atan(n.y, n.x);
-          float irisFiber = fbm(vec2(angle * 6.0, gazeAngle * 8.0) + uTime * 0.06);
+          float irisFiber = fbm(vec2(angle * 6.0, irisAngle * 22.0) + uTime * 0.06);
           float irisStripe = sin(angle * 22.0 + irisFiber * 4.0) * 0.5 + 0.5;
 
           // ── 顏色組合 ──
@@ -988,7 +1100,7 @@ function MobileEyeBillboard({
     if (!root) return;
     const morph = THREE.MathUtils.clamp(gaze.morph.current, 0, 1);
 
-    // ── Mitosis 計時器 ──
+    // ── Budding 計時器 ──
     if (prevMorphRef.current < 0.05 && morph >= 0.05) {
       mitosisTimeRef.current = 0;
     }
@@ -996,7 +1108,7 @@ function MobileEyeBillboard({
       mitosisTimeRef.current += dt;
     }
     prevMorphRef.current = morph;
-    const cycle = (mitosisTimeRef.current % 8.0) / 8.0;
+    const cycle = (mitosisTimeRef.current % BUDDING_CYCLE_SEC) / BUDDING_CYCLE_SEC;
 
     uniforms.uOpacity.value = visibility;
     uniforms.uMorph.value = morph;
@@ -1019,17 +1131,9 @@ function MobileEyeBillboard({
 
   return (
     <group ref={groupRef}>
-      {/* 1. Sclera/Cornea wireframe */}
-      <mesh renderOrder={996}>
+      {/* 1. Sclera/Cornea wireframe — 用 shader 跟 eye 共享 uBlink → 一起眨 */}
+      <mesh renderOrder={996} material={scleraShaderMaterial}>
         <sphereGeometry args={[radius * 0.92, 24, 16]} />
-        <meshBasicMaterial
-          color={accentColor}
-          wireframe
-          transparent
-          opacity={0.38}
-          depthWrite={false}
-          depthTest={false}
-        />
       </mesh>
 
       {/* 2. Iris scribble：背景 hint */}
@@ -1047,12 +1151,11 @@ function MobileEyeBillboard({
         />
       </lineSegments>
 
-      {/* 3. 整顆眼球 shader mesh：球體 + per-cell gaze axis（複製桌機的立體做法）
-          從 circleGeometry → sphereGeometry：眼球真正貼合球面、有 foreshortening、隨 gaze 自然旋轉
-          radius * 0.39：直徑 ≈ 月球直徑 39%（比之前 0.90r 平面版小約 20%）
-          位於月球中心（z=0），球體本身就是 3D，不需要 z 前移避免穿插 */}
+      {/* 3. 眼球 shader mesh：跟 sclera 同半徑（0.92r）→ 瞳孔在「整顆月球」表面滑動，不再是內部小球自轉
+          iris 在 shader 內限制在 gazeAngle < 0.49（big sphere 上的 patch），sclera 區用 alpha 0 讓 wireframe 透出
+          像桌機點雲眼球：iris 圖案 render on the moon body 表面，跟著 gaze 沿球面移動 */}
       <mesh renderOrder={999} material={eyeShaderMaterial}>
-        <sphereGeometry args={[radius * 0.39, 32, 16]} />
+        <sphereGeometry args={[radius * 0.92, 32, 16]} />
       </mesh>
     </group>
   );
