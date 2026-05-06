@@ -240,7 +240,7 @@ vec3 jitteredPos = position + normalize(position) *
 
 | 技巧 | 實作位置 | 細節 |
 |---|---|---|
-| 不規律 saccade | `useGazeController` | idle 間隔 random(0.8, 2.5) 秒；grabbed 加速為 random(0.18, 0.78) 秒 |
+| 不規律 saccade | `useGazeController` | idle 間隔 random(0.8, 2.5) 秒；grabbed 使用快/慢雙峰停留時間，避免固定節奏 |
 | 拖曳時更失控 | `useGazeController` | grabbed 時降低 pointer 追蹤比例，讓視線更多跳往隨機方向 |
 | 顫動相位錯開 | shader vertex | sin freq 用 23（質數），不同 axis 用不同 multiplier |
 | 偶發眨眼 | `useGazeController` + shader | grabbed 眼球態每 1.2–3.8 秒觸發約 160ms blink，shader 用 eyelid mask 壓暗/收窄眼球 |
@@ -264,6 +264,22 @@ vec3 jitteredPos = position + normalize(position) *
 - 手機眼球中心另有 `MobileEyeBillboard`，掛在 `moonBodyRef` 而不是 `moonSelfRef`，因此不會被月球自轉帶走。這層用低彩度 iris、純黑 pupil、淡血絲與 edge fade 補足手機尺寸下的辨識度。
 - 拖曳尺寸補償仍以「攝影機到軌道最近點」作最大 apparent size；grabbed 進入速度提高，pointer down 時先把 compensation 設為 `1`，釋放後再平滑回自然軌道尺寸。
 - `useGazeController` 降低 tremor 頻率與振幅，讓眼球震顫更接近不穩定的自然微動，而不是機械式高頻抖動。
+
+### 7.3 Gaze + tremor correction（2026-05-06）
+
+- `useGazeController` 對 random target 與 pointer target 套同一個上方 clamp：下半部不限制，上方只允許偏左上/右上或接近水平，避免抽到正上方造成翻白眼感。
+- `useGazeController` 另暴露 `tremor.current`：saccade 移動中為 0，到注視點穩定停留 `0.2s` 後才淡入高頻小振幅 tremor。這對應 enhanced physiological tremor / fixational eye movement，而不是平滑繞圈漂移。
+- 手機 `GlobeSceneMobile.tsx` 與桌機 `Moon.tsx` 的 iris 分裂 cell 都不再做 shader 內低頻漂移或獨立旋轉；分裂軸固定在球面上，震顫由 `gazeDir` 的 settled tremor 與整顆眼球 `rotation.z` 統一提供。
+- 分裂期只把整體 tremor 振幅提高約 `10%`，不新增第三個 iris、不做額外環形滑動。
+
+### 7.4 Budding iris split（2026-05-06）
+
+- 桌機 `Moon.tsx` 與手機 `GlobeSceneMobile.tsx` 的重瞳分裂不再使用中心對稱 mitosis；改為 budding：主瞳孔固定在 gaze 中心，副瞳孔沿單側有機滑出。
+- cycle 前段用 fBM domain warping 放大邊界畸變；release 段用 exponential easing 讓副瞳孔突破表面張力；hold 段透過 polynomial `smin` 維持黏橋；reverse 段用 sine + damped spring 回合體並提高融合半徑。
+- 手機版額外要求：副 cell 位移倍率較大，讓「虹膜 + 瞳孔」一起出芽；pupil 用兩個原始距離場保持完全斷開，iris 用較大的 `smin` 融合半徑保留約 `20%` 黏橋、`80%` 分離。
+- Budding cycle 從 `8s` 拉長到約 `23s`，裂變頻率約為原本的 `35%`，避免過度頻繁而削弱眼球感。
+- 最大分裂後不得長時間停留：cycle 到最大出芽後約 `0.6s` 開始合體，合體段約 `1.4s`，確保分裂完成後在 `0.5–2s` 內回到單一虹膜。
+- uniform 名稱仍保留 `uMitosisCycle` 以避免擴大 R3F wiring 改動，但語義已是 budding cycle。
 
 ---
 
