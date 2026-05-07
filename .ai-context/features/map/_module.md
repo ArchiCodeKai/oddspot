@@ -149,13 +149,11 @@ MapClickEffect  →  listen "oddspot:markerclick"，從 cursorState 讀取軌跡
 
 ## 已知限制
 
-- 目前 [map/page.tsx](../../../src/app/map/page.tsx) 用 fetch + useState，尚未升級 TanStack Query
 - SpotPopup 的「查看詳情」連結到 `/spots/[id]`，景點詳情頁 Step 3 已有 Shell，內容持續補完
 - 目前 [MapView.tsx](../../../src/components/map/MapView.tsx) 用 `@vis.gl/react-google-maps` + CSS filter（`invert(1) hue-rotate(180deg)`）做深色化，是改造前的暫時方案
 
 ## TODO（改造後仍未解決）
 
-- 升級 fetch 為 useQuery（TanStack React Query）
 - 加入篩選器 UI（useMapStore.filters）
 - 加入半徑選擇器
 - 收藏列表勾選介面（階段 4 中實作，但 Saved Spots store 要等 Step 5 才存後端）

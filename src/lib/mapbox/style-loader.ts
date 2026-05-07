@@ -1,3 +1,4 @@
+import type { StyleSpecification } from "mapbox-gl";
 import baseTemplate from "../mapbox-styles/base-template.json";
 import terminalTokens from "../mapbox-styles/terminal.json";
 import blueprintTokens from "../mapbox-styles/blueprint.json";
@@ -26,14 +27,22 @@ const THEMES: Record<MapTheme, ThemeTokens> = {
   midnight: midnightTokens as ThemeTokens,
 };
 
+// 對每個主題只計算一次 style，第二次起直接回 cache。
+// 4 themes × stringify/replace/parse 約 3-10ms × 4 = 12-40ms 總量，但分散到首次切換時。
+const styleCache: Partial<Record<MapTheme, StyleSpecification>> = {};
+
 // 替換 base-template 內所有 @@token@@ 字串成主題對應 hex，
 // 透過 stringify/replace/parse 一次處理所有出現位置（含 layer 內巢狀屬性）。
-// 回傳 unknown，呼叫端自行 cast 為 mapbox-gl 的 StyleSpecification。
-export function loadMapStyle(theme: MapTheme): unknown {
+export function loadMapStyle(theme: MapTheme): StyleSpecification {
+  const cached = styleCache[theme];
+  if (cached) return cached;
+
   let serialized = JSON.stringify(baseTemplate);
   const { tokens } = THEMES[theme];
   for (const [token, hex] of Object.entries(tokens)) {
     serialized = serialized.split(token).join(hex);
   }
-  return JSON.parse(serialized);
+  const result = JSON.parse(serialized) as StyleSpecification;
+  styleCache[theme] = result;
+  return result;
 }
