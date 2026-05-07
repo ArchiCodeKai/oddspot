@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Map } from "react-map-gl/mapbox";
+import { Map, AttributionControl } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { loadMapStyle, MAP_THEMES, type MapTheme } from "@/lib/mapbox/style-loader";
 
@@ -11,7 +11,7 @@ export default function StyleInspectorPage() {
   const [theme, setTheme] = useState<MapTheme>("terminal");
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
-  // 切換 theme 時重算 style 物件
+  // 切換 theme 時重算 style 物件（style-loader 內已 cache，第二次起 0 cost）
   const mapStyle = useMemo(() => loadMapStyle(theme), [theme]);
 
   return (
@@ -19,11 +19,12 @@ export default function StyleInspectorPage() {
       <Map
         mapboxAccessToken={token}
         initialViewState={TAIPEI_CENTER}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        mapStyle={mapStyle as any}
+        mapStyle={mapStyle}
         style={{ width: "100%", height: "100%" }}
         attributionControl={false}
-      />
+      >
+        <AttributionControl compact />
+      </Map>
 
       <header
         className="absolute top-4 left-4 px-4 py-2 backdrop-blur-md"

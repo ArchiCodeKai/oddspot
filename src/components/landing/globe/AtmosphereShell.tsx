@@ -92,7 +92,10 @@ export function AtmosphereShell({
         side: THREE.BackSide,
         depthWrite: false,
       }),
-    [accentColor, opacity, power, intensity],
+    // accentColor 不放進 deps：每次主題切換 setAccentColor 給新 instance 會
+    // 觸發 ShaderMaterial 整顆重編譯 (5-20ms)。uColor 已在 useFrame 平滑插值
+    // (見下方 useFrame)，不需要 remount material。
+    [opacity, power, intensity],
   );
 
   // 主題切換時平滑更新 uColor uniform（指數緩出插值，避免瞬間跳色）
