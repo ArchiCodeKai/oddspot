@@ -1,0 +1,10 @@
+{
+  "name": "blueprint",
+  "description": "Slate + electric blue。對應 themes.css :root[data-theme=\"blueprint\"]",
+  "tokens": {
+    "@@bg@@": "#161a22",
+    "@@land@@": "#1d2230",
+    "@@accent@@": "#4f7dff",
+    "@@muted@@": "#8a93a3"
+  }
+}

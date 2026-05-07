@@ -1,0 +1,10 @@
+{
+  "name": "caution",
+  "description": "Warm gunmetal + hazard yellow。對應 themes.css :root[data-theme=\"caution\"]",
+  "tokens": {
+    "@@bg@@": "#1d1a14",
+    "@@land@@": "#23201a",
+    "@@accent@@": "#ffd24a",
+    "@@muted@@": "#9b937f"
+  }
+}
