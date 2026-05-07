@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { syncSavedSchema, formatZodError } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -16,14 +17,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { spotIds } = body as { spotIds: string[] };
-
-    if (!Array.isArray(spotIds)) {
+    const parsed = syncSavedSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { data: null, success: false, error: "spotIds 必須是陣列" },
+        { data: null, success: false, error: `輸入驗證失敗：${formatZodError(parsed.error)}` },
         { status: 400 }
       );
     }
+    const { spotIds } = parsed.data;
 
     // 使用 upsert 處理每個景點，避免重複
     let syncedCount = 0;

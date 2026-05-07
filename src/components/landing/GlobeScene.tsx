@@ -17,6 +17,7 @@ import { getGlowPointTexture } from "./globe/glowPointTexture";
 import { TideRippleField, type TideRippleFieldHandle } from "./globe/TideRippleField";
 import { OceanTideMembrane } from "./globe/OceanTideMembrane";
 import { TidalEllipsoidShell } from "./globe/TidalEllipsoidShell";
+import { disposeGeometry, disposeTexture } from "@/lib/three/dispose";
 
 // 地球軸傾（真實 23.5° vs 黃道）
 const EARTH_AXIAL_TILT_RAD = (23.5 * Math.PI) / 180;
@@ -531,19 +532,25 @@ export function GlobeScene({ phase, skipBoot, dissolveProgress, style, tier = "f
   // 載入 GeoJSON + 預計算點雲
   useEffect(() => {
     let cancelled = false;
+    // 用 local 變數紀錄已建立的資源；元件 unmount 時 cleanup 呼叫 dispose
+    // 反覆進出 Landing 頁時若不清，GPU buffer 會累積（land 90k + ocean 15k + mask 128KB）
+    let createdLand: THREE.BufferGeometry | null = null;
+    let createdOcean: THREE.BufferGeometry | null = null;
+    let createdMask: THREE.DataTexture | null = null;
+
     fetch("/data/ne_110m_land.json")
       .then((r) => r.json() as Promise<GeoJSONFeatureCollection>)
       .then((data) => {
         if (cancelled) return;
         const hm = buildHeightmap(data);
-        const land = buildLandPoints({
+        createdLand = buildLandPoints({
           heightmap: hm,
           accentColor: readAccentColor(),
           candidateCount: cfg.land,
           threshold: 100,
           highlightChance: 0.06,
         });
-        const ocean = buildOceanPoints({
+        createdOcean = buildOceanPoints({
           heightmap: hm,
           candidateCount: cfg.ocean,
           threshold: 100,
@@ -558,19 +565,24 @@ export function GlobeScene({ phase, skipBoot, dissolveProgress, style, tier = "f
           hmRGBA[pi * 4 + 2] = hm[pi];
           hmRGBA[pi * 4 + 3] = 255;
         }
-        const maskTex = new THREE.DataTexture(hmRGBA, 256, 128, THREE.RGBAFormat);
-        maskTex.minFilter = THREE.LinearFilter;
-        maskTex.magFilter = THREE.LinearFilter;
-        maskTex.needsUpdate = true;
+        createdMask = new THREE.DataTexture(hmRGBA, 256, 128, THREE.RGBAFormat);
+        createdMask.minFilter = THREE.LinearFilter;
+        createdMask.magFilter = THREE.LinearFilter;
+        createdMask.needsUpdate = true;
 
-        setLandGeom(land);
-        setOceanGeom(ocean);
-        setLandMaskTex(maskTex);
+        setLandGeom(createdLand);
+        setOceanGeom(createdOcean);
+        setLandMaskTex(createdMask);
       })
       .catch((err) => {
         console.warn("[GlobeScene] failed to load ne_110m_land:", err);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      disposeGeometry(createdLand);
+      disposeGeometry(createdOcean);
+      disposeTexture(createdMask);
+    };
   }, []);
 
   // 主題切換 → 直接 recolor 已存在的 land geometry（不重建、不 fetch GeoJSON）
