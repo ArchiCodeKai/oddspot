@@ -1,0 +1,10 @@
+{
+  "name": "terminal",
+  "description": "鐵灰 + 柔薄荷。對應 themes.css :root[data-theme=\"terminal\"]",
+  "tokens": {
+    "@@bg@@": "#14201c",
+    "@@land@@": "#1a2823",
+    "@@accent@@": "#5fd9c0",
+    "@@muted@@": "#7da99e"
+  }
+}

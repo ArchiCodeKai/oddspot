@@ -1,0 +1,10 @@
+{
+  "name": "midnight",
+  "description": "Neutral grey monochrome。對應 themes.css :root[data-theme=\"midnight\"]",
+  "tokens": {
+    "@@bg@@": "#18181a",
+    "@@land@@": "#202024",
+    "@@accent@@": "#d6d6dc",
+    "@@muted@@": "#8e8e94"
+  }
+}

@@ -1,0 +1,210 @@
+{
+  "version": 8,
+  "name": "OddSpot Map — base template",
+  "metadata": {
+    "oddspot:role": "base-template",
+    "oddspot:description": "Mapbox style template with theme tokens. Tokens (@@bg@@, @@land@@, @@accent@@, @@muted@@) are replaced at runtime by style-loader.ts using values from src/app/themes.css.",
+    "oddspot:tokens": ["@@bg@@", "@@land@@", "@@accent@@", "@@muted@@"]
+  },
+  "sources": {
+    "composite": {
+      "type": "vector",
+      "url": "mapbox://mapbox.mapbox-streets-v8"
+    }
+  },
+  "sprite": "mapbox://sprites/mapbox/streets-v12",
+  "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "@@land@@"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "composite",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "@@bg@@",
+        "fill-antialias": true
+      }
+    },
+    {
+      "id": "boundary-state",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "admin",
+      "filter": ["==", ["get", "admin_level"], 1],
+      "paint": {
+        "line-color": "@@muted@@",
+        "line-width": 0.5,
+        "line-opacity": 0.5,
+        "line-dasharray": [2, 4]
+      },
+      "minzoom": 4
+    },
+    {
+      "id": "boundary-country",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "admin",
+      "filter": ["==", ["get", "admin_level"], 0],
+      "paint": {
+        "line-color": "@@muted@@",
+        "line-width": 1,
+        "line-dasharray": [4, 4]
+      }
+    },
+    {
+      "id": "road-minor",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "road",
+      "filter": [
+        "in",
+        ["get", "class"],
+        ["literal", ["minor", "service", "track", "tertiary", "tertiary_link", "street", "street_limited"]]
+      ],
+      "paint": {
+        "line-color": "@@accent@@",
+        "line-width": 0.5,
+        "line-opacity": 0.3
+      },
+      "minzoom": 13
+    },
+    {
+      "id": "road-secondary",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "road",
+      "filter": [
+        "in",
+        ["get", "class"],
+        ["literal", ["secondary", "secondary_link"]]
+      ],
+      "paint": {
+        "line-color": "@@accent@@",
+        "line-width": 0.5,
+        "line-opacity": 0.5
+      },
+      "minzoom": 11
+    },
+    {
+      "id": "road-primary",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "road",
+      "filter": [
+        "in",
+        ["get", "class"],
+        ["literal", ["primary", "primary_link"]]
+      ],
+      "paint": {
+        "line-color": "@@accent@@",
+        "line-width": 1,
+        "line-opacity": 0.8
+      },
+      "minzoom": 8
+    },
+    {
+      "id": "road-major",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "road",
+      "filter": [
+        "in",
+        ["get", "class"],
+        ["literal", ["motorway", "trunk", "motorway_link", "trunk_link"]]
+      ],
+      "paint": {
+        "line-color": "@@accent@@",
+        "line-width": 1,
+        "line-opacity": 1
+      },
+      "minzoom": 5
+    },
+    {
+      "id": "place-city",
+      "type": "symbol",
+      "source": "composite",
+      "source-layer": "place_label",
+      "filter": [
+        "in",
+        ["get", "type"],
+        ["literal", ["city", "town"]]
+      ],
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
+        "text-size": 8,
+        "text-letter-spacing": 0.12,
+        "text-transform": "uppercase",
+        "text-max-width": 8,
+        "symbol-sort-key": ["case", ["==", ["get", "type"], "city"], 1, 2]
+      },
+      "paint": {
+        "text-color": "@@muted@@",
+        "text-opacity": 0.3,
+        "text-halo-color": "@@bg@@",
+        "text-halo-width": 0.5
+      },
+      "minzoom": 9
+    },
+    {
+      "id": "place-region",
+      "type": "symbol",
+      "source": "composite",
+      "source-layer": "place_label",
+      "filter": [
+        "in",
+        ["get", "type"],
+        ["literal", ["region", "state"]]
+      ],
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
+        "text-size": 9,
+        "text-letter-spacing": 0.12,
+        "text-transform": "uppercase",
+        "text-max-width": 8
+      },
+      "paint": {
+        "text-color": "@@muted@@",
+        "text-opacity": 0.5,
+        "text-halo-color": "@@bg@@",
+        "text-halo-width": 0.5
+      },
+      "minzoom": 5,
+      "maxzoom": 12
+    },
+    {
+      "id": "place-country",
+      "type": "symbol",
+      "source": "composite",
+      "source-layer": "place_label",
+      "filter": [
+        "in",
+        ["get", "type"],
+        ["literal", ["country", "capital"]]
+      ],
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+        "text-size": 11,
+        "text-letter-spacing": 0.12,
+        "text-transform": "uppercase",
+        "text-max-width": 8
+      },
+      "paint": {
+        "text-color": "@@muted@@",
+        "text-opacity": 1,
+        "text-halo-color": "@@bg@@",
+        "text-halo-width": 0.8
+      },
+      "maxzoom": 8
+    }
+  ]
+}
