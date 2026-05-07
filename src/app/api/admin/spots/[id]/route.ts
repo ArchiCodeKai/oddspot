@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { cuidSchema, adminActionSchema, formatZodError } from "@/lib/validation";
+import { isAdminSession } from "@/lib/admin";
 import type { ApiResponse } from "@/types/api";
-
-function isAdmin(email: string | null | undefined) {
-  return email && email === process.env.ADMIN_EMAIL;
-}
 
 // 審核景點：approve（通過）或 reject（拒絕刪除）
 export async function PATCH(
@@ -14,7 +12,7 @@ export async function PATCH(
 ) {
   const session = await auth();
 
-  if (!isAdmin(session?.user?.email)) {
+  if (!isAdminSession(session)) {
     return NextResponse.json<ApiResponse<null>>(
       { data: null, success: false, error: "無權限" },
       { status: 403 }
@@ -23,8 +21,23 @@ export async function PATCH(
 
   try {
     const { id } = await params;
+    const idCheck = cuidSchema.safeParse(id);
+    if (!idCheck.success) {
+      return NextResponse.json<ApiResponse<null>>(
+        { data: null, success: false, error: "無效 ID 格式" },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
-    const { action } = body as { action: "approve" | "reject" };
+    const parsed = adminActionSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json<ApiResponse<null>>(
+        { data: null, success: false, error: `輸入驗證失敗：${formatZodError(parsed.error)}` },
+        { status: 400 }
+      );
+    }
+    const { action } = parsed.data;
 
     if (action === "approve") {
       const spot = await prisma.spot.update({
@@ -35,18 +48,12 @@ export async function PATCH(
       return NextResponse.json<ApiResponse<typeof spot>>({ data: spot, success: true });
     }
 
-    if (action === "reject") {
-      await prisma.spot.delete({ where: { id } });
-      return NextResponse.json<ApiResponse<{ id: string }>>({
-        data: { id },
-        success: true,
-      });
-    }
-
-    return NextResponse.json<ApiResponse<null>>(
-      { data: null, success: false, error: "action 必須是 approve 或 reject" },
-      { status: 400 }
-    );
+    // 走到這裡 action 必為 "reject"（zod 已限定 enum）
+    await prisma.spot.delete({ where: { id } });
+    return NextResponse.json<ApiResponse<{ id: string }>>({
+      data: { id },
+      success: true,
+    });
   } catch (error) {
     console.error("[PATCH /api/admin/spots/[id]]", error);
     return NextResponse.json<ApiResponse<null>>(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
+import { spotsQuerySchema, createSpotSchema, formatZodError } from "@/lib/validation";
 import type { ApiResponse } from "@/types/api";
 import type { SpotMapPoint } from "@/types/spots";
 
@@ -25,18 +26,20 @@ const MAX_SPOTS = 50;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const lat = parseFloat(searchParams.get("lat") ?? "");
-  const lng = parseFloat(searchParams.get("lng") ?? "");
-  const radius = parseFloat(searchParams.get("radius") ?? "5");
-  const categories = searchParams.get("categories")?.split(",").filter(Boolean);
-  const cursor = searchParams.get("cursor") ?? undefined;
-
-  if (isNaN(lat) || isNaN(lng)) {
+  const parsed = spotsQuerySchema.safeParse({
+    lat: searchParams.get("lat") ?? undefined,
+    lng: searchParams.get("lng") ?? undefined,
+    radius: searchParams.get("radius") ?? undefined,
+    categories: searchParams.get("categories") ?? undefined,
+    cursor: searchParams.get("cursor") ?? undefined,
+  });
+  if (!parsed.success) {
     return NextResponse.json<ApiResponse<null>>(
-      { data: null, success: false, error: "lat 和 lng 為必填參數" },
+      { data: null, success: false, error: `輸入驗證失敗：${formatZodError(parsed.error)}` },
       { status: 400 }
     );
   }
+  const { lat, lng, radius, categories, cursor } = parsed.data;
 
   try {
     const box = getBoundingBox(lat, lng, radius);
@@ -45,7 +48,7 @@ export async function GET(request: NextRequest) {
       where: {
         lat: { gte: box.minLat, lte: box.maxLat },
         lng: { gte: box.minLng, lte: box.maxLng },
-        ...(categories && categories.length > 0
+        ...(categories.length > 0
           ? { category: { in: categories } }
           : {}),
       },
@@ -118,26 +121,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, nameEn, description, category, lat, lng, address, difficulty, recommendedTime, legend, imageUrl } = body as {
-      name: string;
-      nameEn?: string;
-      description?: string;
-      category: string;
-      lat: number;
-      lng: number;
-      address?: string;
-      difficulty?: string;
-      recommendedTime?: string;
-      legend?: string;
-      imageUrl?: string;
-    };
-
-    if (!name || !category || isNaN(lat) || isNaN(lng)) {
+    const parsed = createSpotSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json<ApiResponse<null>>(
-        { data: null, success: false, error: "名稱、分類、座標為必填" },
+        { data: null, success: false, error: `輸入驗證失敗：${formatZodError(parsed.error)}` },
         { status: 400 }
       );
     }
+    const { name, nameEn, description, category, lat, lng, address, difficulty, recommendedTime, legend, imageUrl } = parsed.data;
 
     const images = imageUrl ? JSON.stringify([imageUrl]) : JSON.stringify([]);
     // pending 景點 30 天內未審核自動到期
@@ -152,7 +143,7 @@ export async function POST(request: NextRequest) {
         lat,
         lng,
         address,
-        difficulty: difficulty ?? "easy",
+        difficulty,
         recommendedTime,
         legend,
         images,

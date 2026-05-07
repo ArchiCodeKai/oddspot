@@ -11,6 +11,7 @@ import { buildMoonTerrainSphere } from "./globe/buildMoonTerrainSphere";
 import { useAppStore } from "@/store/useAppStore";
 import { useJawMoonStore } from "@/store/useJawMoonStore";
 import { useGazeController, type GazeController } from "@/hooks/useGazeController";
+import { disposeGeometry, disposeMaterial, disposeTexture } from "@/lib/three/dispose";
 
 // ─── 共用常數（與桌面版對齊：保證視覺敘事一致性） ────────────────
 const EARTH_AXIAL_TILT_RAD = (23.5 * Math.PI) / 180;
@@ -1095,6 +1096,17 @@ function MobileEyeBillboard({
     });
   }, [uniforms]);
 
+  // 釋放眼球 shader program + iris geometry（unmount 或重建時）
+  useEffect(() => {
+    return () => disposeGeometry(irisScribbleGeo);
+  }, [irisScribbleGeo]);
+  useEffect(() => {
+    return () => disposeMaterial(scleraShaderMaterial);
+  }, [scleraShaderMaterial]);
+  useEffect(() => {
+    return () => disposeMaterial(eyeShaderMaterial);
+  }, [eyeShaderMaterial]);
+
   useFrame((state, dt) => {
     const root = groupRef.current;
     if (!root) return;
@@ -1970,6 +1982,31 @@ function GlobeInner({ phase, skipBoot, dissolveProgress, accentColor, bgDeepColo
       window.removeEventListener("pointercancel", handleUp);
     };
   }, []);
+
+  // 元件 unmount（或對應資源變動）時釋放 useMemo 建立的 GPU 物件
+  // 反覆進出 Landing 若不清，terrainSphere（4 mesh × 10k vertex）+ landMaskTex（128KB）會逐漸累積
+  useEffect(() => {
+    return () => disposeGeometry(backdrop?.geom);
+  }, [backdrop]);
+  useEffect(() => {
+    return () => disposeTexture(landMaskTex);
+  }, [landMaskTex]);
+  useEffect(() => {
+    return () => {
+      if (!terrainSphere) return;
+      disposeGeometry(terrainSphere.meshGeometry);
+      disposeGeometry(terrainSphere.wireGeometry);
+      disposeGeometry(terrainSphere.coastlineGeometry);
+      disposeGeometry(terrainSphere.ridgeGeometry);
+    };
+  }, [terrainSphere]);
+  useEffect(() => {
+    return () => {
+      if (!coastlines) return;
+      disposeGeometry(coastlines.global);
+      disposeGeometry(coastlines.taiwan);
+    };
+  }, [coastlines]);
 
   // ─── D3 · 經線位移（球體被月球拉長感）──────────────────────────
   // 每幀更新 backdrop position：原始 unit × (baseRadius + bulge)

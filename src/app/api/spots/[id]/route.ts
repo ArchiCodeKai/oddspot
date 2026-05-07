@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { cuidSchema } from "@/lib/validation";
 import type { ApiResponse } from "@/types/api";
 import type { SpotDetail } from "@/types/spots";
 import type { SpotCategory } from "@/lib/constants/categories";
@@ -10,6 +11,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  const idCheck = cuidSchema.safeParse(id);
+  if (!idCheck.success) {
+    return NextResponse.json<ApiResponse<null>>(
+      { data: null, success: false, error: "無效 ID 格式" },
+      { status: 400 }
+    );
+  }
 
   try {
     const spot = await prisma.spot.findUnique({ where: { id } });

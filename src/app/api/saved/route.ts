@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { saveSpotSchema, formatZodError } from "@/lib/validation";
 
 // 取得目前用戶的收藏清單
 export async function GET() {
@@ -53,14 +54,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { spotId } = body as { spotId: string };
-
-    if (!spotId) {
+    const parsed = saveSpotSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { data: null, success: false, error: "spotId 必填" },
+        { data: null, success: false, error: `輸入驗證失敗：${formatZodError(parsed.error)}` },
         { status: 400 }
       );
     }
+    const { spotId } = parsed.data;
 
     // 使用 upsert 避免重複收藏報錯
     const savedSpot = await prisma.savedSpot.upsert({
