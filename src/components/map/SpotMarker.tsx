@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AdvancedMarker } from "@vis.gl/react-google-maps";
+import { Marker } from "react-map-gl/mapbox";
 import { CATEGORY_GLYPHS } from "@/lib/constants/categoryGlyphs";
 import type { SpotCategory } from "@/lib/constants/categories";
 import type { SpotMapPoint } from "@/types/spots";
@@ -35,7 +35,9 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
   const showPulse = zoom <= 11 && !isSelected;
   const pinScale = getPinScale(zoom, isSelected);
 
-  const handleClick = () => {
+  // mapbox-gl click 事件會冒泡到 Map 觸發 deselect，必須擋住
+  const handleClick = (e: { originalEvent: { stopPropagation: () => void } }) => {
+    e.originalEvent.stopPropagation();
     onClick(spot);
 
     // 精準指標設備才派發飛行箭頭事件
@@ -52,8 +54,10 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
   };
 
   return (
-    <AdvancedMarker
-      position={{ lat: spot.lat, lng: spot.lng }}
+    <Marker
+      longitude={spot.lng}
+      latitude={spot.lat}
+      anchor="bottom"
       onClick={handleClick}
     >
       {/* 外層確保行動端 tap target 至少 44×44px */}
@@ -140,6 +144,6 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
           </motion.div>
         </div>
       </div>
-    </AdvancedMarker>
+    </Marker>
   );
 }
