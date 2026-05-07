@@ -175,15 +175,15 @@ These rules carry over unchanged — don't regress them:
 | 功能 | 狀態 | 位置 |
 |---|---|---|
 | terminal 主題（薄荷綠） | ✅ 已實作 | `src/app/globals.css` |
-| 4-theme token system | 🔄 設計中 | `themes.css`（**尚未建立**） |
+| 4-theme token system | ✅ 已實作 | `src/app/themes.css` |
 | 游標軌跡 + 點擊特效 | ✅ 已實作 | `MagneticCursor.tsx` / `MapClickEffect.tsx`；僅桌面 viewport 渲染，手機/平板完全不輸出 cursor DOM |
 | 頁面進場動畫 | ✅ 已實作 | `PageTransition.tsx` / `SpotDetailShell.tsx` |
-| 吉祥物 eye moods | ⏳ 待開始 | — |
+| 吉祥物 eye moods | ✅ 已實作 | `src/components/ui/Mascot.tsx`（6 種 mood） |
 | 開場動畫序列 | ⏳ 待開始 | — |
-| Acid stickers / 貼紙 | ⏳ 待開始 | — |
+| Acid stickers / 貼紙 | ✅ 已實作 | `src/components/landing/AcidStickers.tsx` |
 | Landing mobile globe | 🔄 調整中 | `GlobeSceneMobile.tsx` 使用 heightmap coastline + elevation/ridge contours；潮汐只作用於板塊下方的 ocean-only `MobileOceanVolume` / `MobileOceanShell`，陸地與海岸線不做 D3 浮動，海洋位移不得高於大陸板塊最高點且不得觸碰最外層大氣光暈；手機月球拖曳同步桌機主題切換節奏；gaze 不抽正上方，saccade 移動中不抖，停留 0.2s 後才出現高頻小幅 fear tremor；重瞳為約 23s 一輪的低頻 budding，手機版 pupil 完全分離、iris 約 20% 黏橋 |
 
 ## Files in this skill
 
-- `themes.css` — 4-theme token system（**計畫中，尚未建立**）
+- `src/app/themes.css` — 4-theme token system（已建立）
 - `visual-design.md` — base rules (Chinese, v1 origin)

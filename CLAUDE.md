@@ -105,7 +105,7 @@ visitCount Int  // 欄位存在，v1 UI 不顯示，v2 才有更新機制
 | Step 2++ | 地圖路線 A 改造（Mapbox + Acid 風格 + 多點路線）| 🔄 規劃完成，待實作（spec：`docs/specs/2026-05-06-map-route-a-acid-redesign.md`）|
 | Step 3 | 景點詳情頁（Shell + 動畫已完成，內容補完中） | 🔄 進行中 |
 | Step 4 | 滑卡片 + Guest mode | ⏳ 待開始 |
-| Step 5 | NextAuth + 收藏同步 | ⏳ 待開始 |
+| Step 5 | NextAuth + 收藏同步 | ✅ 完成（NextAuth v5 + Google/LINE OAuth + Guest sync） |
 
 
 
