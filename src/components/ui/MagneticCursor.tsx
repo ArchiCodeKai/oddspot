@@ -24,6 +24,7 @@ const TRAIL_LIFE_MS   = 700;  // 給 cursorState.trail 用（MapClickEffect 仍�
 const LIGHT_TRAIL_RGB     = "80,80,80";
 const LIGHT_CURSOR_STROKE = "#2a2a2a";
 const LIGHT_CURSOR_FILL   = "#f0f0f0";
+const FALLBACK_ACCENT_RGB = "95,217,192";
 
 export function MagneticCursor() {
   const cursorRef = useRef<HTMLDivElement>(null);
@@ -68,6 +69,27 @@ export function MagneticCursor() {
     const lastDot = { x: -300, y: -300 };
     let firstMove = true;
     let lastMoveTime = 0;
+
+    // 主題色 cache：rAF 內每幀讀 getComputedStyle 會強制 style flush（每幀 0.5-1ms）。
+    // 改用 MutationObserver 監聽 data-theme / class 變動才更新，平時直接用 cached 值。
+    const readAccentRgb = (): string => {
+      const isLight = document.documentElement.classList.contains("light");
+      if (isLight) return LIGHT_TRAIL_RGB;
+      return (
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("--accent-rgb")
+          .trim() || FALLBACK_ACCENT_RGB
+      );
+    };
+    let cachedAccentRgb = readAccentRgb();
+    const updateThemeCache = () => {
+      cachedAccentRgb = readAccentRgb();
+    };
+    const themeObserver = new MutationObserver(updateThemeCache);
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "data-theme"],
+    });
 
     const pushPoint = (x: number, y: number, born: number, angle: number) => {
       points.push({ x, y });
@@ -142,11 +164,8 @@ export function MagneticCursor() {
         points.shift();
       }
 
-      // 主題色（每幀讀，支援即時切換）
-      const isLight = document.documentElement.classList.contains("light");
-      const accentRgb = isLight
-        ? LIGHT_TRAIL_RGB
-        : getComputedStyle(document.documentElement).getPropertyValue("--accent-rgb").trim() || "95,217,192";
+      // 主題色用 cache（updateThemeCache 在 MutationObserver callback 時更新）
+      const accentRgb = cachedAccentRgb;
 
       const cx = cursorState.pos.x;
       const cy = cursorState.pos.y;
@@ -196,6 +215,7 @@ export function MagneticCursor() {
 
     return () => {
       cancelAnimationFrame(raf);
+      themeObserver.disconnect();
       hideCursorStyle.remove();
       document.removeEventListener("mousemove",  onMove);
       document.removeEventListener("mouseover",  onOver);
