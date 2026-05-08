@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
-import { Map, AttributionControl } from "react-map-gl/mapbox";
+import { useState, useCallback, useMemo, useRef } from "react";
+import { Map, AttributionControl, type MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { SpotMarker } from "./SpotMarker";
 import { SpotPopup } from "./SpotPopup";
+import { LocateMeButton } from "./LocateMeButton";
 import { useAppStore } from "@/store/useAppStore";
 import { loadMapStyle } from "@/lib/mapbox/style-loader";
 import type { SpotMapPoint } from "@/types/spots";
@@ -24,6 +25,7 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
   const [selectedSpot, setSelectedSpot] = useState<SpotMapPoint | null>(null);
   const [zoom, setZoom] = useState(14);
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
+  const mapRef = useRef<MapRef | null>(null);
 
   // 跟著主題切換動態載入對應 mapbox style（style-loader 內已 cache）
   const theme = useAppStore((s) => s.theme);
@@ -73,26 +75,30 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
           </div>
         </div>
       ) : (
-        <Map
-          mapboxAccessToken={token}
-          initialViewState={initialViewState}
-          mapStyle={mapStyle}
-          onMove={handleMove}
-          onClick={handleMapClick}
-          attributionControl={false}
-          style={{ width: "100%", height: "100%" }}
-        >
-          <AttributionControl compact />
-          {spots.map((spot) => (
-            <SpotMarker
-              key={spot.id}
-              spot={spot}
-              isSelected={selectedSpot?.id === spot.id}
-              zoom={zoom}
-              onClick={handleMarkerClick}
-            />
-          ))}
-        </Map>
+        <>
+          <Map
+            ref={mapRef}
+            mapboxAccessToken={token}
+            initialViewState={initialViewState}
+            mapStyle={mapStyle}
+            onMove={handleMove}
+            onClick={handleMapClick}
+            attributionControl={false}
+            style={{ width: "100%", height: "100%" }}
+          >
+            <AttributionControl compact />
+            {spots.map((spot) => (
+              <SpotMarker
+                key={spot.id}
+                spot={spot}
+                isSelected={selectedSpot?.id === spot.id}
+                zoom={zoom}
+                onClick={handleMarkerClick}
+              />
+            ))}
+          </Map>
+          <LocateMeButton mapRef={mapRef} />
+        </>
       )}
 
       {/* UI 覆蓋層：不在 Map 內，不受 mapbox 影響 */}
