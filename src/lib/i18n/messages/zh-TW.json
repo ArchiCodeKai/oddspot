@@ -33,14 +33,14 @@
   },
   "spotMeta": {
     "categories": {
-      "weird-temple": "詭異廟宇",
-      "abandoned": "廢棄場所",
+      "religious-site": "宗教建築",
+      "peculiar-place": "特殊場域",
       "giant-object": "巨型物體",
-      "kitsch": "俗豔裝置",
-      "marginal-architecture": "邊緣建築",
+      "modern-ruins": "現代廢墟",
       "urban-legend": "都市傳說",
-      "absurd-landscape": "荒謬景觀",
-      "odd-shopfront": "奇異店面"
+      "curiosity-shop": "珍奇商家",
+      "graffiti": "塗鴉標記",
+      "living-landmark": "活體地標"
     },
     "status": {
       "active": "可探索",

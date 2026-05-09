@@ -100,19 +100,6 @@
   --status-pending:     #6fa8ff;
 }
 
-/* Category colors — v2 legacy（v3 已移到 monochrome glyph 系統）
-   保留 token 給尚未遷移的元件最後一里使用，遷移完成後可刪除 */
-:root {
-  --cat-temple:     #f97316;
-  --cat-abandoned:  #6b7280;
-  --cat-giant:      #3b82f6;
-  --cat-kitsch:     #ec4899;
-  --cat-marginal:   #14b8a6;
-  --cat-legend:     #8b5cf6;
-  --cat-absurd:     #22c55e;
-  --cat-shopfront:  #eab308;
-}
-
 html, body { background: var(--bg); color: var(--fg); }
 
 @keyframes ob-blink {

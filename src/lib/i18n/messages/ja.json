@@ -33,14 +33,14 @@
   },
   "spotMeta": {
     "categories": {
-      "weird-temple": "奇妙な廟",
-      "abandoned": "廃墟",
+      "religious-site": "宗教建築",
+      "peculiar-place": "不思議な場所",
       "giant-object": "巨大物体",
-      "kitsch": "キッチュ装置",
-      "marginal-architecture": "辺縁建築",
+      "modern-ruins": "現代廃墟",
       "urban-legend": "都市伝説",
-      "absurd-landscape": "不条理景観",
-      "odd-shopfront": "奇妙な店頭"
+      "curiosity-shop": "珍奇商店",
+      "graffiti": "落書き",
+      "living-landmark": "生きた目印"
     },
     "status": {
       "active": "探索可",
