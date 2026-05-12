@@ -49,9 +49,32 @@ const notoSansJP = Noto_Sans_JP({
   display: "swap",
 });
 
+// 跟 zh-TW.json 的 landing.lede 一致 — LINE / Facebook / Twitter 分享預覽會抓這段
+const SITE_DESCRIPTION =
+  "獨特、獵奇、懷舊或帶點粗糙感的怪怪景點，尋找生活中的幽默感或視覺衝擊，去探險吧。";
+
 export const metadata: Metadata = {
   title: "OddSpot",
-  description: "發現台灣城市裡那些說不清楚的地方",
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: "OddSpot",
+    description: SITE_DESCRIPTION,
+    siteName: "OddSpot",
+    type: "website",
+    locale: "zh_TW",
+  },
+  twitter: {
+    card: "summary",
+    title: "OddSpot",
+    description: SITE_DESCRIPTION,
+  },
+  icons: {
+    icon: [
+      { url: "/brand/oddspot-favicon-dark.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: "/brand/oddspot-favicon-dark.svg",
+  },
 };
 
 // FOUC 防止：在 React 水合前同步套用主題與語言設定

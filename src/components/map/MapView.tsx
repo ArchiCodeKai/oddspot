@@ -7,6 +7,7 @@ import { SpotMarker } from "./SpotMarker";
 import { SpotPopup } from "./SpotPopup";
 import { LocateMeButton } from "./LocateMeButton";
 import { ScaleBar } from "./ScaleBar";
+import { UserLocationMarker } from "./UserLocationMarker";
 import { useAppStore } from "@/store/useAppStore";
 import { useMapStore, type Bbox } from "@/store/useMapStore";
 import { loadMapStyle } from "@/lib/mapbox/style-loader";
@@ -189,6 +190,8 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
                 onClick={handleMarkerClick}
               />
             ))}
+            {/* 使用者目前位置 — 放在 spots 之後讓它疊在最上層 */}
+            {userLocation && <UserLocationMarker location={userLocation} />}
           </Map>
           <ScaleBar mapRef={mapRef} />
           <LocateMeButton mapRef={mapRef} />

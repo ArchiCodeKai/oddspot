@@ -44,6 +44,18 @@
       }
     },
     {
+      "id": "waterway",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "waterway",
+      "minzoom": 8,
+      "paint": {
+        "line-color": "@@muted@@",
+        "line-width": 0.5,
+        "line-opacity": 0.5
+      }
+    },
+    {
       "id": "boundary-state",
       "type": "line",
       "source": "composite",
