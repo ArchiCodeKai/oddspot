@@ -1,47 +1,78 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef } from "react";
-import { Map, AttributionControl, type MapRef } from "react-map-gl/mapbox";
+import { useState, useCallback, useMemo } from "react";
+import { Map, AttributionControl, type MapRef, type ViewStateChangeEvent } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { SpotMarker } from "./SpotMarker";
 import { SpotPopup } from "./SpotPopup";
 import { LocateMeButton } from "./LocateMeButton";
 import { useAppStore } from "@/store/useAppStore";
+import { useMapStore, type Bbox } from "@/store/useMapStore";
 import { loadMapStyle } from "@/lib/mapbox/style-loader";
 import type { SpotMapPoint } from "@/types/spots";
 
-const TAIPEI_CENTER = { latitude: 25.0478, longitude: 121.5319, zoom: 14 };
+const TAIPEI_CENTER = { latitude: 25.0478, longitude: 121.5319, zoom: 11 };
 
 interface MapViewProps {
   spots: SpotMapPoint[];
   userLocation: { lat: number; lng: number } | null;
-  radius: number;
+  // mapRef 由父層持有（給 RadiusToggle / LocateMeButton 共用），這層只負責接上
+  mapRef: React.RefObject<MapRef | null>;
   onExpandRadius?: () => void;
+  onResetToRadius?: () => void;
   isError?: boolean;
   onRetry?: () => void;
 }
 
-export function MapView({ spots, userLocation, radius, onExpandRadius, isError, onRetry }: MapViewProps) {
+export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetToRadius, isError, onRetry }: MapViewProps) {
   const [selectedSpot, setSelectedSpot] = useState<SpotMapPoint | null>(null);
-  const [zoom, setZoom] = useState(14);
+  const [zoom, setZoom] = useState(TAIPEI_CENTER.zoom);
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
-  const mapRef = useRef<MapRef | null>(null);
 
   // 跟著主題切換動態載入對應 mapbox style（style-loader 內已 cache）
   const theme = useAppStore((s) => s.theme);
   const mapStyle = useMemo(() => loadMapStyle(theme), [theme]);
 
-  // initialViewState 為 uncontrolled，userLocation 後續變動不重定位（與舊版行為一致）
+  // dual-mode query state（用 setViewportBbox / setQueryMode 寫回 store）
+  const queryMode = useMapStore((s) => s.queryMode);
+  const radius = useMapStore((s) => s.radius);
+  const setViewportBbox = useMapStore((s) => s.setViewportBbox);
+  const setQueryMode = useMapStore((s) => s.setQueryMode);
+
+  // initialViewState：使用者位置優先，否則台北中心
+  // 為 uncontrolled prop，後續 userLocation 變動不會自動重定位（由 LocateMeButton 主動 flyTo）
   const initialViewState = useMemo(() => {
     if (userLocation) {
-      return { latitude: userLocation.lat, longitude: userLocation.lng, zoom: 14 };
+      return { latitude: userLocation.lat, longitude: userLocation.lng, zoom: 12 };
     }
     return TAIPEI_CENTER;
   }, [userLocation]);
 
-  const handleMove = useCallback((e: { viewState: { zoom: number } }) => {
+  const handleMove = useCallback((e: ViewStateChangeEvent) => {
     setZoom(Math.round(e.viewState.zoom));
   }, []);
+
+  // 任何 moveend（含程式呼叫 flyTo / easeTo）都更新 bbox — 確保 viewport mode 下
+  // 程式移動後仍有最新 bbox 可查詢
+  const handleMoveEnd = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const bounds = map.getBounds();
+    if (!bounds) return;
+    const bbox: Bbox = {
+      minLng: bounds.getWest(),
+      minLat: bounds.getSouth(),
+      maxLng: bounds.getEast(),
+      maxLat: bounds.getNorth(),
+    };
+    setViewportBbox(bbox);
+  }, [mapRef, setViewportBbox]);
+
+  // 只有使用者真實互動（drag / zoom）才切換 queryMode 到 viewport
+  // flyTo / easeTo 不會觸發這兩個 event，所以 LocateMe / RadiusToggle 飛地圖時 mode 不會被誤改
+  const handleUserInteract = useCallback(() => {
+    setQueryMode("viewport");
+  }, [setQueryMode]);
 
   const handleMarkerClick = useCallback((spot: SpotMapPoint) => {
     setSelectedSpot((prev) => (prev?.id === spot.id ? null : spot));
@@ -50,6 +81,64 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
   const handleMapClick = useCallback(() => {
     setSelectedSpot(null);
   }, []);
+
+  // 空狀態文案：依當前模式給不同建議
+  const renderEmptyState = () => {
+    if (queryMode === "viewport") {
+      return (
+        <>
+          <p className="text-sm font-content" style={{ color: "var(--muted)" }}>
+            視圖範圍內暫無景點
+          </p>
+          {onResetToRadius && (
+            <button
+              onClick={onResetToRadius}
+              className="mt-2 text-xs px-3 py-1.5 transition-colors uppercase"
+              style={{
+                borderRadius: 2,
+                background: "rgb(var(--accent-rgb) / 0.1)",
+                color: "var(--foreground)",
+                border: "1px solid var(--line-strong)",
+                fontFamily: "var(--font-jetbrains-mono), monospace",
+                letterSpacing: "0.12em",
+                cursor: "pointer",
+              }}
+            >
+              回到附近 {radius}km
+            </button>
+          )}
+        </>
+      );
+    }
+    return (
+      <>
+        <p className="text-sm font-content" style={{ color: "var(--muted)" }}>
+          附近 {radius}km 內暫無景點
+        </p>
+        {onExpandRadius ? (
+          <button
+            onClick={onExpandRadius}
+            className="mt-2 text-xs px-3 py-1.5 transition-colors uppercase"
+            style={{
+              borderRadius: 2,
+              background: "rgb(var(--accent-rgb) / 0.1)",
+              color: "var(--foreground)",
+              border: "1px solid var(--line-strong)",
+              fontFamily: "var(--font-jetbrains-mono), monospace",
+              letterSpacing: "0.12em",
+              cursor: "pointer",
+            }}
+          >
+            擴大搜尋範圍
+          </button>
+        ) : (
+          <p className="text-xs mt-0.5" style={{ color: "var(--muted)", opacity: 0.6 }}>
+            已是最大搜尋範圍
+          </p>
+        )}
+      </>
+    );
+  };
 
   return (
     <div className="relative w-full" style={{ height: "100%" }} data-cursor-map>
@@ -82,6 +171,9 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
             initialViewState={initialViewState}
             mapStyle={mapStyle}
             onMove={handleMove}
+            onMoveEnd={handleMoveEnd}
+            onDragEnd={handleUserInteract}
+            onZoomEnd={handleUserInteract}
             onClick={handleMapClick}
             attributionControl={false}
             style={{ width: "100%", height: "100%" }}
@@ -134,6 +226,7 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
                   background: "rgb(var(--accent-rgb) / 0.15)",
                   color: "var(--accent)",
                   border: "1px solid rgb(var(--accent-rgb) / 0.3)",
+                  cursor: "pointer",
                 }}
               >
                 重試
@@ -154,29 +247,7 @@ export function MapView({ spots, userLocation, radius, onExpandRadius, isError, 
               boxShadow: "var(--shadow-glow)",
             }}
           >
-            <p className="text-sm font-content" style={{ color: "var(--muted)" }}>
-              附近 {radius}km 內暫無景點
-            </p>
-            {onExpandRadius ? (
-              <button
-                onClick={onExpandRadius}
-                className="mt-2 text-xs px-3 py-1.5 transition-colors uppercase"
-                style={{
-                  borderRadius: 2,
-                  background: "rgb(var(--accent-rgb) / 0.1)",
-                  color: "var(--foreground)",
-                  border: "1px solid var(--line-strong)",
-                  fontFamily: "var(--font-jetbrains-mono), monospace",
-                  letterSpacing: "0.12em",
-                }}
-              >
-                擴大至 {radius === 5 ? 10 : 20}km
-              </button>
-            ) : (
-              <p className="text-xs mt-0.5" style={{ color: "var(--muted)", opacity: 0.6 }}>
-                已是最大搜尋範圍
-              </p>
-            )}
+            {renderEmptyState()}
           </div>
         </div>
       )}

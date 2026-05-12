@@ -14,19 +14,50 @@ const latSchema = z.number().min(-90).max(90);
 const lngSchema = z.number().min(-180).max(180);
 
 // GET /api/spots query
-// searchParams 拿到的都是 string，用 z.coerce 自動轉 number
-// categories 是 "a,b,c" 字串，先 split 再驗
-export const spotsQuerySchema = z.object({
-  lat: z.coerce.number().pipe(latSchema),
-  lng: z.coerce.number().pipe(lngSchema),
-  radius: z.coerce.number().positive().max(500).optional().default(5),
-  categories: z
-    .string()
-    .optional()
-    .transform((v) => (v ? v.split(",").filter(Boolean) : []))
-    .pipe(z.array(categorySchema)),
-  cursor: cuidSchema.optional(),
-});
+// 兩種互斥模式（必須擇一）：
+//   1. radius mode: lat + lng + radius（半徑公里）
+//   2. viewport mode: bbox=minLng,minLat,maxLng,maxLat
+// categories / cursor 不分模式都接受
+export const spotsQuerySchema = z
+  .object({
+    lat: z.coerce.number().pipe(latSchema).optional(),
+    lng: z.coerce.number().pipe(lngSchema).optional(),
+    radius: z.coerce.number().positive().max(500).optional().default(5),
+    categories: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v.split(",").filter(Boolean) : []))
+      .pipe(z.array(categorySchema)),
+    cursor: cuidSchema.optional(),
+    // bbox 字串："west,south,east,north"
+    bbox: z
+      .string()
+      .optional()
+      .transform((v, ctx) => {
+        if (!v) return undefined;
+        const parts = v.split(",").map(Number);
+        if (parts.length !== 4 || parts.some((n) => isNaN(n))) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "bbox 必須是 4 個逗號分隔數字（minLng,minLat,maxLng,maxLat）",
+          });
+          return z.NEVER;
+        }
+        const [minLng, minLat, maxLng, maxLat] = parts;
+        if (minLng < -180 || maxLng > 180 || minLat < -90 || maxLat > 90) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "bbox 數值超出有效範圍",
+          });
+          return z.NEVER;
+        }
+        return { minLng, minLat, maxLng, maxLat };
+      }),
+  })
+  .refine(
+    (data) => data.bbox !== undefined || (data.lat !== undefined && data.lng !== undefined),
+    { message: "必須提供 bbox 或 lat+lng" },
+  );
 
 // POST /api/spots body（用戶投稿）
 // 字串長度上限參考 OddSpot 內容性質（短描述為主）
