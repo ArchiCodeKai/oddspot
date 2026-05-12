@@ -11,6 +11,7 @@ import { CATEGORY_GLYPHS } from "@/lib/constants/categoryGlyphs";
 import { useSavedStore } from "@/store/useSavedStore";
 import { useSession } from "@/contexts/SessionContext";
 import { useLoginPromptStore } from "@/store/useLoginPromptStore";
+import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import type { SpotMapPoint } from "@/types/spots";
 import type { SpotCategory } from "@/lib/constants/categories";
 import type { SpotStatus } from "@/lib/constants/status";
@@ -53,6 +54,11 @@ export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps
   const addSave = useSavedStore((s) => s.addSave);
   const removeSave = useSavedStore((s) => s.removeSave);
 
+  // Stage 3：路線規劃（階段 4 才會做 RouteSheet UI 跟 optimize）
+  const isInRoute = useRoutePlannerStore((s) => s.selectedSpots.some((x) => x.id === spot.id));
+  const addToRoute = useRoutePlannerStore((s) => s.addSpot);
+  const removeFromRoute = useRoutePlannerStore((s) => s.removeSpot);
+
   // 距離：spot.distance 已存在則用；沒有時才從 userLocation 算
   const distanceKm = spot.distance ?? (userLocation ? haversineKm(userLocation, spot) : null);
 
@@ -70,6 +76,11 @@ export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps
   const handleNavigate = () => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}&travelmode=walking`;
     window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleToggleRoute = () => {
+    if (isInRoute) removeFromRoute(spot.id);
+    else addToRoute(spot);
   };
 
   return (
@@ -194,7 +205,7 @@ export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps
             </button>
           </div>
 
-          {/* 快速動作列：收藏 / 導航 / 詳情 */}
+          {/* 快速動作列：收藏 / 加入路線 / 導航 */}
           <div className="flex gap-2 mt-3">
             {/* 收藏 */}
             <button
@@ -220,6 +231,33 @@ export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps
                 <path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z" />
               </svg>
               {tSwipe("save")}
+            </button>
+
+            {/* 加入路線 (Stage 3) */}
+            <button
+              onClick={handleToggleRoute}
+              aria-label={isInRoute ? "從路線移除" : "加入路線"}
+              className="flex-1 h-9 flex items-center justify-center gap-1.5 transition-all uppercase"
+              style={{
+                background: isInRoute ? "rgb(var(--accent-rgb) / 0.15)" : "transparent",
+                border: `1px solid ${isInRoute ? "rgb(var(--accent-rgb) / 0.6)" : "var(--line)"}`,
+                color: isInRoute ? "var(--accent)" : "var(--muted)",
+                borderRadius: 2,
+                cursor: "pointer",
+                fontFamily: "var(--font-jetbrains-mono), monospace",
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                fontWeight: 700,
+                boxShadow: isInRoute ? "0 0 12px rgb(var(--accent-rgb) / 0.18)" : "none",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="6" cy="6" r="2" />
+                <circle cx="18" cy="18" r="2" />
+                <path d="M6 8 Q 6 14 12 14 T 18 16" />
+              </svg>
+              {isInRoute ? "已加入" : "ROUTE"}
             </button>
 
             {/* 導航 */}

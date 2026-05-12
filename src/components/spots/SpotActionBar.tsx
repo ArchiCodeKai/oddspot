@@ -35,15 +35,26 @@ export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-zinc-900/80 backdrop-blur-md border-t border-white/5 px-5 py-4 flex gap-3">
+    <div
+      className="fixed bottom-0 left-0 right-0 backdrop-blur-md px-5 py-4 flex gap-3"
+      style={{
+        background: "var(--panel-glass-strong)",
+        borderTop: "1px solid var(--line)",
+      }}
+    >
       <button
         onClick={handleToggleSave}
         disabled={loading}
-        className={`flex-1 py-3 rounded-xs text-sm font-medium transition-colors ${
-          saved
-            ? "bg-white/10 border border-white/20 text-white"
-            : "border border-zinc-700 text-zinc-300"
-        }`}
+        className="flex-1 py-3 text-sm font-medium transition-colors uppercase"
+        style={{
+          borderRadius: 2,
+          background: saved ? "rgb(var(--accent-rgb) / 0.15)" : "transparent",
+          color: saved ? "var(--accent)" : "var(--muted)",
+          border: `1px solid ${saved ? "rgb(var(--accent-rgb) / 0.4)" : "var(--line)"}`,
+          fontFamily: "var(--font-jetbrains-mono), monospace",
+          letterSpacing: "0.12em",
+          cursor: loading ? "wait" : "pointer",
+        }}
       >
         {saved ? "♥" : "♡"} {saved ? "已收藏" : "收藏"}
       </button>
@@ -51,7 +62,14 @@ export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
         href={mapsUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex-1 py-3 rounded-xs bg-white text-zinc-900 text-sm font-semibold text-center"
+        className="flex-1 py-3 text-sm font-semibold text-center uppercase"
+        style={{
+          borderRadius: 2,
+          background: "var(--accent)",
+          color: "var(--background)",
+          fontFamily: "var(--font-jetbrains-mono), monospace",
+          letterSpacing: "0.12em",
+        }}
       >
         導航前往
       </a>

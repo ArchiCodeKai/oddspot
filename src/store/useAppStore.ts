@@ -1,13 +1,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { THEMES, type Theme } from "@/types/theme";
 
-export type AppTheme = "terminal" | "blueprint" | "caution" | "midnight";
-
-export const APP_THEMES: AppTheme[] = ["terminal", "blueprint", "caution", "midnight"];
+// 向後相容（之前用 AppTheme/APP_THEMES 命名的檔案不用全部改 import）。
+export type AppTheme = Theme;
+export const APP_THEMES = THEMES;
 
 interface AppState {
-  theme: AppTheme;
-  setTheme: (theme: AppTheme) => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
   cycleTheme: () => void;
 }
 
@@ -18,8 +19,8 @@ export const useAppStore = create<AppState>()(
       setTheme: (theme) => set({ theme }),
       cycleTheme: () => {
         const { theme } = get();
-        const idx = APP_THEMES.indexOf(theme);
-        const next = APP_THEMES[(idx + 1) % APP_THEMES.length];
+        const idx = THEMES.indexOf(theme);
+        const next = THEMES[(idx + 1) % THEMES.length];
         set({ theme: next });
       },
     }),
@@ -32,7 +33,7 @@ export const useAppStore = create<AppState>()(
         if (old === "light" || old === "dark" || !old) {
           return { theme: "terminal" } as Partial<AppState>;
         }
-        if (APP_THEMES.includes(old as AppTheme)) {
+        if (THEMES.includes(old as Theme)) {
           return obj as Partial<AppState>;
         }
         return { theme: "terminal" } as Partial<AppState>;

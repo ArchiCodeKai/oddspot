@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
     radius: searchParams.get("radius") ?? undefined,
     categories: searchParams.get("categories") ?? undefined,
     cursor: searchParams.get("cursor") ?? undefined,
+    bbox: searchParams.get("bbox") ?? undefined,
   });
   if (!parsed.success) {
     return NextResponse.json<ApiResponse<null>>(
@@ -39,15 +40,26 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   }
-  const { lat, lng, radius, categories, cursor } = parsed.data;
+  const { lat, lng, radius, categories, cursor, bbox } = parsed.data;
+
+  // bbox 模式優先；否則用 lat + lng + radius 算 bounding box
+  // refine 保證至少有一組，但 TS narrow 不到，所以加防禦
+  const bounds =
+    bbox ??
+    (lat !== undefined && lng !== undefined ? getBoundingBox(lat, lng, radius) : null);
+
+  if (!bounds) {
+    return NextResponse.json<ApiResponse<null>>(
+      { data: null, success: false, error: "缺少 bbox 或 lat+lng" },
+      { status: 400 }
+    );
+  }
 
   try {
-    const box = getBoundingBox(lat, lng, radius);
-
     const spots = await prisma.spot.findMany({
       where: {
-        lat: { gte: box.minLat, lte: box.maxLat },
-        lng: { gte: box.minLng, lte: box.maxLng },
+        lat: { gte: bounds.minLat, lte: bounds.maxLat },
+        lng: { gte: bounds.minLng, lte: bounds.maxLng },
         ...(categories.length > 0
           ? { category: { in: categories } }
           : {}),

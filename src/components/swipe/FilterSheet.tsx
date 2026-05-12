@@ -1,24 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { CATEGORY_VALUES, CATEGORY_CODES } from "@/lib/constants/categories";
 import { CATEGORY_GLYPHS } from "@/lib/constants/categoryGlyphs";
 import { getCategoryLabel, getDifficultyLabel, getStatusOptions } from "@/lib/i18n/spotMeta";
+import { useMapStore } from "@/store/useMapStore";
 import type { SpotCategory } from "@/lib/constants/categories";
+import type { SpotStatus } from "@/lib/constants/status";
 
 interface FilterSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  // TODO Step 4: 接 useMapStore.filters 實際過濾
 }
+
+type Difficulty = "easy" | "medium" | "hard";
 
 export function FilterSheet({ isOpen, onClose }: FilterSheetProps) {
   const t = useTranslations("filter");
   const tMeta = useTranslations("spotMeta");
+
+  // 連 useMapStore.filters：探索頁 / 地圖頁兩處 trigger 共用同一份篩選狀態
+  const filters = useMapStore((s) => s.filters);
+  const setFilters = useMapStore((s) => s.setFilters);
+
+  // 本地 staging state — 打開時從 store 同步，按 Apply 才寫回（取消 = 不變動）
   const [selectedCategories, setSelectedCategories] = useState<SpotCategory[]>([]);
-  const [difficulty, setDifficulty] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const [status, setStatus] = useState<SpotStatus | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedCategories(filters.categories ?? []);
+      setDifficulty((filters.difficulty?.[0] as Difficulty) ?? null);
+      setStatus((filters.status?.[0] as SpotStatus) ?? null);
+    }
+  }, [isOpen, filters.categories, filters.difficulty, filters.status]);
 
   const toggleCategory = (cat: SpotCategory) => {
     setSelectedCategories((prev) =>
@@ -30,10 +47,16 @@ export function FilterSheet({ isOpen, onClose }: FilterSheetProps) {
     setSelectedCategories([]);
     setDifficulty(null);
     setStatus(null);
+    setFilters({});
   };
 
   const handleApply = () => {
-    // TODO Step 4: 套用篩選至 useMapStore.setFilters(...)
+    setFilters({
+      ...filters,
+      categories: selectedCategories.length ? selectedCategories : undefined,
+      difficulty: difficulty ? [difficulty] : undefined,
+      status: status ? [status] : undefined,
+    });
     onClose();
   };
 
@@ -159,7 +182,7 @@ export function FilterSheet({ isOpen, onClose }: FilterSheetProps) {
               <ToggleButton
                 key={opt.value}
                 selected={isSelected}
-                onClick={() => setStatus(isSelected ? null : opt.value)}
+                onClick={() => setStatus(isSelected ? null : (opt.value as SpotStatus))}
               >
                 {opt.label}
               </ToggleButton>

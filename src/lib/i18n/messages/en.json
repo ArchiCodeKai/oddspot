@@ -33,14 +33,14 @@
   },
   "spotMeta": {
     "categories": {
-      "weird-temple": "Weird Temple",
-      "abandoned": "Abandoned Site",
+      "religious-site": "Religious Site",
+      "peculiar-place": "Peculiar Place",
       "giant-object": "Giant Object",
-      "kitsch": "Kitsch Installation",
-      "marginal-architecture": "Marginal Architecture",
+      "modern-ruins": "Modern Ruins",
       "urban-legend": "Urban Legend",
-      "absurd-landscape": "Absurd Landscape",
-      "odd-shopfront": "Odd Shopfront"
+      "curiosity-shop": "Curiosity Shop",
+      "graffiti": "Graffiti",
+      "living-landmark": "Living Landmark"
     },
     "status": {
       "active": "Explorable",
