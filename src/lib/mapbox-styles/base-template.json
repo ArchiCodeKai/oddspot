@@ -33,6 +33,17 @@
       }
     },
     {
+      "id": "coastline",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "water",
+      "paint": {
+        "line-color": "@@muted@@",
+        "line-width": 1,
+        "line-opacity": 0.65
+      }
+    },
+    {
       "id": "boundary-state",
       "type": "line",
       "source": "composite",
