@@ -6,6 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { SpotMarker } from "./SpotMarker";
 import { SpotPopup } from "./SpotPopup";
 import { LocateMeButton } from "./LocateMeButton";
+import { ScaleBar } from "./ScaleBar";
 import { useAppStore } from "@/store/useAppStore";
 import { useMapStore, type Bbox } from "@/store/useMapStore";
 import { loadMapStyle } from "@/lib/mapbox/style-loader";
@@ -189,6 +190,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
               />
             ))}
           </Map>
+          <ScaleBar mapRef={mapRef} />
           <LocateMeButton mapRef={mapRef} />
         </>
       )}

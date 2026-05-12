@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { fetchSpots, type SpotsListResponse } from "@/services/spotsService";
 import type { Bbox, QueryMode } from "@/store/useMapStore";
 
@@ -37,5 +37,8 @@ export function useSpots({ mode, userLocation, radius, bbox, categories }: UseSp
           : { lat, lng, radius, categories: cats },
       ),
     staleTime: 5 * 60 * 1000,
+    // 切換 mode / radius / 拖地圖時保留上次資料，避免 isLoading 暫時 true 觸發
+    // map/page.tsx 整頁 unmount → MapView 重 mount → initialViewState 套用 → 縮放被 reset
+    placeholderData: keepPreviousData,
   });
 }

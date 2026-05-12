@@ -83,7 +83,10 @@ export default function MapPage() {
     }
   };
 
-  if (isLoading) {
+  // 全頁 loading screen 只在「首次完全沒資料」時顯示
+  // 切 mode / radius / 拖地圖時 placeholderData 會保留上次 data，這條 condition 為 false
+  // → MapView 不會被 unmount，縮放/中心不會被 reset
+  if (isLoading && !data) {
     return (
       <div
         className="flex flex-col items-center justify-center gap-4"
