@@ -26,7 +26,16 @@
     "logout": "ログアウト",
     "saved": "保存済み",
     "trip": "今日のルート",
-    "user": "ユーザー"
+    "user": "ユーザー",
+    "prompt": {
+      "badge": "err_anon · auth_required",
+      "title": "認証が必要",
+      "description": "OAuth ワンタップでログイン。登録不要。",
+      "descriptionLine2": "匿名閲覧中の保存は引き継がれます。",
+      "googleAction": "Google でログイン",
+      "lineAction": "LINE でログイン",
+      "skip": "skip · 匿名で続行"
+    }
   },
   "map": {
     "locating": "位置情報取得中"

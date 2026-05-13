@@ -26,7 +26,16 @@
     "logout": "登出",
     "saved": "已收藏",
     "trip": "今日行程",
-    "user": "用戶"
+    "user": "用戶",
+    "prompt": {
+      "badge": "err_anon · auth_required",
+      "title": "此操作需要身分",
+      "description": "OAuth 一鍵登入，無須另外註冊。",
+      "descriptionLine2": "匿名瀏覽期間的收藏會同步保留。",
+      "googleAction": "Google 登入",
+      "lineAction": "LINE 登入",
+      "skip": "skip · 繼續匿名瀏覽"
+    }
   },
   "map": {
     "locating": "定位中"
