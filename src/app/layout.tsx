@@ -70,10 +70,22 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/brand/oddspot-favicon-dark.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "any" },
+      // 圓底版本：依瀏覽器 prefers-color-scheme 自動切換
+      // light mode → 灰白圓底 + 深綠 eye
+      // dark mode  → 黑圓底 + 螢光綠 eye
+      {
+        url: "/icon-light.svg",
+        type: "image/svg+xml",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/icon-dark.svg",
+        type: "image/svg+xml",
+        media: "(prefers-color-scheme: dark)",
+      },
     ],
-    apple: "/brand/oddspot-favicon-dark.svg",
+    // Apple touch icon 不支援 media query，預設用 dark（OddSpot v3 主要走深色 UI）
+    apple: "/icon-dark.svg",
   },
 };
 
