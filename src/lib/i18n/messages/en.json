@@ -26,7 +26,16 @@
     "logout": "Logout",
     "saved": "Saved",
     "trip": "Today's Trip",
-    "user": "User"
+    "user": "User",
+    "prompt": {
+      "badge": "err_anon · auth_required",
+      "title": "AUTHENTICATION REQUIRED",
+      "description": "One-tap OAuth. No separate registration.",
+      "descriptionLine2": "Anonymous saves carry over on sign-in.",
+      "googleAction": "Sign in with Google",
+      "lineAction": "Sign in with LINE",
+      "skip": "skip · stay anonymous"
+    }
   },
   "map": {
     "locating": "Locating"
