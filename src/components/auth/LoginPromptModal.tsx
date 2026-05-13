@@ -4,6 +4,31 @@ import { useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useLoginPromptStore } from "@/store/useLoginPromptStore";
 
+// 縮小版 Google G logo（14×14，保留品牌色當辨識點）
+function GoogleMark() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4" />
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853" />
+      <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.174 0 7.548 0 9s.348 2.826.957 4.039l3.007-2.332z" fill="#FBBC05" />
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335" />
+    </svg>
+  );
+}
+
+// 縮小版 LINE logo（14×14，保留 LINE 品牌綠當辨識點）
+function LineMark() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+      <rect width="24" height="24" rx="3" fill="#06C755" />
+      <path
+        d="M6 7.8h1.6v5.1h2.8v1.4H6V7.8Zm5.2 0h1.6v6.5h-1.6V7.8Zm2.8 0h1.5l2.4 3.6V7.8h1.5v6.5h-1.5l-2.4-3.6v3.6H14V7.8Z"
+        fill="#fff"
+      />
+    </svg>
+  );
+}
+
 export function LoginPromptModal() {
   const { isOpen, close } = useLoginPromptStore();
 
@@ -32,36 +57,11 @@ export function LoginPromptModal() {
   return (
     <>
       <style>{`
-        @keyframes modal-in {
+        @keyframes login-modal-in {
           from { opacity: 0; transform: translateY(12px) scale(0.97); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .modal-card { animation: modal-in 0.22s ease forwards; }
-        .oauth-btn {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          width: 100%;
-          padding: 12px 20px;
-          border-radius: 2px;
-          font-size: 0.8rem;
-          letter-spacing: 0.06em;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          background: #fff;
-          border: none;
-          color: #1f2937;
-          font-weight: 600;
-        }
-        .oauth-btn:hover { filter: brightness(0.96); }
-        .google-btn {
-          background: #fff;
-          color: #1f2937;
-        }
-        .line-btn {
-          background: #06C755;
-          color: #fff;
-        }
+        .login-modal-card { animation: login-modal-in 0.22s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
       `}</style>
 
       {/* 背景 overlay */}
@@ -75,26 +75,42 @@ export function LoginPromptModal() {
       >
         {/* Modal 卡片 */}
         <div
-          className="modal-card relative w-full sm:max-w-sm mx-4 mb-6 sm:mb-0 p-7"
+          className="login-modal-card relative w-full sm:max-w-sm mx-4 mb-6 sm:mb-0 p-7"
           style={{
             background: "var(--panel-glass-strong)",
             border: "1px solid var(--line-strong)",
-            borderRadius: "4px",
+            borderRadius: 2,
             boxShadow:
               "0 0 60px rgb(var(--accent-rgb) / 0.08), 0 24px 48px rgb(var(--background-rgb) / 0.36)",
             backdropFilter: "blur(16px)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* 關閉按鈕 */}
+          {/* 關閉按鈕（acid X 框） */}
           <button
             onClick={close}
-            className="absolute top-4 right-4 text-xs tracking-widest transition-colors"
-            style={{ color: "var(--muted)" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--accent)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--muted)")}
+            aria-label="關閉"
+            className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center transition-colors"
+            style={{
+              background: "rgb(var(--accent-rgb) / 0.06)",
+              border: "1px solid var(--line)",
+              borderRadius: 2,
+              color: "var(--muted)",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgb(var(--accent-rgb) / 0.4)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--line)";
+            }}
           >
-            ✕
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
 
           {/* OddSpot 眼睛 icon */}
@@ -105,6 +121,7 @@ export function LoginPromptModal() {
               viewBox="0 0 110 130"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
               style={{ filter: "drop-shadow(0 0 8px rgb(var(--accent-rgb) / 0.5))" }}
             >
               <path
@@ -135,59 +152,136 @@ export function LoginPromptModal() {
             </svg>
           </div>
 
-          {/* 文字 */}
+          {/* 文案 — acid B-grade 風 */}
           <p
-            className="text-[10px] tracking-[0.3em] uppercase text-center mb-2"
-            style={{ color: "rgb(var(--accent-rgb) / 0.55)" }}
+            className="text-[10px] text-center mb-2"
+            style={{
+              color: "rgb(var(--accent-rgb) / 0.65)",
+              fontFamily: "var(--font-jetbrains-mono), monospace",
+              letterSpacing: "0.3em",
+              textTransform: "uppercase",
+            }}
           >
-            需要登入
+            err_anon · auth_required
           </p>
           <h2
-            className="text-base font-bold text-center mb-2"
-            style={{ color: "var(--foreground)" }}
+            className="text-base text-center mb-2"
+            style={{
+              color: "var(--foreground)",
+              fontFamily: "var(--font-jetbrains-mono), monospace",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              fontWeight: 700,
+            }}
           >
-            收藏景點需要帳號
+            此操作需要身分
           </h2>
           <p
-            className="text-xs text-center leading-relaxed mb-7"
+            className="text-xs text-center leading-relaxed mb-6 font-content"
             style={{ color: "var(--muted)" }}
           >
-            使用 Google 或 LINE 登入，即可收藏景點、規劃行程。
+            OAuth 一鍵登入，無須另外註冊。
             <br />
-            無須另外註冊。
+            匿名瀏覽期間的收藏會同步保留。
           </p>
 
-          {/* OAuth 登入按鈕 */}
-          <button className="oauth-btn google-btn" onClick={handleGoogleLogin}>
-            {/* Google G logo */}
-            <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-              <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-              <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
-              <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.174 0 7.548 0 9s.348 2.826.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-              <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-            </svg>
-            使用 Google 帳號登入
-          </button>
-          <button className="oauth-btn line-btn mt-3" onClick={handleLineLogin}>
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <rect width="24" height="24" rx="4" fill="#06C755" />
-              <path
-                d="M6 7.8h1.6v5.1h2.8v1.4H6V7.8Zm5.2 0h1.6v6.5h-1.6V7.8Zm2.8 0h1.5l2.4 3.6V7.8h1.5v6.5h-1.5l-2.4-3.6v3.6H14V7.8Z"
-                fill="#fff"
-              />
-            </svg>
-            使用 LINE 帳號登入
-          </button>
+          {/* OAuth 按鈕區 — acid wireframe 風 */}
+          <div className="flex flex-col gap-2.5">
+            <button
+              onClick={handleGoogleLogin}
+              className="w-full flex items-center justify-center gap-3 transition-all"
+              style={{
+                minHeight: 48,
+                padding: "12px 16px",
+                background: "transparent",
+                border: "1px solid var(--line-strong)",
+                borderRadius: 2,
+                color: "var(--foreground)",
+                fontFamily: "var(--font-jetbrains-mono), monospace",
+                fontSize: 11,
+                letterSpacing: "0.18em",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgb(var(--accent-rgb) / 0.08)";
+                e.currentTarget.style.borderColor = "rgb(var(--accent-rgb) / 0.55)";
+                e.currentTarget.style.color = "var(--accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = "var(--line-strong)";
+                e.currentTarget.style.color = "var(--foreground)";
+              }}
+            >
+              <GoogleMark />
+              Google 登入
+            </button>
 
-          {/* 取消 */}
+            <button
+              onClick={handleLineLogin}
+              className="w-full flex items-center justify-center gap-3 transition-all"
+              style={{
+                minHeight: 48,
+                padding: "12px 16px",
+                background: "transparent",
+                border: "1px solid var(--line-strong)",
+                borderRadius: 2,
+                color: "var(--foreground)",
+                fontFamily: "var(--font-jetbrains-mono), monospace",
+                fontSize: 11,
+                letterSpacing: "0.18em",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgb(var(--accent-rgb) / 0.08)";
+                e.currentTarget.style.borderColor = "rgb(var(--accent-rgb) / 0.55)";
+                e.currentTarget.style.color = "var(--accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = "var(--line-strong)";
+                e.currentTarget.style.color = "var(--foreground)";
+              }}
+            >
+              <LineMark />
+              LINE 登入
+            </button>
+          </div>
+
+          {/* 繼續匿名 — dashed border 弱按鈕（acid 「次要選項」視覺暗示） */}
           <button
             onClick={close}
-            className="w-full mt-3 py-2.5 text-xs tracking-widest uppercase transition-colors"
-            style={{ color: "var(--muted)" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--muted)")}
+            className="w-full mt-4 transition-all"
+            style={{
+              minHeight: 40,
+              padding: "10px 16px",
+              background: "transparent",
+              border: "1px dashed var(--line)",
+              borderRadius: 2,
+              color: "var(--muted)",
+              fontFamily: "var(--font-jetbrains-mono), monospace",
+              fontSize: 10,
+              letterSpacing: "0.22em",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--foreground)";
+              e.currentTarget.style.borderStyle = "solid";
+              e.currentTarget.style.borderColor = "var(--line-strong)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--muted)";
+              e.currentTarget.style.borderStyle = "dashed";
+              e.currentTarget.style.borderColor = "var(--line)";
+            }}
           >
-            繼續瀏覽（不登入）
+            skip · 繼續匿名瀏覽
           </button>
         </div>
       </div>
