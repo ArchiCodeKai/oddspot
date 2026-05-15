@@ -8,8 +8,11 @@ import { SpotPopup } from "./SpotPopup";
 import { LocateMeButton } from "./LocateMeButton";
 import { ScaleBar } from "./ScaleBar";
 import { UserLocationMarker } from "./UserLocationMarker";
+import { RoutePolyline } from "./RoutePolyline";
+import { RouteWaypointMarker } from "./RouteWaypointMarker";
 import { useAppStore } from "@/store/useAppStore";
 import { useMapStore, type Bbox } from "@/store/useMapStore";
+import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { loadMapStyle } from "@/lib/mapbox/style-loader";
 import type { SpotMapPoint } from "@/types/spots";
 
@@ -40,6 +43,28 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
   const radius = useMapStore((s) => s.radius);
   const setViewportBbox = useMapStore((s) => s.setViewportBbox);
   const setQueryMode = useMapStore((s) => s.setQueryMode);
+
+  // 路線相關 state（route 為 null 時 RoutePolyline 自己會 return null，不用外層 gate）
+  const routeSelectedSpots = useRoutePlannerStore((s) => s.selectedSpots);
+  const route = useRoutePlannerStore((s) => s.route);
+
+  // 計算每個路線點的視覺角色 + 編號
+  // - 有 userLocation：第一個 spot 是 waypoint 01，最後是 end
+  // - 無 userLocation：第一個 spot 是 start，最後是 end，中間遞增
+  const routeWaypointInfo = useMemo(() => {
+    let waypointCount = 0;
+    return routeSelectedSpots.map((spot, i) => {
+      const isLast = i === routeSelectedSpots.length - 1;
+      if (!userLocation && i === 0) {
+        return { spot, role: "start" as const, waypointNumber: 0 };
+      }
+      if (isLast && routeSelectedSpots.length > 1) {
+        return { spot, role: "end" as const, waypointNumber: 0 };
+      }
+      waypointCount += 1;
+      return { spot, role: "waypoint" as const, waypointNumber: waypointCount };
+    });
+  }, [routeSelectedSpots, userLocation]);
 
   // initialViewState：使用者位置優先，否則台北中心
   // 為 uncontrolled prop，後續 userLocation 變動不會自動重定位（由 LocateMeButton 主動 flyTo）
@@ -181,6 +206,8 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
             style={{ width: "100%", height: "100%" }}
           >
             <AttributionControl compact />
+            {/* 路線：放在 markers 前，讓 marker HTML 疊在 canvas 線之上 */}
+            <RoutePolyline />
             {spots.map((spot) => (
               <SpotMarker
                 key={spot.id}
@@ -192,6 +219,16 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
             ))}
             {/* 使用者目前位置 — 放在 spots 之後讓它疊在最上層 */}
             {userLocation && <UserLocationMarker location={userLocation} />}
+            {/* 路線編號 / 端點標記 — 只有 route 算完才出現 */}
+            {route &&
+              routeWaypointInfo.map(({ spot, role, waypointNumber }) => (
+                <RouteWaypointMarker
+                  key={`wp-${spot.id}`}
+                  spot={spot}
+                  role={role}
+                  waypointNumber={waypointNumber}
+                />
+              ))}
           </Map>
           <ScaleBar mapRef={mapRef} />
           <LocateMeButton mapRef={mapRef} />
