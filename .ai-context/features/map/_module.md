@@ -157,3 +157,16 @@ MapClickEffect  →  listen "oddspot:markerclick"，從 cursorState 讀取軌跡
 - 加入篩選器 UI（useMapStore.filters）
 - 加入半徑選擇器
 - 收藏列表勾選介面（階段 4 中實作，但 Saved Spots store 要等 Step 5 才存後端）
+
+## 未排程 / Stage 5+ polish 候選
+
+### 雷達掃描 leader-line 視覺（獨立新功能）
+
+第一次進地圖時，從使用者位置朝附近每個 spot marker 畫出 1px 虛線
++ 旋轉雷達掃描環（acid/Y2K 雷達 UI 風格）。
+
+- **跟 RoutePolyline 的差異**：RoutePolyline 是使用者主動規劃後的「單一路徑」（A→B→C 沿路網），leader-line 是「進場視覺效果」（從圓心放射多條輔助線）
+- **觸發時機**：地圖首次載入完成 + 有 userLocation + 至少 1 個 spot 可見
+- **不觸發**：路線規劃中、已有 RoutePolyline、使用者拖動過地圖後
+- **建議排程**：Stage 5 polish 範圍，獨立 PR
+- **參考**：design-direction-v2.md 第 47–53 行 wireframe geometry / acid stickers 段落
