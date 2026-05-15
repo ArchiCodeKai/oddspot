@@ -10,6 +10,7 @@ import { ScaleBar } from "./ScaleBar";
 import { UserLocationMarker } from "./UserLocationMarker";
 import { RoutePolyline } from "./RoutePolyline";
 import { RouteWaypointMarker } from "./RouteWaypointMarker";
+import { RouteSheet } from "./RouteSheet";
 import { useAppStore } from "@/store/useAppStore";
 import { useMapStore, type Bbox } from "@/store/useMapStore";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
@@ -243,6 +244,9 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
           onClose={() => setSelectedSpot(null)}
         />
       )}
+
+      {/* 路線規劃底部 sheet */}
+      <RouteSheet userLocation={userLocation} spots={spots} />
 
       {/* API 失敗：inline error，不跳頁 */}
       {isError && (
