@@ -144,7 +144,7 @@ MapClickEffect  →  listen "oddspot:markerclick"，從 cursorState 讀取軌跡
 | 1：4 themes JSON | ⏳ 待開始 | 三、3a–3b |
 | 2：MVP 替換 | ⏳ 待開始 | 六 |
 | 3：LocateMeButton + 加入路線 | ⏳ 待開始 | 三、3f；四 |
-| 4：RoutePlanner（含 Directions API + deep link） | ⏳ 待開始 | 三、3d–3e；四 |
+| 4：RoutePlanner（含 Directions API + deep link） | ✅ 完成 | 三、3d–3e；四 |
 | 5：Polish（acid marker / 動畫 / 文案） | ⏳ 待開始 | 八 |
 
 ## 已知限制

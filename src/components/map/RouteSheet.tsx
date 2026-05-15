@@ -17,6 +17,8 @@ import type { SpotMapPoint } from "@/types/spots";
 interface RouteSheetProps {
   userLocation: { lat: number; lng: number } | null;
   spots: SpotMapPoint[];
+  // 按 START 時觸發外部導航 sheet
+  onStart?: () => void;
 }
 
 function formatDistanceKm(meters: number): string {
@@ -43,7 +45,7 @@ const MONO_LABEL: React.CSSProperties = {
   textTransform: "uppercase",
 };
 
-export function RouteSheet({ userLocation, spots }: RouteSheetProps) {
+export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
   const isOpen = useRoutePlannerStore((s) => s.isOpen);
   const selectedSpots = useRoutePlannerStore((s) => s.selectedSpots);
   const route = useRoutePlannerStore((s) => s.route);
@@ -77,9 +79,8 @@ export function RouteSheet({ userLocation, spots }: RouteSheetProps) {
     void optimize(userLocation);
   };
 
-  // Commit 4 才會接到 ExternalNavSheet
   const handleStart = () => {
-    console.warn("[RouteSheet] START button — ExternalNavSheet 接上後啟用");
+    onStart?.();
   };
 
   const reordered = route ? isReordered(route.optimizedOrder) : false;

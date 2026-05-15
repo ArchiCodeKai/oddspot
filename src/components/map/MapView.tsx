@@ -11,6 +11,7 @@ import { UserLocationMarker } from "./UserLocationMarker";
 import { RoutePolyline } from "./RoutePolyline";
 import { RouteWaypointMarker } from "./RouteWaypointMarker";
 import { RouteSheet } from "./RouteSheet";
+import { ExternalNavSheet } from "./ExternalNavSheet";
 import { useAppStore } from "@/store/useAppStore";
 import { useMapStore, type Bbox } from "@/store/useMapStore";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
@@ -33,6 +34,8 @@ interface MapViewProps {
 export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetToRadius, isError, onRetry }: MapViewProps) {
   const [selectedSpot, setSelectedSpot] = useState<SpotMapPoint | null>(null);
   const [zoom, setZoom] = useState(TAIPEI_CENTER.zoom);
+  // 外部導航選擇 sheet 開關（純 UI state，不放 store）
+  const [navSheetOpen, setNavSheetOpen] = useState(false);
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
   // 跟著主題切換動態載入對應 mapbox style（style-loader 內已 cache）
@@ -246,7 +249,18 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
       )}
 
       {/* 路線規劃底部 sheet */}
-      <RouteSheet userLocation={userLocation} spots={spots} />
+      <RouteSheet
+        userLocation={userLocation}
+        spots={spots}
+        onStart={() => setNavSheetOpen(true)}
+      />
+
+      {/* 外部導航 app 選擇 sheet */}
+      <ExternalNavSheet
+        isOpen={navSheetOpen}
+        onClose={() => setNavSheetOpen(false)}
+        userLocation={userLocation}
+      />
 
       {/* API 失敗：inline error，不跳頁 */}
       {isError && (
