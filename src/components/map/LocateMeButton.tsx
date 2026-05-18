@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { MapRef } from "react-map-gl/mapbox";
+import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 
 interface LocateMeButtonProps {
   mapRef: React.RefObject<MapRef | null>;
@@ -13,6 +14,10 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const hideTimerRef = useRef<number | null>(null);
+  // 當路線 sheet 展開時往上讓位（spec 3f）
+  const sheetOpen = useRoutePlannerStore((s) => s.isOpen);
+  const buttonBottom = sheetOpen ? "calc(60vh + 16px)" : 88;
+  const hintBottom = sheetOpen ? "calc(60vh + 24px)" : 96;
 
   // 顯示提示後 1.5s 自動消失
   useEffect(() => {
@@ -55,7 +60,7 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
         style={{
           position: "absolute",
           right: 16,
-          bottom: 88,
+          bottom: buttonBottom,
           width: 44,
           height: 44,
           background: "var(--panel-glass-strong)",
@@ -69,7 +74,7 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
           zIndex: 5,
           color: "var(--accent)",
           opacity: status === "locating" ? 0.6 : 1,
-          transition: "opacity 0.15s",
+          transition: "opacity 0.15s, bottom 0.3s var(--ease-out, ease-out)",
         }}
       >
         {/* 十字準星 */}
@@ -97,7 +102,7 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
           style={{
             position: "absolute",
             right: 70,
-            bottom: 96,
+            bottom: hintBottom,
             padding: "8px 12px",
             background: "var(--panel-glass-strong)",
             border: "1px solid var(--line-strong)",
@@ -111,6 +116,7 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
             whiteSpace: "nowrap",
             zIndex: 5,
             pointerEvents: "none",
+            transition: "bottom 0.3s var(--ease-out, ease-out)",
           }}
         >
           {status === "ok" && coords && (
