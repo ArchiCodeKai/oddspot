@@ -119,7 +119,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
       return (
         <>
           <p className="text-sm font-content" style={{ color: "var(--muted)" }}>
-            視圖範圍內暫無景點
+            視野盡頭也沒有什麼 · 試試拖動地圖
           </p>
           {onResetToRadius && (
             <button
@@ -144,7 +144,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
     return (
       <>
         <p className="text-sm font-content" style={{ color: "var(--muted)" }}>
-          附近 {radius}km 內暫無景點
+          ERR_NO_WEIRD_FOUND · 半徑 {radius}km 內暫無登記有案之怪地
         </p>
         {onExpandRadius ? (
           <button
