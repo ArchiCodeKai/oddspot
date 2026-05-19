@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { useSavedStore } from "@/store/useSavedStore";
+import {
+  ROUTE_LOADING_COPY,
+  pickRandomLoadingCopy,
+  pickNextLoadingCopy,
+} from "@/lib/copy/route-loading";
 import type { SpotMapPoint } from "@/types/spots";
 
 // 路線規劃底部 sheet。
@@ -59,6 +64,20 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
 
   const savedIds = useSavedStore((s) => s.savedSpotIds);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // OPTIMIZE 載入文案：每次按下時隨機抽，3s 換下一條
+  const [loadingCopy, setLoadingCopy] = useState<string>(ROUTE_LOADING_COPY[0]);
+  useEffect(() => {
+    if (!isOptimizing) return;
+    setLoadingCopy(pickRandomLoadingCopy());
+    const interval = window.setInterval(() => {
+      setLoadingCopy((curr) => pickNextLoadingCopy(curr));
+    }, 3000);
+    return () => window.clearInterval(interval);
+  }, [isOptimizing]);
+
+  // ≥5 點上限：用於控制「+ 從收藏選」按鈕與 picker 自動收起
+  const atLimit = selectedSpots.length >= MAX_WAYPOINTS;
 
   // 可加入的收藏 spots：savedIds ∩ spots − selectedSpots
   const availableSaved = useMemo(() => {
@@ -344,30 +363,34 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
               </ul>
             )}
 
-            {/* + 從收藏選 toggle */}
-            {selectedSpots.length < MAX_WAYPOINTS && (
-              <button
-                onClick={() => setPickerOpen(!pickerOpen)}
-                style={{
-                  marginTop: 4,
-                  width: "100%",
-                  padding: "8px 0",
-                  background: "transparent",
-                  border: "1px dashed var(--line-strong)",
-                  borderRadius: 2,
-                  color: "var(--muted)",
-                  ...MONO_LABEL,
-                  fontSize: 10,
-                  letterSpacing: "0.18em",
-                  cursor: "pointer",
-                }}
-              >
-                {pickerOpen ? "− 收起收藏" : "+ 從收藏選"}
-              </button>
-            )}
+            {/* + 從收藏選 toggle（到上限改 disabled 提示） */}
+            <button
+              onClick={atLimit ? undefined : () => setPickerOpen(!pickerOpen)}
+              disabled={atLimit}
+              style={{
+                marginTop: 4,
+                width: "100%",
+                padding: "8px 0",
+                background: "transparent",
+                border: "1px dashed var(--line-strong)",
+                borderRadius: 2,
+                color: "var(--muted)",
+                ...MONO_LABEL,
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                cursor: atLimit ? "not-allowed" : "pointer",
+                opacity: atLimit ? 0.4 : 1,
+              }}
+            >
+              {atLimit
+                ? `已達 ${MAX_WAYPOINTS} 點上限`
+                : pickerOpen
+                  ? "− 收起收藏"
+                  : "+ 從收藏選"}
+            </button>
 
-            {/* saved picker panel */}
-            {pickerOpen && (
+            {/* saved picker panel（到上限自動收起） */}
+            {pickerOpen && !atLimit && (
               <div style={{ marginTop: 6 }}>
                 {availableSaved.length === 0 ? (
                   <div
@@ -380,8 +403,8 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                     }}
                   >
                     {savedIds.length === 0
-                      ? "尚未收藏景點"
-                      : "本區無已收藏景點"}
+                      ? "尚未收藏景點 · 試試在景點頁面按收藏"
+                      : "本區無已收藏景點 · 試試拖動地圖或擴大搜尋範圍"}
                   </div>
                 ) : (
                   <ul style={{ listStyle: "none", padding: 0 }}>
@@ -519,7 +542,7 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                     opacity: isOptimizing ? 0.6 : 1,
                   }}
                 >
-                  {isOptimizing ? "calculating..." : "optimize / 規劃路線"}
+                  {isOptimizing ? loadingCopy : "optimize / 規劃路線"}
                 </button>
               )}
               {route && (
