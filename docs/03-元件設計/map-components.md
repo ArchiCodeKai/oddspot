@@ -49,11 +49,11 @@ TODO：整合 useMapStore（目前 selectedSpot 在 local state）
 
 **路徑**：`src/components/map/SpotMarker.tsx`
 
-- 改造後使用 react-map-gl 的 `<Marker>`（不再是 AdvancedMarker）
+- 使用 react-map-gl 的 `<Marker>`（不再是 AdvancedMarker）
 - 圓點大小：未選中 14px，選中 20px
-- 顏色依 category 決定（8 色，不隨 theme 變）
-- 選中狀態：`box-shadow: 0 0 12px {category-color}`
-- 第一版**不做** acid sticker 升級（留到階段 5 polish）
+- 顏色：主題色 `var(--accent)`，隨 theme 切換變化（早期規劃 8 色 category 已停用）
+- 選中狀態：`box-shadow: 0 0 12px var(--accent)`
+- **Stage 5 升級目標**：mini wireframe 球（SVG 橢圓堆疊），跟 landing globe 同視覺語言
 
 ## SpotPopup
 

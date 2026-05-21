@@ -12,9 +12,7 @@ import { RadiusToggle } from "@/components/map/RadiusToggle";
 import { SwipeView } from "@/components/swipe/SwipeView";
 import { FilterSheet } from "@/components/swipe/FilterSheet";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
-import { AuthButton } from "@/components/auth/AuthButton";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { LangToggle } from "@/components/ui/LangToggle";
+import { TopRightCluster } from "@/components/map/TopRightCluster";
 import { OnboardingOverlay } from "@/components/ui/OnboardingOverlay";
 
 const RADIUS_STEPS = [5, 10, 20, 50] as const;
@@ -187,21 +185,8 @@ export default function MapPage() {
         <RadiusToggle mapRef={mapRef} userLocation={userLocation} />
       </div>
 
-      {/* 右上角控制列：語言 → 主題 → 登入 */}
-      <div
-        className="absolute top-4 right-4 z-10 flex items-center gap-2 px-2 py-2"
-        style={{
-          background: "var(--panel-glass)",
-          border: "1px solid var(--line)",
-          borderRadius: "16px",
-          backdropFilter: "blur(18px)",
-          boxShadow: "var(--shadow-glow)",
-        }}
-      >
-        <LangToggle />
-        <ThemeToggle />
-        <AuthButton />
-      </div>
+      {/* 右上角收合 cluster：globe button + popover（含語言/主題/登入） */}
+      <TopRightCluster />
 
       {/* 兩個 view 常駐 DOM（地圖不因切換而重載），用 motion 控制顯隱 */}
       <div className="flex-1 min-h-0 relative">

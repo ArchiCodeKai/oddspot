@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import {
   buildExternalNavLinks,
+  tryAppSchemeWithFallback,
+  type ExternalNavOption,
   type NavWaypoint,
 } from "@/lib/mapbox/deep-link";
 
@@ -49,13 +51,17 @@ export function ExternalNavSheet({
     return buildExternalNavLinks(points);
   }, [isOpen, userLocation, selectedSpots]);
 
-  const handlePick = (url: string, isWebUrl: boolean) => {
-    // web URL（桌機）開新分頁不離開 oddspot；
-    // app scheme（iOS comgooglemaps:// / Android geo:）用 location.href 才能正確觸發
-    if (isWebUrl) {
-      window.open(url, "_blank", "noopener,noreferrer");
+  const handlePick = (opt: ExternalNavOption) => {
+    // 分三條路：
+    // - web URL（桌機）：開新分頁不離開 oddspot
+    // - 有 fallbackUrl（iOS Google Maps）：app scheme 失敗 2.5s 後跳 web fallback
+    // - 純 app scheme（Apple Maps / Android geo）：直接 location.href
+    if (opt.app === "google-web") {
+      window.open(opt.url, "_blank", "noopener,noreferrer");
+    } else if (opt.fallbackUrl) {
+      tryAppSchemeWithFallback(opt.url, opt.fallbackUrl);
     } else {
-      window.location.href = url;
+      window.location.href = opt.url;
     }
     onClose();
   };
@@ -153,11 +159,10 @@ export function ExternalNavSheet({
               ) : (
                 <ul style={{ listStyle: "none", padding: 0 }}>
                   {navLinks.options.map((opt) => {
-                    const isWebUrl = opt.app === "google-web";
                     return (
                       <li key={opt.app} style={{ marginTop: 4 }}>
                         <button
-                          onClick={() => handlePick(opt.url, isWebUrl)}
+                          onClick={() => handlePick(opt)}
                           style={{
                             width: "100%",
                             display: "flex",

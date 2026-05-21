@@ -74,7 +74,8 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
           zIndex: 5,
           color: "var(--accent)",
           opacity: status === "locating" ? 0.6 : 1,
-          transition: "opacity 0.15s, bottom 0.3s var(--ease-out, ease-out)",
+          // bottom duration 對齊 RouteSheet spring（stiffness 320 / damping 34，感知約 0.5s）
+          transition: "opacity 0.15s, bottom 0.5s var(--ease-out, ease-out)",
         }}
       >
         {/* 十字準星 */}
@@ -116,7 +117,7 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
             whiteSpace: "nowrap",
             zIndex: 5,
             pointerEvents: "none",
-            transition: "bottom 0.3s var(--ease-out, ease-out)",
+            transition: "bottom 0.5s var(--ease-out, ease-out)",
           }}
         >
           {status === "ok" && coords && (

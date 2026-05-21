@@ -23,6 +23,8 @@ export interface ExternalNavOption {
   app: NavApp;
   label: string;
   url: string;
+  // app scheme 失敗時的 web fallback URL（目前只有 google-ios 會帶）
+  fallbackUrl?: string;
 }
 
 export interface ExternalNavLinks {
@@ -100,6 +102,8 @@ export function buildExternalNavLinks(points: NavWaypoint[]): ExternalNavLinks {
         app: "google-ios",
         label: "Google Maps",
         url: buildGoogleIosUrl(points),
+        // 沒裝 Google Maps app 時 fallback 到 web 版（同樣支援 waypoints）
+        fallbackUrl: buildGoogleWebUrl(points),
       },
     ];
     // 多點時隱藏 Apple Maps（避免使用者中間點被吞掉）
@@ -142,4 +146,32 @@ export function buildExternalNavLinks(points: NavWaypoint[]): ExternalNavLinks {
       },
     ],
   };
+}
+
+// 觸發 app scheme，timeoutMs 後若頁面仍 visible 就 fallback 到 web URL。
+//
+// 原理：
+// - 成功跳到 app → 頁面進入 hidden → 瀏覽器 throttle setTimeout
+//   → callback 觸發時 elapsed 遠大於 timeoutMs → 條件不成立，不 fallback
+// - app scheme 失敗（iOS 沒裝對應 app）→ 頁面保持 visible
+//   → elapsed 約等於 timeoutMs → 條件成立 → fallback 到 web URL
+//
+// 500ms 容差是給主執行緒被卡住造成 callback 微延遲的緩衝。
+export function tryAppSchemeWithFallback(
+  appSchemeUrl: string,
+  webFallbackUrl: string,
+  timeoutMs = 2500,
+): void {
+  if (typeof window === "undefined") return;
+  const start = Date.now();
+  window.setTimeout(() => {
+    const elapsed = Date.now() - start;
+    if (
+      document.visibilityState === "visible" &&
+      elapsed < timeoutMs + 500
+    ) {
+      window.location.href = webFallbackUrl;
+    }
+  }, timeoutMs);
+  window.location.href = appSchemeUrl;
 }

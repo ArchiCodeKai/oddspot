@@ -1,7 +1,11 @@
-# Step 4：滑卡片 UI + Guest Mode 設計規格
+# Step 4：滑卡片 UI + Guest Mode 設計規格（v1，已被取代）
 
 **日期**：2026-04-03
-**狀態**：實作中
+**狀態**：⚠️ **已 deprecated** — 設計已大幅調整，請改讀新 spec：
+- [`2026-05-21-swipe-feature.md`](2026-05-21-swipe-feature.md) — 滑卡片完整新版規格（手勢、chip 區、RoutePlannerStore 整合）
+- [`2026-05-21-filter-radius-ui.md`](2026-05-21-filter-radius-ui.md) — 篩選器 / 半徑選擇器規格
+
+> 本文件保留作為歷史紀錄。實作時請以上述新 spec 為準。
 
 ---
 
@@ -93,7 +97,7 @@ Toast：「今日行程已達上限（5 個地點）」，2.5 秒消失
 
 ## FilterSheet 內容（底部 sheet，v1 切版）
 
-- 景點類型：彩色 chip 多選（8 個分類，使用 CATEGORY_COLORS）
+- 景點類型：章戳貼紙風多選（acid 風格，見 [2026-05-21-filter-radius-ui.md](2026-05-21-filter-radius-ui.md)）
 - 難度：3 格 toggle（容易 / 普通 / 困難）
 - 狀態：3 格 toggle（可探索 / 狀況不明 / 已消失）
 - 按鈕：「重設」（次要）+ 「套用篩選」（主要）

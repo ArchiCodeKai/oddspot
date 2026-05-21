@@ -76,15 +76,17 @@ ALL THEMES:
     street            → 不顯示
 ```
 
-### 3c. SpotMarker（保持圓點，第一版不升級）
+### 3c. SpotMarker（v2 已實作，後續 stage 升級 wireframe）
 
 | 狀態 | 大小 | 樣式 |
 |---|---|---|
-| 未選中 | 14px | category 8 色實心圓，1px 外框 `var(--background)` |
-| 選中 | 20px | 同上，加 `box-shadow: 0 0 12px {category}` |
+| 未選中 | 14px | 主題色實心圓（`var(--accent)`），1px 外框 `var(--background)` |
+| 選中 | 20px | 同上，加 `box-shadow: 0 0 12px var(--accent)` |
 | Hover (桌機) | 16px | 縮放動畫 0.15s |
 
-8 個 category 顏色不變，由 [SpotMarker.tsx](../../src/components/map/SpotMarker.tsx) 既有定義保留。
+**已實作版本**：所有 marker 統一用當前主題色，隨 theme 切換變化。
+**早期規劃**：曾考慮 8 色 category 區分（橘/灰/藍/粉/青/紫/綠/黃），實作時改為主題色統一以避免跟主題系統衝突。
+**Stage 5 升級目標**：mini wireframe 球（SVG 橢圓堆疊），跟 landing globe 同視覺語言。category 區分改靠 sticker 形狀或標籤。
 
 ### 3d. 路線視覺（RoutePolyline）
 

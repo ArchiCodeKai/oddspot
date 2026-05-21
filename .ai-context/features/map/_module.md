@@ -8,7 +8,7 @@
 ```
 src/components/map/
   MapView.tsx              ← 地圖容器，包 react-map-gl Map
-  SpotMarker.tsx           ← 景點標記（圓點，14/20px，category 8 色）
+  SpotMarker.tsx           ← 景點標記（圓點，14/20px，主題色；Stage 5 升級 wireframe 球）
   SpotPopup.tsx            ← 點擊標記後的資訊卡，多一個「加入路線」按鈕
   MapClickEffect.tsx       ← 地圖點擊箭頭特效（不動，已掛在 layout.tsx 根層）
   RouteSheet.tsx           ← 路線規劃 bottom sheet
@@ -76,22 +76,13 @@ map/page.tsx
 
 切換 theme 時透過 `style-loader.ts` 整份替換 Mapbox style，不做局部 setPaintProperty。
 
-## 分類顏色對應（SpotMarker）
+## SpotMarker 視覺
 
-**8 色不隨 theme 變**（design-direction-v2 第 36 行：「Category colors do NOT change per theme」）：
+**現狀（v2 已實作）**：所有 marker 採當前**主題色**（`var(--accent)`），隨 theme 切換變化。category 不再用顏色區分。
 
-```typescript
-const CATEGORY_COLORS = {
-  "weird-temple": "#f97316",          // 橘
-  "abandoned": "#6b7280",              // 灰
-  "giant-object": "#3b82f6",          // 藍
-  "kitsch": "#ec4899",                 // 粉
-  "marginal-architecture": "#14b8a6",  // 青
-  "urban-legend": "#8b5cf6",          // 紫
-  "absurd-landscape": "#22c55e",       // 綠
-  "odd-shopfront": "#eab308",          // 黃
-};
-```
+**未來目標（Stage 5 規劃中）**：升級成 **mini wireframe 球**（SVG 橢圓堆疊，跟 landing globe 同視覺語言）。完整規格見 [`docs/specs/2026-05-21-swipe-feature.md`](../../../docs/specs/) 同期的 marker 升級條目，以及 [`design-direction-v2.md`](../global/design-direction-v2.md) wireframe geometry 段落。
+
+**設計取捨**：早期版本曾規劃 8 色 category（橘/灰/藍/粉/青/紫/綠/黃），但實作時發現跟主題系統衝突太多，改用主題色統一。未來 category 區分改靠 sticker 形狀或標籤，不再用顏色。
 
 ## 環境變數
 
