@@ -264,7 +264,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
 
       {/* API 失敗：inline error，不跳頁 */}
       {isError && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2">
           <div
             className="backdrop-blur-md px-5 py-3 text-center"
             style={{
@@ -297,7 +297,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
       )}
 
       {spots.length === 0 && !selectedSpot && !isError && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2">
           <div
             className="backdrop-blur-md px-5 py-3 text-center"
             style={{
