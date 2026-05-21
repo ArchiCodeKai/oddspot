@@ -23,8 +23,12 @@ OddSpot 的核心調性：**神秘、探索感、台灣在地奇景**。
 - 白色 CTA：`bg-white text-zinc-900`（主要行動按鈕）
 - 半透明：`bg-white/10`、`bg-black/30`（Glassmorphism 用）
 
-### 分類顏色（Badge、標記）
+### 分類顏色（已 deprecated，僅保留歷史脈絡）
+
+> **v1 規劃**，**v2 已停用**。SpotMarker / Badge 等元件改用當前**主題色**（`var(--accent)`），隨 theme 切換變化。詳見 [`design-direction-v2.md`](./design-direction-v2.md)。
+
 ```typescript
+// 舊版定義（v1，不再使用）
 const CATEGORY_COLORS = {
   "weird-temple": "#f97316",
   "abandoned": "#6b7280",
@@ -93,9 +97,9 @@ const CATEGORY_COLORS = {
 ## 元件規範
 
 ### Badge（分類 / 狀態 / 難度）
-- 分類：使用 CATEGORY_COLORS 對應色，`bg-[color]/15 text-[color]`（低飽和背景）
+- 分類：v2 已改用主題色 `var(--accent)`，低飽和度背景 `rgb(var(--accent-rgb) / 0.15)`
 - 狀態：使用 STATUS_COLORS（已定義於 `src/lib/constants/status.ts`）
-- 難度：純文字 + `text-zinc-400`
+- 難度：純文字 + `var(--muted)`
 
 ### 按鈕
 - 主要 CTA（白色）：`bg-white text-zinc-900 rounded-xl`
