@@ -14,14 +14,14 @@ interface SpotMarkerProps {
   onClick: (spot: SpotMapPoint) => void;
 }
 
-// 依 zoom 決定 pin 視覺尺寸（v3：放大讓 glyph 看得清）
-function getPinScale(zoom: number, isSelected: boolean): number {
+// 依 zoom 決定 marker 視覺尺寸（wireframe 球 base 24px）
+function getMarkerScale(zoom: number, isSelected: boolean): number {
   if (zoom <= 11) return isSelected ? 0.85 : 0.6;
   if (zoom <= 13) return isSelected ? 1.1 : 0.85;
   return isSelected ? 1.25 : 1;
 }
 
-// zoom < 12 時顯示呼吸脈衝（表示「有東西藏在這裡」）
+// zoom < 12 時的呼吸脈衝（暗示「有東西藏在這裡」）
 const PULSE_VARIANTS = {
   animate: {
     scale: [1, 2.4],
@@ -29,11 +29,40 @@ const PULSE_VARIANTS = {
   },
 };
 
+// 經線自轉 CSS keyframe — 200+ markers 同時用 CSS 才不會卡（GPU 合成）
+// 一份 rule，所有 marker 共用
+const GLOBE_SPIN_CSS = `
+@keyframes oddspot-marker-globe-spin {
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(360deg); }
+}
+.oddspot-marker-meridians {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: oddspot-marker-globe-spin 20s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .oddspot-marker-meridians { animation: none; }
+}
+`;
+
+// 確保 keyframe 只注入 head 一次（多個 marker 共用）
+let keyframesInjected = false;
+function ensureKeyframes() {
+  if (typeof document === "undefined" || keyframesInjected) return;
+  const style = document.createElement("style");
+  style.setAttribute("data-oddspot-marker", "true");
+  style.textContent = GLOBE_SPIN_CSS;
+  document.head.appendChild(style);
+  keyframesInjected = true;
+}
+
 export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps) {
-  // v3 monochrome：pin 一律 accent 色，類別靠 glyph 形狀識別
+  ensureKeyframes();
+
   const Glyph = CATEGORY_GLYPHS[spot.category as SpotCategory];
   const showPulse = zoom <= 11 && !isSelected;
-  const pinScale = getPinScale(zoom, isSelected);
+  const markerScale = getMarkerScale(zoom, isSelected);
 
   // mapbox-gl click 事件會冒泡到 Map 觸發 deselect，必須擋住
   const handleClick = (e: { originalEvent: { stopPropagation: () => void } }) => {
@@ -57,10 +86,11 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
     <Marker
       longitude={spot.lng}
       latitude={spot.lat}
-      anchor="bottom"
+      // anchor center：球心對齊座標點（vs 原本淚滴 pin 的 bottom 尖端）
+      anchor="center"
       onClick={handleClick}
     >
-      {/* 外層確保行動端 tap target 至少 44×44px */}
+      {/* 外層 44×44 確保行動端 tap target */}
       <div
         style={{
           width: 44,
@@ -71,9 +101,17 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
           cursor: "pointer",
         }}
       >
-        {/* 相對容器：pulse ring 與 pin 疊放 */}
-        <div style={{ position: "relative", width: 28, height: 34, display: "flex", alignItems: "center", justifyContent: "center" }}>
-
+        {/* 相對容器：pulse ring 與 globe 疊放 */}
+        <div
+          style={{
+            position: "relative",
+            width: 24,
+            height: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           {/* 呼吸脈衝環（低縮放時） */}
           {showPulse && (
             <motion.div
@@ -96,14 +134,15 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
             />
           )}
 
-          {/* 主 pin：teardrop 輪廓 + glyph，用 accent 一色 */}
+          {/* Wireframe globe marker（跟 globe button 同視覺語言） */}
           <motion.div
-            animate={{ scale: pinScale }}
+            animate={{ scale: markerScale }}
             transition={{ type: "spring", stiffness: 280, damping: 26 }}
             style={{
               position: "relative",
-              width: 28,
-              height: 34,
+              width: 24,
+              height: 24,
+              color: "rgb(var(--accent-rgb))",
               filter: isSelected
                 ? "drop-shadow(0 0 10px rgb(var(--accent-rgb) / 0.9))"
                 : "drop-shadow(0 0 5px rgb(var(--accent-rgb) / 0.45))",
@@ -111,27 +150,38 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
             }}
           >
             <svg
-              width="28"
-              height="34"
-              viewBox="0 0 28 34"
+              width="24"
+              height="24"
+              viewBox="-12 -12 24 24"
               fill="none"
+              stroke="currentColor"
+              strokeWidth={isSelected ? 0.9 : 0.7}
               style={{ display: "block" }}
             >
-              <path
-                d="M14 2 C20 2, 25 7, 25 13 C25 20, 14 32, 14 32 C14 32, 3 20, 3 13 C3 7, 8 2, 14 2 Z"
-                fill="rgb(var(--background-rgb))"
-                stroke={isSelected ? "rgb(var(--accent-rgb))" : "rgb(var(--accent-rgb) / 0.85)"}
-                strokeWidth={isSelected ? 1.8 : 1.5}
-              />
+              {/* 球體背景（深色實心，讓 glyph 跟 wireframe 不糊在地圖上） */}
+              <circle r="10" fill="rgb(var(--background-rgb) / 0.85)" stroke="none" />
+
+              {/* 靜態：外圓 + 緯線 */}
+              <circle r="10" />
+              <ellipse cx="0" cy="0" rx="10" ry="3" />
+              <ellipse cx="0" cy="-5" rx="8.5" ry="1.6" />
+              <ellipse cx="0" cy="5" rx="8.5" ry="1.6" />
+
+              {/* 動態：經線群（共用 CSS keyframe，GPU 加速） */}
+              <g className="oddspot-marker-meridians">
+                <ellipse cx="0" cy="0" rx="10" ry="10" />
+                <ellipse cx="0" cy="0" rx="4" ry="10" />
+              </g>
             </svg>
-            {/* glyph 疊在 pin 圓頭中心 */}
+
+            {/* 中央 glyph（球體 surface 上的紋章） */}
             <div
               style={{
                 position: "absolute",
-                top: 4,
-                left: 5,
-                width: 18,
-                height: 18,
+                top: 7,
+                left: 7,
+                width: 10,
+                height: 10,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -139,7 +189,7 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
                 pointerEvents: "none",
               }}
             >
-              <Glyph size={12} />
+              <Glyph size={10} />
             </div>
           </motion.div>
         </div>
