@@ -14,14 +14,14 @@ interface SpotMarkerProps {
   onClick: (spot: SpotMapPoint) => void;
 }
 
-// 依 zoom 決定 pin 視覺尺寸（v3：放大讓 glyph 看得清）
-function getPinScale(zoom: number, isSelected: boolean): number {
+// 依 zoom 決定 marker 視覺尺寸（雷達定位點 base 24px）
+function getMarkerScale(zoom: number, isSelected: boolean): number {
   if (zoom <= 11) return isSelected ? 0.85 : 0.6;
   if (zoom <= 13) return isSelected ? 1.1 : 0.85;
   return isSelected ? 1.25 : 1;
 }
 
-// zoom < 12 時顯示呼吸脈衝（表示「有東西藏在這裡」）
+// zoom < 12 時的呼吸脈衝（暗示「有東西藏在這裡」）
 const PULSE_VARIANTS = {
   animate: {
     scale: [1, 2.4],
@@ -30,10 +30,9 @@ const PULSE_VARIANTS = {
 };
 
 export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps) {
-  // v3 monochrome：pin 一律 accent 色，類別靠 glyph 形狀識別
   const Glyph = CATEGORY_GLYPHS[spot.category as SpotCategory];
   const showPulse = zoom <= 11 && !isSelected;
-  const pinScale = getPinScale(zoom, isSelected);
+  const markerScale = getMarkerScale(zoom, isSelected);
 
   // mapbox-gl click 事件會冒泡到 Map 觸發 deselect，必須擋住
   const handleClick = (e: { originalEvent: { stopPropagation: () => void } }) => {
@@ -57,10 +56,11 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
     <Marker
       longitude={spot.lng}
       latitude={spot.lat}
-      anchor="bottom"
+      // anchor center：定位點圓心對齊座標點
+      anchor="center"
       onClick={handleClick}
     >
-      {/* 外層確保行動端 tap target 至少 44×44px */}
+      {/* 外層 44×44 確保行動端 tap target */}
       <div
         style={{
           width: 44,
@@ -71,9 +71,17 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
           cursor: "pointer",
         }}
       >
-        {/* 相對容器：pulse ring 與 pin 疊放 */}
-        <div style={{ position: "relative", width: 28, height: 34, display: "flex", alignItems: "center", justifyContent: "center" }}>
-
+        {/* 相對容器：pulse ring 與 marker 疊放 */}
+        <div
+          style={{
+            position: "relative",
+            width: 24,
+            height: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           {/* 呼吸脈衝環（低縮放時） */}
           {showPulse && (
             <motion.div
@@ -96,14 +104,15 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
             />
           )}
 
-          {/* 主 pin：teardrop 輪廓 + glyph，用 accent 一色 */}
+          {/* 雷達定位點 marker（acid 雷達 ping 風） */}
           <motion.div
-            animate={{ scale: pinScale }}
+            animate={{ scale: markerScale }}
             transition={{ type: "spring", stiffness: 280, damping: 26 }}
             style={{
               position: "relative",
-              width: 28,
-              height: 34,
+              width: 24,
+              height: 24,
+              color: "rgb(var(--accent-rgb))",
               filter: isSelected
                 ? "drop-shadow(0 0 10px rgb(var(--accent-rgb) / 0.9))"
                 : "drop-shadow(0 0 5px rgb(var(--accent-rgb) / 0.45))",
@@ -111,27 +120,37 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
             }}
           >
             <svg
-              width="28"
-              height="34"
-              viewBox="0 0 28 34"
+              width="24"
+              height="24"
+              viewBox="-12 -12 24 24"
               fill="none"
+              stroke="currentColor"
               style={{ display: "block" }}
             >
-              <path
-                d="M14 2 C20 2, 25 7, 25 13 C25 20, 14 32, 14 32 C14 32, 3 20, 3 13 C3 7, 8 2, 14 2 Z"
-                fill="rgb(var(--background-rgb))"
-                stroke={isSelected ? "rgb(var(--accent-rgb))" : "rgb(var(--accent-rgb) / 0.85)"}
-                strokeWidth={isSelected ? 1.8 : 1.5}
-              />
+              {/* 背景圓（半透明 bg，讓 glyph 在地圖上不糊） */}
+              <circle r="10" fill="rgb(var(--background-rgb) / 0.85)" stroke="none" />
+
+              {/* 外圈（實線，archive 邊界） */}
+              <circle r="10" strokeWidth={isSelected ? 1 : 0.8} />
+
+              {/* 內圈（dashed，雷達刻度感） */}
+              <circle r="6" strokeWidth="0.5" strokeDasharray="2 1.5" opacity="0.7" />
+
+              {/* 4 個 tick（12 / 3 / 6 / 9 點鐘外側，雷達座標標記） */}
+              <line x1="0" y1="-11.5" x2="0" y2="-9" strokeWidth="0.8" />
+              <line x1="0" y1="9" x2="0" y2="11.5" strokeWidth="0.8" />
+              <line x1="-11.5" y1="0" x2="-9" y2="0" strokeWidth="0.8" />
+              <line x1="9" y1="0" x2="11.5" y2="0" strokeWidth="0.8" />
             </svg>
-            {/* glyph 疊在 pin 圓頭中心 */}
+
+            {/* 中央 glyph（category 識別） */}
             <div
               style={{
                 position: "absolute",
-                top: 4,
-                left: 5,
-                width: 18,
-                height: 18,
+                top: 8,
+                left: 8,
+                width: 8,
+                height: 8,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -139,7 +158,7 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
                 pointerEvents: "none",
               }}
             >
-              <Glyph size={12} />
+              <Glyph size={8} />
             </div>
           </motion.div>
         </div>
