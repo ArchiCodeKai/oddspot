@@ -14,7 +14,7 @@ interface SpotMarkerProps {
   onClick: (spot: SpotMapPoint) => void;
 }
 
-// 依 zoom 決定 marker 視覺尺寸（wireframe 球 base 24px）
+// 依 zoom 決定 marker 視覺尺寸（雷達定位點 base 24px）
 function getMarkerScale(zoom: number, isSelected: boolean): number {
   if (zoom <= 11) return isSelected ? 0.85 : 0.6;
   if (zoom <= 13) return isSelected ? 1.1 : 0.85;
@@ -29,37 +29,7 @@ const PULSE_VARIANTS = {
   },
 };
 
-// 經線自轉 CSS keyframe — 200+ markers 同時用 CSS 才不會卡（GPU 合成）
-// 一份 rule，所有 marker 共用
-const GLOBE_SPIN_CSS = `
-@keyframes oddspot-marker-globe-spin {
-  from { transform: rotateY(0deg); }
-  to   { transform: rotateY(360deg); }
-}
-.oddspot-marker-meridians {
-  transform-origin: center;
-  transform-box: fill-box;
-  animation: oddspot-marker-globe-spin 20s linear infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .oddspot-marker-meridians { animation: none; }
-}
-`;
-
-// 確保 keyframe 只注入 head 一次（多個 marker 共用）
-let keyframesInjected = false;
-function ensureKeyframes() {
-  if (typeof document === "undefined" || keyframesInjected) return;
-  const style = document.createElement("style");
-  style.setAttribute("data-oddspot-marker", "true");
-  style.textContent = GLOBE_SPIN_CSS;
-  document.head.appendChild(style);
-  keyframesInjected = true;
-}
-
 export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps) {
-  ensureKeyframes();
-
   const Glyph = CATEGORY_GLYPHS[spot.category as SpotCategory];
   const showPulse = zoom <= 11 && !isSelected;
   const markerScale = getMarkerScale(zoom, isSelected);
@@ -86,7 +56,7 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
     <Marker
       longitude={spot.lng}
       latitude={spot.lat}
-      // anchor center：球心對齊座標點（vs 原本淚滴 pin 的 bottom 尖端）
+      // anchor center：定位點圓心對齊座標點
       anchor="center"
       onClick={handleClick}
     >
@@ -101,7 +71,7 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
           cursor: "pointer",
         }}
       >
-        {/* 相對容器：pulse ring 與 globe 疊放 */}
+        {/* 相對容器：pulse ring 與 marker 疊放 */}
         <div
           style={{
             position: "relative",
@@ -134,7 +104,7 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
             />
           )}
 
-          {/* Wireframe globe marker（跟 globe button 同視覺語言） */}
+          {/* 雷達定位點 marker（acid 雷達 ping 風） */}
           <motion.div
             animate={{ scale: markerScale }}
             transition={{ type: "spring", stiffness: 280, damping: 26 }}
@@ -155,33 +125,32 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
               viewBox="-12 -12 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth={isSelected ? 0.9 : 0.7}
               style={{ display: "block" }}
             >
-              {/* 球體背景（深色實心，讓 glyph 跟 wireframe 不糊在地圖上） */}
+              {/* 背景圓（半透明 bg，讓 glyph 在地圖上不糊） */}
               <circle r="10" fill="rgb(var(--background-rgb) / 0.85)" stroke="none" />
 
-              {/* 靜態：外圓 + 緯線 */}
-              <circle r="10" />
-              <ellipse cx="0" cy="0" rx="10" ry="3" />
-              <ellipse cx="0" cy="-5" rx="8.5" ry="1.6" />
-              <ellipse cx="0" cy="5" rx="8.5" ry="1.6" />
+              {/* 外圈（實線，archive 邊界） */}
+              <circle r="10" strokeWidth={isSelected ? 1 : 0.8} />
 
-              {/* 動態：經線群（共用 CSS keyframe，GPU 加速） */}
-              <g className="oddspot-marker-meridians">
-                <ellipse cx="0" cy="0" rx="10" ry="10" />
-                <ellipse cx="0" cy="0" rx="4" ry="10" />
-              </g>
+              {/* 內圈（dashed，雷達刻度感） */}
+              <circle r="6" strokeWidth="0.5" strokeDasharray="2 1.5" opacity="0.7" />
+
+              {/* 4 個 tick（12 / 3 / 6 / 9 點鐘外側，雷達座標標記） */}
+              <line x1="0" y1="-11.5" x2="0" y2="-9" strokeWidth="0.8" />
+              <line x1="0" y1="9" x2="0" y2="11.5" strokeWidth="0.8" />
+              <line x1="-11.5" y1="0" x2="-9" y2="0" strokeWidth="0.8" />
+              <line x1="9" y1="0" x2="11.5" y2="0" strokeWidth="0.8" />
             </svg>
 
-            {/* 中央 glyph（球體 surface 上的紋章） */}
+            {/* 中央 glyph（category 識別） */}
             <div
               style={{
                 position: "absolute",
-                top: 7,
-                left: 7,
-                width: 10,
-                height: 10,
+                top: 8,
+                left: 8,
+                width: 8,
+                height: 8,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -189,7 +158,7 @@ export function SpotMarker({ spot, isSelected, zoom, onClick }: SpotMarkerProps)
                 pointerEvents: "none",
               }}
             >
-              <Glyph size={10} />
+              <Glyph size={8} />
             </div>
           </motion.div>
         </div>
