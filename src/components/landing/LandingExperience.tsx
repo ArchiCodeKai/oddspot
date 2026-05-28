@@ -389,8 +389,8 @@ export function LandingExperience() {
                 size={70}
                 mood="scanning"
                 onClick={() => useAppStore.getState().cycleTheme()}
-                ariaLabel="Cycle theme"
-                title="Click to cycle theme"
+                ariaLabel={t("cycleTheme")}
+                title={t("cycleTheme")}
               />
             </motion.div>
 

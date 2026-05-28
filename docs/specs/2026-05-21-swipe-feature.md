@@ -3,20 +3,20 @@
 **日期**：2026-05-21
 **範圍**：`/swipe` 路由、`src/components/swipe/`、底部 chip 區、跟 RoutePlannerStore 整合
 **目標**：類 Bumble 體驗的滑卡片探索，整合 Stage 4 路線規劃
-**狀態**：設計定案，待實作
+**狀態**：第一版已實作。實際路由採 `/map` 內雙模式，不另開 `/swipe` route。
 
 ---
 
 ## 一、範圍與目標
 
-- 新增 `/swipe` 路由，從底部 nav「探索」分頁進入
+- 從 `/map` 底部 nav「探索」分頁進入，使用 `viewMode: "map" | "swipe"` 切換
 - 卡片堆疊式 UI（看到後 1-2 張），左右拖拉決定行動
 - **完全 reuse Stage 4 的 `RoutePlannerStore.selectedSpots`**，加進「目前路徑」= 加進 RouteSheet 的選點清單
 - Guest mode：未登入也能滑、收藏、加目前路徑，動作存 localStorage，登入後 sync（沿用 Step 5 已完成的 `/api/saved/sync`）
 
 ## 二、入口
 
-底部 nav「**探索**」分頁 → `/swipe`
+底部 nav「**探索**」分頁 → `/map` 內切換為 swipe mode
 
 地圖頁、滑卡片頁、收藏頁共用底部 nav，切分頁不破壞 RoutePlannerStore 狀態（store 是全域 zustand）。
 
@@ -214,20 +214,18 @@ const candidates = spots.filter(
 ## 十一、元件結構
 
 ```
-src/app/swipe/
-  page.tsx                ← 路由入口
+src/app/map/page.tsx      ← 地圖 / 探索雙模式入口
 
 src/components/swipe/
-  SwipeView.tsx           ← 容器，管 store + 渲染卡片堆疊 + chip 區
+  SwipeView.tsx           ← 容器，管 swipe session + 渲染卡片堆疊
   SwipeCard.tsx           ← 單張卡片（Framer Motion drag + 內滾）
-  SwipeCardDetail.tsx     ← 卡片下方 200vh 詳情區
-  SwipeChipBar.tsx        ← 底部 chip bar + 撤回按鈕
-  SwipeChipMiniCard.tsx   ← 點 chip 後的 mini card（移除 / reorder）
-  SwipeEmptyState.tsx     ← 空狀態
-  SwipeOverlay.tsx        ← 拖拉時的邊緣染色覆疊
+  SwipeActionBar.tsx      ← 底部 skip / 加路線 / save 按鈕
+  FilterSheet.tsx         ← 地圖 / 探索共用篩選 sheet
+  TripPlanSheet.tsx       ← 顯示 RoutePlanner 選點，CTA 回地圖 RouteSheet
 
 src/store/
-  useSwipeStore.ts        ← 新增（skipped / history / undo）
+  useSwipeStore.ts        ← skipped / lastSkippedId
+  useRoutePlannerStore.ts ← selectedSpots / route / optimize
 ```
 
 ## 十二、技術細節
@@ -263,24 +261,24 @@ src/store/
 
 | 階段 | 任務 | Effort |
 |---|---|---|
-| 1 | `/swipe` 路由 + `useSwipeStore` 骨架 | M |
-| 2 | `SwipeCard` 拖拉 + 內滾 | M |
-| 3 | 卡片堆疊 + 滑出動畫 | M |
-| 4 | `SwipeChipBar` + mini card | M |
-| 5 | 撤回 + history | S |
-| 6 | 空狀態 + acid 細節 | S |
-| 7 | Guest mode + localStorage 持久化 | S |
+| 1 | `/map` 雙模式 + `useSwipeStore` 骨架 | ✅ |
+| 2 | `SwipeCard` 拖拉 + 上滑詳情 | ✅ |
+| 3 | 卡片堆疊 + 滑出動畫 | ✅ |
+| 4 | `TripPlanSheet` 接 `useRoutePlannerStore` | ✅ |
+| 5 | 單步撤回 skip | ✅ |
+| 6 | 空狀態 + acid 細節 | ✅ |
+| 7 | RoutePlanner localStorage 持久化 | ✅ |
 
-**總工時**：6-10h，建議獨立 stage 處理。
+**目前狀態**：第一版已落地，後續重點是完整 undo history、桌機滾輪細節。
 
 ## 十四、不要動清單
 
 - `useSavedStore`（沿用，不另起）
 - `useRoutePlannerStore`（reuse，不新增 store）
-- Stage 4 的 RouteSheet / SpotPopup / MapView（不改 — chip 區跟 RouteSheet 各自顯示同一份 store，互不依賴）
+- Stage 4 的 RouteSheet / SpotPopup / MapView（探索頁只透過 `useRoutePlannerStore` 與 RouteSheet 接軌）
 
 ## 十五、開放問題（實作前再確認）
 
 - 卡片 fetch 來源：跟地圖共用 spots[] 還是獨立 endpoint？建議共用（v1 資料量小）
-- 撤回上限：20 夠嗎？
+- 是否要補完整 undo history（目前只救回最近一次 skip）
 - 桌機滾輪行為：滾在卡片**外**怎麼處理（捲動整頁 vs 鎖住）

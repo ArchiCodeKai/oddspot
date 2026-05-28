@@ -7,7 +7,8 @@ Zustand stores。一個 feature 一個 store。
 | `useAppStore` | 全站 theme 切換（terminal / blueprint / caution / midnight） |
 | `useMapStore` | 地圖頁狀態（filter、selectedSpot 等） |
 | `useSavedStore` | 使用者收藏（Guest mode localStorage + 登入後同步後端） |
-| `useSwipeStore` | 滑卡片頁狀態（Step 4） |
+| `useSwipeStore` | 滑卡片 session 狀態（skipped / undo，不存路線選點） |
+| `useRoutePlannerStore` | 地圖 RouteSheet + 探索頁共用的路線選點與最佳化狀態 |
 | `useLocaleStore` | 語系切換 |
 | `useLoginPromptStore` | 登入提示 modal 顯示控制 |
 | `useJawMoonStore` | 桌機月球咬合動畫跨 Canvas 通訊（將來會評估改用 module-level mutable） |

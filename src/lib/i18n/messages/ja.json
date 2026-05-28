@@ -7,6 +7,7 @@
     "brand": "sys://oddspot"
   },
   "onboarding": {
+    "ariaLabel": "OddSpot ウェルカム画面",
     "badge": "B 級スポット",
     "tagline": "台湾の街のうまく\n説明できない場所",
     "cta": "探索を始める",
@@ -17,7 +18,8 @@
     "headline": "B 級<em>スポット</em>",
     "lede": "独特で、奇妙で、懐かしくて、ちょっと雑なスポット。日常のユーモアと視覚のジャブを探しに、出かけよう。",
     "cta": "Start Scanning",
-    "ctaMeta": "→ 探索開始 · 登録不要"
+    "ctaMeta": "→ 探索開始 · 登録不要",
+    "cycleTheme": "テーマ切り替え"
   },
   "auth": {
     "login": "ログイン",
@@ -34,11 +36,24 @@
       "descriptionLine2": "匿名閲覧中の保存は引き継がれます。",
       "googleAction": "Google でログイン",
       "lineAction": "LINE でログイン",
-      "skip": "skip · 匿名で続行"
+      "skip": "skip · 匿名で続行",
+      "close": "閉じる"
     }
   },
   "map": {
-    "locating": "位置情報取得中"
+    "locating": "位置情報取得中",
+    "locateMe": "現在地へ移動",
+    "permissionDenied": "permission denied · システム設定で位置情報を許可",
+    "gpsError": "err_gps · 信号ロスト"
+  },
+  "settings": {
+    "open": "設定メニューを開く",
+    "language": "言語",
+    "theme": "テーマ"
+  },
+  "radius": {
+    "label": "検索半径",
+    "option": "半径 {km} キロ"
   },
   "spotMeta": {
     "categories": {
@@ -65,6 +80,8 @@
   },
   "filter": {
     "title": "スポット絞り込み",
+    "trigger": "絞り込み",
+    "close": "絞り込みを閉じる",
     "category": "カテゴリ",
     "difficulty": "難易度",
     "status": "状態",
@@ -76,9 +93,34 @@
     "clear": "クリア",
     "emptyTitle": "まだスポットがありません",
     "emptyHint": "+ を押して今日のルートに追加",
-    "routeHint": "追加順に並びます。v2 でルート最適化。",
+    "routeHint": "探索ではスポットを選び、最適化とナビはマップで行います。",
     "navigate": "Google Maps で開く",
+    "openRoutePlanner": "マップでルート計画",
     "remove": "削除"
+  },
+  "routeSheet": {
+    "title": "archive://route · ルート計画",
+    "close": "閉じる",
+    "swipeDownToClose": "下へドラッグしてルート計画を閉じる",
+    "origin": "pin · 現在地",
+    "empty": "地図 marker を押すか保存済みから選択",
+    "dragHandle": "ドラッグで順序変更",
+    "remove": "削除",
+    "limitReached": "{max} 件の上限に達しました",
+    "collapseSaved": "− 保存済みを閉じる",
+    "addSaved": "+ 保存済みから選択",
+    "noSaved": "保存済みスポットはまだありません · スポットページで保存してみてください",
+    "noSavedInArea": "このエリアに保存済みスポットはありません · 地図を動かすか検索範囲を広げてください",
+    "totalDist": "total dist",
+    "est": "est",
+    "optimized": "optimized ✓",
+    "ready": "ready · 現在の順序で計画、または最適化して並べ替え",
+    "needMorePoints": "スポットが足りません · 最低 2 点",
+    "clear": "クリア",
+    "planInOrder": "ルート計画",
+    "optimize": "最適化",
+    "optimizing": "最適化中",
+    "start": "start / ナビ開始"
   },
   "spotDetail": {
     "back": "マップへ戻る",
@@ -94,6 +136,13 @@
   "swipe": {
     "skip": "スキップ",
     "save": "保存",
+    "unsave": "保存を解除",
+    "close": "閉じる",
+    "addToRoute": "ルートに追加",
+    "removeFromRoute": "ルートから削除",
+    "routeAdded": "追加済み",
+    "route": "ルート",
+    "go": "移動",
     "filter": "絞り込み",
     "leftArrow": "左へスワイプ",
     "rightArrow": "右へスワイプ",
@@ -104,12 +153,21 @@
     "viewTripCta": "今日のルートを見る（{count} 件）",
     "viewDetail": "詳細を見る →",
     "addToTrip": "ルートに追加",
+    "navigateGoogle": "Google Maps で開く",
+    "visits": "閲覧 / 訪問",
+    "bestTime": "おすすめ時間",
+    "unknown": "未記録",
+    "difficultyLabel": "難易度",
+    "address": "住所",
+    "photos": "写真",
+    "photoAlt": "スポット写真 {index}",
+    "mobileActions": "スワイプ操作",
     "loginToSave": "ログインで保存",
     "undo": "戻す",
     "undoLabel": "さっきスキップしたのを戻す",
     "gestureSkip": "左 · スキップ",
     "gestureSave": "右 · 保存",
-    "gestureDetail": "上 · 詳細",
+    "gestureDetail": "スクロール · 詳細",
     "difficulty": {
       "easy": "簡単",
       "medium": "普通",

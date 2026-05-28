@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { LangToggle } from "@/components/ui/LangToggle";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { AuthButton } from "@/components/auth/AuthButton";
@@ -11,6 +12,7 @@ import { AuthButton } from "@/components/auth/AuthButton";
 // AuthButton 自己內部還有一個 dropdown（已登入時的選單），雙層 dropdown 共存
 
 export function TopRightCluster() {
+  const t = useTranslations("settings");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -37,10 +39,38 @@ export function TopRightCluster() {
   }, [open]);
 
   return (
-    <div ref={ref} className="absolute top-4 right-4 z-10">
+    <div ref={ref} className="top-right-cluster absolute top-4 right-4 z-50">
+      <style>{`
+        .top-right-popover {
+          --panel-solid: color-mix(in srgb, var(--panel) 94%, var(--background) 6%);
+          background: var(--panel-glass-strong);
+          backdrop-filter: blur(20px);
+        }
+        .top-cluster-auth > div,
+        .top-cluster-auth > div > button {
+          width: 100%;
+        }
+        .top-cluster-auth > div > button {
+          justify-content: center;
+        }
+        .top-cluster-auth > div > div {
+          right: 0;
+        }
+        @media (max-width: 767px) {
+          .top-right-popover {
+            background: var(--panel-solid);
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            border-color: var(--line-strong) !important;
+            box-shadow:
+              0 18px 42px rgb(var(--background-rgb) / 0.72),
+              0 0 0 1px rgb(var(--foreground-rgb) / 0.04);
+          }
+        }
+      `}</style>
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label="開啟設定選單"
+        aria-label={t("open")}
         aria-expanded={open}
         style={{
           width: 44,
@@ -89,6 +119,7 @@ export function TopRightCluster() {
       <AnimatePresence>
         {open && (
           <motion.div
+            className="top-right-popover"
             initial={{ opacity: 0, y: -8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.95 }}
@@ -97,27 +128,27 @@ export function TopRightCluster() {
               position: "absolute",
               top: 52,
               right: 0,
-              width: 220,
-              background: "var(--panel-glass-strong)",
+              width: 168,
               border: "1px solid var(--line)",
               borderRadius: 2,
-              backdropFilter: "blur(20px)",
               boxShadow: "0 16px 48px rgb(var(--background-rgb) / 0.4)",
               transformOrigin: "top right",
               // overflow visible 讓內部 AuthButton 的 dropdown 能往左外露
               overflow: "visible",
             }}
           >
-            <PopoverItem delay={0.04}>
+            <PopoverItem delay={0.04} label={t("language")}>
               <LangToggle />
             </PopoverItem>
             <PopoverDivider />
-            <PopoverItem delay={0.08}>
+            <PopoverItem delay={0.08} label={t("theme")}>
               <ThemeToggle />
             </PopoverItem>
             <PopoverDivider />
             <PopoverItem delay={0.12}>
+              <div className="top-cluster-auth" style={{ width: "100%" }}>
               <AuthButton />
+              </div>
             </PopoverItem>
           </motion.div>
         )}
@@ -130,9 +161,11 @@ export function TopRightCluster() {
 function PopoverItem({
   children,
   delay,
+  label,
 }: {
   children: React.ReactNode;
   delay: number;
+  label?: string;
 }) {
   return (
     <motion.div
@@ -140,13 +173,30 @@ function PopoverItem({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.18, ease: "easeOut" }}
       style={{
-        padding: "8px 12px",
+        padding: "8px 10px",
         display: "flex",
-        justifyContent: "center",
+        justifyContent: label ? "space-between" : "center",
         alignItems: "center",
+        gap: 10,
+        width: 144,
+        margin: "0 auto",
       }}
     >
       {children}
+      {label && (
+        <span
+          style={{
+            color: "var(--muted)",
+            fontFamily: "var(--font-jetbrains-mono), monospace",
+            fontSize: 11,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {label}
+        </span>
+      )}
     </motion.div>
   );
 }

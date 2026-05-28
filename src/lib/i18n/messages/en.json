@@ -7,6 +7,7 @@
     "brand": "sys://oddspot"
   },
   "onboarding": {
+    "ariaLabel": "OddSpot welcome screen",
     "badge": "Quirky Attractions",
     "tagline": "Discovering the unexplainable\ncorners of Taiwan's cities",
     "cta": "Start Exploring",
@@ -17,7 +18,8 @@
     "headline": "<em>Quirky</em> Attractions",
     "lede": "Unique, bizarre, nostalgic, or a bit rough around the edges — the quirky spots that bring a touch of humor or visual jolt to your day. Go explore.",
     "cta": "Start Scanning",
-    "ctaMeta": "→ Explore now · No sign-up"
+    "ctaMeta": "→ Explore now · No sign-up",
+    "cycleTheme": "Cycle theme"
   },
   "auth": {
     "login": "Login",
@@ -34,11 +36,24 @@
       "descriptionLine2": "Anonymous saves carry over on sign-in.",
       "googleAction": "Sign in with Google",
       "lineAction": "Sign in with LINE",
-      "skip": "skip · stay anonymous"
+      "skip": "skip · stay anonymous",
+      "close": "Close"
     }
   },
   "map": {
-    "locating": "Locating"
+    "locating": "Locating",
+    "locateMe": "Locate me",
+    "permissionDenied": "permission denied · enable location in system settings",
+    "gpsError": "err_gps · signal lost"
+  },
+  "settings": {
+    "open": "Open settings menu",
+    "language": "Language",
+    "theme": "Theme"
+  },
+  "radius": {
+    "label": "Search radius",
+    "option": "{km} kilometer radius"
   },
   "spotMeta": {
     "categories": {
@@ -65,6 +80,8 @@
   },
   "filter": {
     "title": "Filter Spots",
+    "trigger": "Filter",
+    "close": "Close filters",
     "category": "Category",
     "difficulty": "Difficulty",
     "status": "Status",
@@ -76,9 +93,34 @@
     "clear": "Clear",
     "emptyTitle": "No spots added yet",
     "emptyHint": "Tap + to add a spot to today's route",
-    "routeHint": "Sorted by add order for now. Route optimization comes in v2.",
+    "routeHint": "Explore selects spots. Map handles route optimization and navigation.",
     "navigate": "Open in Google Maps",
+    "openRoutePlanner": "Plan Route on Map",
     "remove": "Remove"
+  },
+  "routeSheet": {
+    "title": "archive://route · Route Plan",
+    "close": "Close",
+    "swipeDownToClose": "Drag down to close route planner",
+    "origin": "pin · My Location",
+    "empty": "Tap a map marker or choose from saved spots",
+    "dragHandle": "Drag to reorder",
+    "remove": "Remove",
+    "limitReached": "{max} spot limit reached",
+    "collapseSaved": "− Hide Saved",
+    "addSaved": "+ Add From Saved",
+    "noSaved": "No saved spots yet · Try saving one from a spot page",
+    "noSavedInArea": "No saved spots in this area · Try moving the map or expanding the search radius",
+    "totalDist": "total dist",
+    "est": "est",
+    "optimized": "optimized ✓",
+    "ready": "ready · Plan with current order, or optimize and reorder",
+    "needMorePoints": "Need more spots · At least 2 points",
+    "clear": "Clear",
+    "planInOrder": "Plan Route",
+    "optimize": "Optimize",
+    "optimizing": "Optimizing",
+    "start": "start / Navigate"
   },
   "spotDetail": {
     "back": "Back to Map",
@@ -94,6 +136,13 @@
   "swipe": {
     "skip": "Skip",
     "save": "Save",
+    "unsave": "Unsave",
+    "close": "Close",
+    "addToRoute": "Add to Route",
+    "removeFromRoute": "Remove from Route",
+    "routeAdded": "Added",
+    "route": "Route",
+    "go": "Go",
     "filter": "Filter",
     "leftArrow": "Swipe Left",
     "rightArrow": "Swipe Right",
@@ -104,12 +153,21 @@
     "viewTripCta": "View Today's Trip ({count} spots)",
     "viewDetail": "View Full Details →",
     "addToTrip": "Add to Trip",
+    "navigateGoogle": "Open in Google Maps",
+    "visits": "Lookups / visits",
+    "bestTime": "Best time",
+    "unknown": "Unrecorded",
+    "difficultyLabel": "Difficulty",
+    "address": "Address",
+    "photos": "Photos",
+    "photoAlt": "Spot photo {index}",
+    "mobileActions": "Swipe card actions",
     "loginToSave": "Login to save spots",
     "undo": "Undo",
     "undoLabel": "Restore last skipped spot",
     "gestureSkip": "Left · skip",
     "gestureSave": "Right · save",
-    "gestureDetail": "Up · detail",
+    "gestureDetail": "Scroll · more info",
     "difficulty": {
       "easy": "Easy",
       "medium": "Medium",

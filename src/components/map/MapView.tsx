@@ -56,19 +56,10 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
   // - 有 userLocation：第一個 spot 是 waypoint 01，最後是 end
   // - 無 userLocation：第一個 spot 是 start，最後是 end，中間遞增
   const routeWaypointInfo = useMemo(() => {
-    let waypointCount = 0;
     return routeSelectedSpots.map((spot, i) => {
-      const isLast = i === routeSelectedSpots.length - 1;
-      if (!userLocation && i === 0) {
-        return { spot, role: "start" as const, waypointNumber: 0 };
-      }
-      if (isLast && routeSelectedSpots.length > 1) {
-        return { spot, role: "end" as const, waypointNumber: 0 };
-      }
-      waypointCount += 1;
-      return { spot, role: "waypoint" as const, waypointNumber: waypointCount };
+      return { spot, role: "waypoint" as const, waypointNumber: i + 1 };
     });
-  }, [routeSelectedSpots, userLocation]);
+  }, [routeSelectedSpots]);
 
   // initialViewState：使用者位置優先，否則台北中心
   // 為 uncontrolled prop，後續 userLocation 變動不會自動重定位（由 LocateMeButton 主動 flyTo）

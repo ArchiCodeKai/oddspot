@@ -40,6 +40,23 @@ src/store/
   useRoutePlannerStore.ts  ← 新增：路線規劃狀態
 ```
 
+## 右上角設定 Cluster
+
+`src/components/map/TopRightCluster.tsx` 是 `/map` 右上角的語言 / 主題 / 登入收合選單。
+
+- 外層固定使用高層級 `z-50`，必須蓋過 swipe 工具列、卡片、地圖控制列。
+- 桌機可維持 `var(--panel-glass-strong)` 玻璃面板；手機版改用 `--panel-solid` 實底，避免展開時看到後面的行程列、filter 或卡片內容透出。
+- 手機版 popover 關閉 backdrop blur，改靠實底與 shadow 建立層級；這是為了可讀性，不是為了視覺特效。
+- 語言、主題、登入按鈕仍沿用 `LangToggle`、`ThemeToggle`、`AuthButton`，不要在 cluster 內重寫狀態邏輯。
+
+## 左上角地圖控制列
+
+`src/app/map/page.tsx` 的 `.map-top-controls` 包住 filter trigger 與 `RadiusToggle`。
+
+- 手機 / 桌機維持原本 top-left 位置。
+- 平板斷點（768–1279px）改為 `top: 24px; left: 24px`，並限制 `max-width: calc(100vw - 148px)`，避免貼到右上角 settings cluster。
+- 平板 filter trigger 提升到 44px touch target、11px 字級、較寬 padding；RadiusToggle chip 也同步加大，避免 iPad 模擬尺寸下文字與 icon 擠在一起。
+
 ## 資料流
 
 ```
@@ -100,11 +117,24 @@ NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ...   ← 必填，使用者自行於 mapbox.com 
   方式 2：RouteSheet 內「+ 從收藏選」→ Saved Spots picker → addSpot
 
 選滿（>= 2 點）：
-  RouteSheet 顯示「OPTIMIZE / 計算最佳順序」按鈕
-  → useRoutePlannerStore.optimize()
-  → fetchOptimizedRoute（Mapbox Directions API with optimize=true）
+  RouteSheet 顯示「路徑規劃」與「最佳化」按鈕
+  → 清單列可直接拖曳換順序；不使用右側 ↑ / ↓ 控制
+  → 路徑規劃：useRoutePlannerStore.planInOrder()
+  → 最佳化：useRoutePlannerStore.optimize()
+  → planInOrder 使用 Directions API，照目前清單順序畫路線
+  → optimize 使用 Optimization API，成功後重排 selectedSpots
   → store 寫入 route + optimizedOrder
   → RoutePolyline / RouteWaypointMarker 自動重繪
+
+收起路線：
+  方式 1：點擊 RouteSheet 右上角 X
+  方式 2：從頂部拉手條或 header 往下拖曳，超過門檻即關閉
+  motion：RouteSheet / ExternalNavSheet 共用 src/lib/motion/sheetMotion.ts，進場 spring、離場 0.2s ease-in，reduced motion 時改淡入淡出
+
+視覺與定位：
+  RouteSheet 高度依選點數往上長高，上限 86vh；5 點時不讓清單區出現內部 scrollbar
+  footer 按鈕使用 repeat(..., minmax(0, 1fr)) 維持等寬，避免 zoom 或字體縮放造成寬度漂移
+  LocateMeButton 展開時使用同一組選點數高度公式貼近 RouteSheet 頂部，避免高螢幕時飄太遠
 
 開始導航：
   RouteSheet「START / 開始導航」
@@ -145,8 +175,8 @@ MapClickEffect  →  listen "oddspot:markerclick"，從 cursorState 讀取軌跡
 
 ## TODO（改造後仍未解決）
 
-- 加入篩選器 UI（useMapStore.filters）
-- 加入半徑選擇器
+- 篩選器 UI 第一版已接上 `useMapStore.filters`，API 支援 category / status / difficulty；後續可補 spec 原規劃的左側 slide-in 視覺與多選 status / difficulty UI
+- 半徑選擇器第一版已接上 RadiusToggle segmented control
 - 收藏列表勾選介面（階段 4 中實作，但 Saved Spots store 要等 Step 5 才存後端）
 
 ## 未排程 / Stage 5+ polish 候選

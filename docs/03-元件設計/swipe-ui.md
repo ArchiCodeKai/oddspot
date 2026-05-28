@@ -1,23 +1,48 @@
 # 滑卡片 UI 設計
 
-> **Status**：設計定案，待實作。
+> **Status**：第一版已實作，整合在 `/map` 的探索模式中。
 > **完整 spec**：[`docs/specs/2026-05-21-swipe-feature.md`](../specs/2026-05-21-swipe-feature.md)
 > **模組現況**：[`.ai-context/features/swipe/_module.md`](../../.ai-context/features/swipe/_module.md)
 
-本文件聚焦 UI 層細節（視覺、動畫、互動）。資料流 / store / 整合策略見 spec。
+本文件聚焦 UI 層細節（視覺、動畫、互動）。目前實作沒有獨立 `/swipe` 路由，而是在 `/map` 內用 bottom tab 切換 `map` / `swipe`，避免地圖元件切換時重載。
 
 ---
 
 ## 卡片尺寸
 
-| 項目 | 手機 | 桌機 |
-|---|---|---|
-| 寬度 | 90vw | 420px |
-| 高度（固定） | 70vh | 600px |
-| 旋轉 | -2°（acid 截圖感） | -2° |
-| border-radius | 2px（acid 硬角） | 2px |
+| 項目 | 手機 | 平板 | 桌機 |
+|---|---|---|---|
+| 寬度 | `min(100%, 100vw - 32px)`，避免 zoom / 窄螢幕時偏移或被裁切 | `clamp(34rem, 72vw, 48rem)`，再用 `max-width: calc(100vw - 72px)` 防裁切 | `24rem` |
+| 高度（固定） | `min(520px, 70vh)` | `min(820px, 74vh)` | `min(520px, 70vh)` |
+| 旋轉 | -2°（acid 截圖感） | -2° | -2° |
+| border-radius | 2px（acid 硬角） | 2px | 2px |
 
 下方還有 200vh 詳情區可內滾。
+
+手機版 SwipeView 會替 `/map` 固定在頂部的 filter / radius 控制列預留安全高度，行程吉祥物列不再貼到最上緣被遮住。卡片 frame 使用 viewport-safe 寬度並置中，避免瀏覽器縮放或 390px 以下寬度時只看到卡片左半邊。
+
+平板斷點（768–1279px）使用流體尺寸系統，不再只針對單一 iPad 寬度寫死。卡片會依 viewport 在 34–48rem 間縮放，toolbar 則改成置中 compact group，往下離開上方 nav，並與卡片保留 30px 左右的呼吸距離，避免行程吉祥物列與 globe button 或 filter controls 貼太近。SwipeView 自己不再渲染第二顆 filter；filter 只保留 `/map` 左上角全域按鈕。
+
+SwipeView 左側的還原按鈕採用與底部 action rail 相同語言：預設是圓形 icon-only 按鈕，hover / focus 才顯示文字 tooltip；active 只做輕微按壓。手機版 toolbar 放在上方 nav 與卡片之間，並保留 14px 卡片間隙；平板同樣置於 nav 與卡片中間；桌機版保留吉祥物列位置，僅把 undo 縮到 37px 並水平往左靠近卡片左上角，同時維持與 `3/5` 行程文字同高。
+
+## 底部 Action Rail
+
+- 三顆按鈕放在卡片容器內，用 `z-index: 32` 浮在卡片底部上方，避免桌機全螢幕時看起來藏在卡片後面。
+- 左右按鈕為 64px 圓形；中間「加入行程」為 76px 圓形主按鈕。
+- 中間加號不是細線 icon，而是寬胖圓角十字，讓主要 CTA 跟 skip/save 有明確視覺層級。
+- 按鈕不再承擔主要動畫：移除頂部短線與過強 glow，hover / focus 只顯示文字 tooltip，active 只做 `translateY(2px)` 按壓感。
+- 行動結果回饋放回卡片中央：skip / save 顯示 0.7s acid stamp；加入行程顯示資料夾 icon，卡片先回到中心再縮小淡出，形成被收進資料夾的 intake 動畫。
+- 手機版不在首屏顯示 action rail；使用者需要滾到卡片底部才看到三顆 68/82px 觸控按鈕。桌機版保留卡片外浮動按鈕，方便滑鼠操作。
+
+## FilterSheet
+
+- 開啟時使用 `src/lib/motion/sheetMotion.ts` 的共用 bottom sheet motion：進場是 320/34 spring，離場用 0.2s ease-in 往下收，避免關閉時拖泥帶水。
+- 關閉保留三種方式：點擊上方遮罩空白處、點 header 右側 36px X 按鈕、或從拉手條往下拖曳超過門檻。
+- `prefers-reduced-motion` 時改成淡入淡出，不做大距離 y 軸位移。
+- X 按鈕走 i18n `filter.close`，並保留 hover / focus 可辨識狀態。
+- Filter tag hover / focus 使用 neon flicker：brightness steps、scanline 掃過、accent glow。
+- 點擊 tag 時先跑 0.9s 老日光燈啟動閃爍（ignite），選中後進入低頻、極輕微的 idle flicker，模擬年久失修燈管的微弱不穩定。
+- 手機沒有 hover，active / selected 狀態保留更明顯的 ignition；同時尊重 `prefers-reduced-motion` 關閉動畫。
 
 ## 手勢對應
 
@@ -25,11 +50,18 @@
 |---|---|
 | 左滑（>100px） | pass |
 | 右滑（>100px） | 加收藏夾 |
-| 超級按鈕（卡片 ⭐ icon） | 加收藏 + 加目前路徑 |
-| 上下滑 / 桌機滾輪在卡片內 | 卡片內滾動 |
+| 超級按鈕（底部 + icon） | 加收藏 + 加目前路徑 |
+| 上下滑 / 桌機滾輪在卡片內 | 整張卡片內滾動 |
 | 撤回箭頭（chip bar） | 撤回上一張 |
 
 **重點**：左右滑隨時可用，不會被內滾鎖住。
+
+## 卡片內頁瀏覽
+
+- 移除 `查看完整詳情` 按鈕；卡片本身就是可內滾詳情面板。
+- 首屏保留封面圖、分類、狀態、難度、名稱；往下滾可看到查詢 / 造訪數、推薦時段、GPS、地址、最多 3 張照片。
+- 卡片右側 scrollbar 採低透明 acid 樣式，滾動時提供「還有內容」的提示，但不搶主視覺。
+- 詳情區提供 `導航前往 Google Maps`，這是單點即刻出發，不加入 OddSpot 路線排程；行程規劃仍由 RouteSheet 負責。
 
 ## Framer Motion 拖拉設定
 
@@ -71,23 +103,25 @@
   - 超級按鈕 → 金色 `#ffd24a`（加路徑）
 - 釋放：spring 飛出（依方向）
 - 撤回：spring 從畫面外飛回
+- 手機與桌機拖曳中：左 / 右邊緣各有低透明度的 X / check icon 從邊緣往卡片中心滑入，越靠中心越淡，切到下一張後消失。桌機仍額外保留較明確的文字 stamp，讓滑鼠拖曳時判定更清楚。
 
-## 底部 Chip Bar
+## 行程計數與 TripPlanSheet
 
 ```
 ┌──────────────────────────────────────┐
-│ ⏮ 撤回    👁  👁  👁  _  _          │
+│ [FILTER] [UNDO]        ● ● _ _ _ 2/5 │
 └──────────────────────────────────────┘
 ```
 
 | 狀態 | 視覺 |
 |---|---|
-| 空位 | dashed 1px border，opacity 0.3 |
-| 有點 | mini 吉祥物 icon（blinking mood，6–8px） |
-| 滿 5 個 | 集體 jitter 動畫（±2px 隨機抖） |
-| 超出 | 集體 shake + toast 提示 |
+| 空位 | sleepy 吉祥物，低透明度 |
+| 有點 | 吉祥物恆亮，並以分層 idle 動作提供生命感 |
+| 滿 5 個 | 5 個吉祥物全亮，+ 按鈕 toast 提示「今日行程已達上限」 |
 
-點 chip → 彈出 mini card（移除 / reorder），詳見 spec 第五章。
+整個行程槽可 hover / 點擊；hover 不再出現每個吉祥物的方框，也不使用外圈發光，避免把「已選數量」誤看成閃爍狀態。提示方式改為吉祥物本體微抬、眼球看向游標、文字底線變亮。mini 吉祥物必須沿用設計稿原始單眼輪廓與大眼睛比例，不新增雙眼或新角色；動態只拆到原始 eye SVG 的外殼、眼眶、瞳孔圖層：外殼 squash / stretch、落地反震、瞳孔位移、眼眶微傾，避免整個 SVG 像貼紙一樣平移。此 sheet 讀取 `useRoutePlannerStore.selectedSpots`，可移除或清空選點；CTA 會切回地圖並開啟既有 RouteSheet，讓使用者繼續「路徑規劃 / 最佳化 / START」。
+
+目前路線會持久化到 localStorage key `oddspot-route`，重新整理後仍保留。
 
 ## Acid sticker 元素
 
@@ -109,3 +143,11 @@
 ```
 
 文案 acid 化詳見 spec 第八章。
+
+## 資料來源
+
+- 探索卡片資料：沿用 `/api/spots`
+- 篩選條件：`useMapStore.filters`
+- 收藏：`useSavedStore`
+- 路線選點：`useRoutePlannerStore.selectedSpots`
+- swipe session：`useSwipeStore.skippedIds` + `lastSkippedId`

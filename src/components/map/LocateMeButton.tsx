@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import type { MapRef } from "react-map-gl/mapbox";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 
@@ -10,14 +11,24 @@ interface LocateMeButtonProps {
 
 type Status = "idle" | "locating" | "ok" | "denied" | "error";
 
+function getRouteSheetHeight(spotCount: number): string {
+  const routeRowCount = spotCount + 1;
+  const contentHeight = Math.max(360, 286 + routeRowCount * 58);
+  return `min(86vh, ${contentHeight}px)`;
+}
+
 export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
+  const t = useTranslations("map");
   const [status, setStatus] = useState<Status>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const hideTimerRef = useRef<number | null>(null);
   // 當路線 sheet 展開時往上讓位（spec 3f）
   const sheetOpen = useRoutePlannerStore((s) => s.isOpen);
-  const buttonBottom = sheetOpen ? "calc(60vh + 16px)" : 88;
-  const hintBottom = sheetOpen ? "calc(60vh + 24px)" : 96;
+  const selectedSpotCount = useRoutePlannerStore((s) => s.selectedSpots.length);
+  const sheetHeight = getRouteSheetHeight(selectedSpotCount);
+  const sheetGap = "clamp(8px, 1.2vh, 14px)";
+  const buttonBottom = sheetOpen ? `calc(${sheetHeight} + ${sheetGap})` : 88;
+  const hintBottom = sheetOpen ? `calc(${sheetHeight} + ${sheetGap} + 8px)` : 96;
 
   // 顯示提示後 1.5s 自動消失
   useEffect(() => {
@@ -55,7 +66,7 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
     <>
       <button
         onClick={handleLocate}
-        aria-label="定位到我"
+        aria-label={t("locateMe")}
         disabled={status === "locating"}
         style={{
           position: "absolute",
@@ -125,8 +136,8 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
               located · {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
             </>
           )}
-          {status === "denied" && "permission denied · 開啟系統設定 > 定位"}
-          {status === "error" && "err_gps · 訊號失蹤"}
+          {status === "denied" && t("permissionDenied")}
+          {status === "error" && t("gpsError")}
         </div>
       )}
     </>

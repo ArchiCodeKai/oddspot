@@ -140,3 +140,51 @@ export async function fetchOptimizedRoute(
     optimizedOrder: [0, 1],
   };
 }
+
+export async function fetchRouteInOrder(
+  req: DirectionsRequest
+): Promise<DirectionsResponse> {
+  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  if (!token) {
+    throw new Error("NEXT_PUBLIC_MAPBOX_TOKEN 未設定");
+  }
+
+  const profile = req.profile ?? "driving";
+  const points: LngLat[] = [
+    req.origin,
+    ...(req.waypoints ?? []),
+    req.destination,
+  ];
+
+  if (points.length < 2) {
+    throw new Error("路線至少需要兩點");
+  }
+  if (points.length > MAX_POINTS) {
+    throw new Error(`Mapbox 上限 ${MAX_POINTS} 點`);
+  }
+
+  const params = new URLSearchParams({
+    geometries: "geojson",
+    overview: "full",
+    access_token: token,
+  });
+  const url = `${DIRECTIONS_BASE}/${profile}/${formatCoords(points)}?${params.toString()}`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Directions API 失敗 (${res.status})`);
+  }
+  const data = await res.json();
+  const routes = data.routes as MapboxRoute[] | undefined;
+  if (!routes?.length) {
+    throw new Error("找不到可行路線");
+  }
+  const route = routes[0];
+
+  return {
+    geometry: route.geometry,
+    distanceMeters: route.distance,
+    durationSeconds: route.duration,
+    optimizedOrder: points.map((_, index) => index),
+  };
+}

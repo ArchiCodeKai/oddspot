@@ -7,6 +7,7 @@
     "brand": "sys://oddspot"
   },
   "onboarding": {
+    "ariaLabel": "OddSpot 歡迎畫面",
     "badge": "B 級景點探測器",
     "tagline": "發現台灣城市裡那些\n說不清楚的地方",
     "cta": "開始探索",
@@ -17,7 +18,8 @@
     "headline": "B 級<em>景點探測器</em>",
     "lede": "獨特、獵奇、懷舊或帶點粗糙感的怪怪景點，尋找生活中的幽默感或視覺衝擊，去探險吧。",
     "cta": "Start Scanning",
-    "ctaMeta": "→ 開始探索 · 不用註冊"
+    "ctaMeta": "→ 開始探索 · 不用註冊",
+    "cycleTheme": "切換主題"
   },
   "auth": {
     "login": "登入",
@@ -34,11 +36,24 @@
       "descriptionLine2": "匿名瀏覽期間的收藏會同步保留。",
       "googleAction": "Google 登入",
       "lineAction": "LINE 登入",
-      "skip": "skip · 繼續匿名瀏覽"
+      "skip": "skip · 繼續匿名瀏覽",
+      "close": "關閉"
     }
   },
   "map": {
-    "locating": "定位中"
+    "locating": "定位中",
+    "locateMe": "定位到我",
+    "permissionDenied": "permission denied · 開啟系統設定 > 定位",
+    "gpsError": "err_gps · 訊號失蹤"
+  },
+  "settings": {
+    "open": "開啟設定選單",
+    "language": "語言",
+    "theme": "主題"
+  },
+  "radius": {
+    "label": "搜尋半徑",
+    "option": "半徑 {km} 公里"
   },
   "spotMeta": {
     "categories": {
@@ -65,6 +80,8 @@
   },
   "filter": {
     "title": "篩選景點",
+    "trigger": "篩選",
+    "close": "關閉篩選",
     "category": "景點類型",
     "difficulty": "難度",
     "status": "狀態",
@@ -76,9 +93,34 @@
     "clear": "清空",
     "emptyTitle": "還沒有加入任何地點",
     "emptyHint": "按 + 把景點加入今日行程",
-    "routeHint": "依加入順序排列，v2 加入最佳路線計算",
+    "routeHint": "探索頁只負責選點，最佳化與導航交給地圖頁",
     "navigate": "在 Google Maps 中導航",
+    "openRoutePlanner": "回地圖規劃路線",
     "remove": "移除"
+  },
+  "routeSheet": {
+    "title": "archive://route · 歸檔行程",
+    "close": "關閉",
+    "swipeDownToClose": "往下拖曳收起路線規劃",
+    "origin": "pin · 我的位置",
+    "empty": "點地圖 marker 或從收藏選擇",
+    "dragHandle": "拖曳調整順序",
+    "remove": "移除",
+    "limitReached": "已達 {max} 點上限",
+    "collapseSaved": "− 收起收藏",
+    "addSaved": "+ 從收藏選",
+    "noSaved": "尚未收藏景點 · 試試在景點頁面按收藏",
+    "noSavedInArea": "本區無已收藏景點 · 試試拖動地圖或擴大搜尋範圍",
+    "totalDist": "total dist",
+    "est": "est",
+    "optimized": "optimized ✓",
+    "ready": "ready · 可依目前順序規劃，或最佳化後重排",
+    "needMorePoints": "尚需更多點 · 至少 2 點",
+    "clear": "清空",
+    "planInOrder": "路徑規劃",
+    "optimize": "最佳化",
+    "optimizing": "規劃中",
+    "start": "start / 開始導航"
   },
   "spotDetail": {
     "back": "返回地圖",
@@ -94,8 +136,24 @@
   "swipe": {
     "skip": "跳過",
     "save": "收藏",
+    "unsave": "取消收藏",
+    "close": "關閉",
+    "addToRoute": "加入路線",
+    "removeFromRoute": "從路線移除",
+    "routeAdded": "已加入",
+    "route": "ROUTE",
+    "go": "GO",
     "viewDetail": "查看完整詳情 →",
     "addToTrip": "加入今日行程",
+    "navigateGoogle": "導航前往 Google Maps",
+    "visits": "查詢 / 造訪",
+    "bestTime": "推薦時段",
+    "unknown": "未記錄",
+    "difficultyLabel": "難度",
+    "address": "地址",
+    "photos": "照片",
+    "photoAlt": "景點照片 {index}",
+    "mobileActions": "滑卡片操作",
     "loginToSave": "登入後即可收藏",
     "filter": "篩選",
     "leftArrow": "向左滑",
@@ -109,7 +167,7 @@
     "undoLabel": "把剛剛跳過的找回來",
     "gestureSkip": "左滑 · 跳過",
     "gestureSave": "右滑 · 收藏",
-    "gestureDetail": "上滑 · 看詳情",
+    "gestureDetail": "滾動 · 更多資料",
     "difficulty": {
       "easy": "容易",
       "medium": "普通",

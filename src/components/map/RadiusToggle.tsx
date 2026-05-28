@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { MapRef } from "react-map-gl/mapbox";
 import { useMapStore } from "@/store/useMapStore";
 
@@ -22,6 +23,7 @@ interface RadiusToggleProps {
 // 點任一 chip → setRadius + 切回 radius mode + flyTo 使用者位置
 // viewport 模式時所有 chip 都不 highlight（提示「你正在自由瀏覽」）
 export function RadiusToggle({ mapRef, userLocation }: RadiusToggleProps) {
+  const t = useTranslations("radius");
   const radius = useMapStore((s) => s.radius);
   const queryMode = useMapStore((s) => s.queryMode);
   const setRadius = useMapStore((s) => s.setRadius);
@@ -50,7 +52,7 @@ export function RadiusToggle({ mapRef, userLocation }: RadiusToggleProps) {
         boxShadow: "var(--shadow-glow)",
       }}
       role="radiogroup"
-      aria-label="搜尋半徑"
+      aria-label={t("label")}
     >
       {RADIUS_OPTIONS.map((km) => {
         const isActive = queryMode === "radius" && km === radius;
@@ -60,7 +62,7 @@ export function RadiusToggle({ mapRef, userLocation }: RadiusToggleProps) {
             type="button"
             role="radio"
             aria-checked={isActive}
-            aria-label={`半徑 ${km} 公里`}
+            aria-label={t("option", { km })}
             onClick={() => handleSelect(km)}
             className="transition-colors uppercase"
             style={{

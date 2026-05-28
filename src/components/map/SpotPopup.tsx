@@ -196,7 +196,7 @@ export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps
                 borderRadius: 2,
                 cursor: "pointer",
               }}
-              aria-label="關閉"
+              aria-label={tSwipe("close")}
             >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -210,7 +210,7 @@ export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps
             {/* 收藏 */}
             <button
               onClick={handleSave}
-              aria-label={isSaved ? "取消收藏" : "收藏"}
+              aria-label={isSaved ? tSwipe("unsave") : tSwipe("save")}
               className="flex-1 h-9 flex items-center justify-center gap-1.5 transition-all uppercase"
               style={{
                 background: isSaved ? "rgb(var(--accent-rgb) / 0.15)" : "transparent",
@@ -236,7 +236,7 @@ export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps
             {/* 加入路線 (Stage 3) */}
             <button
               onClick={handleToggleRoute}
-              aria-label={isInRoute ? "從路線移除" : "加入路線"}
+              aria-label={isInRoute ? tSwipe("removeFromRoute") : tSwipe("addToRoute")}
               className="flex-1 h-9 flex items-center justify-center gap-1.5 transition-all uppercase"
               style={{
                 background: isInRoute ? "rgb(var(--accent-rgb) / 0.15)" : "transparent",
@@ -257,7 +257,7 @@ export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps
                 <circle cx="18" cy="18" r="2" />
                 <path d="M6 8 Q 6 14 12 14 T 18 16" />
               </svg>
-              {isInRoute ? "已加入" : "ROUTE"}
+              {isInRoute ? tSwipe("routeAdded") : tSwipe("route")}
             </button>
 
             {/* 導航 */}
@@ -288,7 +288,7 @@ export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps
                 strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="3 11 22 2 13 21 11 13 3 11" />
               </svg>
-              GO
+              {tSwipe("go")}
             </button>
           </div>
 

@@ -64,6 +64,24 @@ TODO：整合 useMapStore（目前 selectedSpot 在 local state）
 - 改造後**新增**：「加入路線」按鈕 → `useRoutePlannerStore.addSpot(spot)`
 - 「查看詳情」→ 連到 `/spots/[id]`
 
+## TopRightCluster
+
+**路徑**：`src/components/map/TopRightCluster.tsx`
+
+- 右上角 44×44 wireframe globe 按鈕，展開語言、主題、登入控制。
+- 外層使用 `z-50`，要蓋過 swipe card、行程吉祥物列、filter / radius 控制列。
+- 桌機面板保留玻璃感；手機版 popover 使用 `--panel-solid` 實底，避免背景 UI 透出造成閱讀與點擊干擾。
+- 手機版取消 backdrop blur，改用實底、強邊框與陰影建立層級，讓面板本身清楚可辨識。
+- 內部邏輯只組合 `LangToggle`、`ThemeToggle`、`AuthButton`，不複製語言 / 主題 / 登入狀態。
+
+## Map Top Controls
+
+**路徑**：`src/app/map/page.tsx`
+
+- `.map-top-controls` 包住左上 filter trigger 與 `RadiusToggle`。
+- 平板斷點（768–1279px）加大 filter trigger 與 radius chips 到接近 44px 觸控尺寸，避免 iPad 尺寸下文字與 icon 擠在一起。
+- 平板斷點限制 `max-width: calc(100vw - 148px)`，讓左側控制列和右上角 settings cluster 保持距離。
+
 ## LocateMeButton（新元件）
 
 **路徑**：`src/components/map/LocateMeButton.tsx`
@@ -109,11 +127,22 @@ TODO：整合 useMapStore（目前 selectedSpot 在 local state）
 
 設計細節：
 - border-radius: 2px（不是 16px）
+- 高度：依選點數往上長高，上限 `86vh`；5 點時清單區不出現內部 scrollbar。
+- RouteSheet / ExternalNavSheet / FilterSheet 共用 `src/lib/motion/sheetMotion.ts`：進場為 320/34 spring，離場為 0.2s ease-in，拖曳關閉門檻為 80px 或 650px/s。
+- `prefers-reduced-motion` 時 sheet 改成淡入淡出，不做大距離 y 軸位移。
 - 拉手條：4×40px，1px 外框，兩側貼 acid barcode sticker
 - 「OPTIMIZED ✓」當 Mapbox 回傳順序 ≠ 使用者輸入順序時顯示
-- 1–5 個 waypoint 限制（含使用者位置自動加為起點 spot 0，所以使用者最多選 4 個）
+- 1–5 個 waypoint 限制（使用者位置是固定 origin，不佔用五個景點名額）
+- 使用者可直接拖曳清單列調整景點順序；不提供 ↑ / ↓ 按鈕，避免路線編輯像後台表格
+- 清單列是 48px 以上的 row，包含 20px 拖曳 handle、28px 編號圓點、36px 刪除按鈕，提升方向與操作辨識度。
+- 清單列需強制 `width: 100%`、`max-width: 100%`、`box-sizing: border-box`，避免 Framer Motion reorder 後單列變成內容寬度。
+- 清單列拖曳狀態不可用 `scale`，否則 Framer Motion layout projection 會造成單列視覺寬度漂移；改用背景、邊框、陰影表現拖曳。
+- RouteSheet 可用右上角 X 關閉，也可從頂部拉手條 / header 往下拖曳收起；ExternalNavSheet 也提供一致的下滑收合。
+- footer action 使用等寬 grid：`repeat(..., minmax(0, 1fr))`，避免瀏覽器 zoom 或文字縮放時寬度漂移。
+- 「路徑規劃」依目前清單順序呼叫 Directions API，不重排
+- 「最佳化」呼叫 Optimization API，成功後重排 `selectedSpots`
 
-讀取 `useRoutePlannerStore` state，呼叫 `optimize()` 觸發 Directions API。
+讀取 `useRoutePlannerStore` state，呼叫 `planInOrder()` 或 `optimize()` 觸發 Mapbox API。
 
 ## RoutePolyline（新元件）
 
@@ -135,12 +164,11 @@ TODO：整合 useMapStore（目前 selectedSpot 在 local state）
 
 **路徑**：`src/components/map/RouteWaypointMarker.tsx`
 
-中間 waypoint（不是起點/終點）的編號 marker：
+路線上的景點編號 marker：
 
 - 16×16 圓圈
-- 內含編號 `01` `02` `03` ... Space Mono 9px
+- 內含編號 `01` `02` `03` ... Space Mono 9px；五個景點皆使用同一套編號視覺
 - 邊框 1px `var(--accent)`，背景 `var(--background)`
-- 起點/終點是 8×8 方塊（不用這個元件，由 RouteSheet 直接畫）
 
 ## ExternalNavSheet（新元件）
 

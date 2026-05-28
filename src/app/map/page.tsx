@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { MapRef } from "react-map-gl/mapbox";
 import { useSpots } from "@/hooks/useSpots";
 import { useMapStore } from "@/store/useMapStore";
+import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { MapView } from "@/components/map/MapView";
 import { RadiusToggle } from "@/components/map/RadiusToggle";
 import { SwipeView } from "@/components/swipe/SwipeView";
@@ -14,6 +15,7 @@ import { FilterSheet } from "@/components/swipe/FilterSheet";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { TopRightCluster } from "@/components/map/TopRightCluster";
 import { OnboardingOverlay } from "@/components/ui/OnboardingOverlay";
+import { VIEW_MODE_TRANSITION } from "@/lib/motion/sheetMotion";
 
 const RADIUS_STEPS = [5, 10, 20, 50] as const;
 
@@ -36,7 +38,8 @@ export default function MapPage() {
   const queryMode = useMapStore((s) => s.queryMode);
   const setRadius = useMapStore((s) => s.setRadius);
   const setQueryMode = useMapStore((s) => s.setQueryMode);
-  const categories = useMapStore((s) => s.filters.categories);
+  const filters = useMapStore((s) => s.filters);
+  const openRouteSheet = useRoutePlannerStore((s) => s.openSheet);
 
   // 取得使用者定位（純 UI side effect，不屬於 server state）
   useEffect(() => {
@@ -51,10 +54,13 @@ export default function MapPage() {
     userLocation,
     radius,
     bbox: viewportBbox,
-    categories,
+    filters,
   });
   const spots = data?.spots ?? [];
-  const filterCount = categories?.length ?? 0;
+  const filterCount =
+    (filters.categories?.length ?? 0) +
+    (filters.status?.length ?? 0) +
+    (filters.difficulty?.length ?? 0);
   const filterActive = filterCount > 0;
 
   const handleRetry = useCallback(() => {
@@ -79,6 +85,11 @@ export default function MapPage() {
         duration: 600,
       });
     }
+  };
+
+  const handleOpenRoutePlanner = () => {
+    setViewMode("map");
+    openRouteSheet();
   };
 
   // 全頁 loading screen 只在「首次完全沒資料」時顯示
@@ -123,16 +134,54 @@ export default function MapPage() {
 
   return (
     <div className="w-full flex flex-col relative" style={{ height: "100dvh" }}>
+      <style>{`
+        .map-top-controls {
+          max-width: calc(100vw - 96px);
+        }
+        @media (min-width: 768px) and (max-width: 1279px) {
+          .map-top-controls {
+            top: 24px;
+            left: 24px;
+            gap: 10px;
+            max-width: calc(100vw - 148px);
+          }
+          .map-filter-trigger {
+            min-height: 44px;
+            padding: 0 14px !important;
+            gap: 8px;
+            font-size: 11px !important;
+            letter-spacing: 0.12em !important;
+          }
+          .map-filter-trigger svg {
+            width: 16px;
+            height: 16px;
+            flex: 0 0 auto;
+          }
+          .map-filter-trigger span {
+            white-space: nowrap;
+          }
+          .map-top-controls [role="radiogroup"] {
+            min-height: 44px;
+            padding: 6px 8px !important;
+          }
+          .map-top-controls [role="radio"] {
+            min-width: 52px;
+            min-height: 30px;
+            padding: 7px 10px !important;
+            font-size: 11px !important;
+          }
+        }
+      `}</style>
       {/* 吉祥物 onboarding（只有第一次開啟才出現） */}
       <OnboardingOverlay />
 
       {/* 左上角：篩選器 + 半徑切換器，並排放在 viewMode 切換不受影響的位置 */}
-      <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+      <div className="map-top-controls absolute top-4 left-4 z-20 flex items-center gap-2 flex-wrap">
         {/* 篩選器 trigger */}
         <button
           onClick={() => setShowFilter(true)}
           aria-label={tFilter("title")}
-          className="flex items-center gap-2 px-3 py-2 transition-all backdrop-blur-md"
+          className="map-filter-trigger flex items-center gap-2 px-3 py-2 transition-all backdrop-blur-md"
           style={{
             background: filterActive ? "rgb(var(--accent-rgb) / 0.18)" : "var(--panel-glass)",
             border: `1px solid ${filterActive ? "rgb(var(--accent-rgb) / 0.6)" : "var(--line)"}`,
@@ -162,7 +211,7 @@ export default function MapPage() {
             <line x1="4" y1="8" x2="12" y2="8" />
             <line x1="6" y1="12" x2="10" y2="12" />
           </svg>
-          <span>filter</span>
+          <span>{tFilter("trigger")}</span>
           {filterActive && (
             <span
               style={{
@@ -196,7 +245,7 @@ export default function MapPage() {
             opacity: viewMode === "map" ? 1 : 0,
             scale: viewMode === "map" ? 1 : 0.97,
           }}
-          transition={{ duration: 0.22, ease: "easeInOut" }}
+          transition={VIEW_MODE_TRANSITION}
           style={{ pointerEvents: viewMode === "map" ? "auto" : "none" }}
         >
           <MapView
@@ -216,14 +265,14 @@ export default function MapPage() {
             opacity: viewMode === "swipe" ? 1 : 0,
             y: viewMode === "swipe" ? 0 : 18,
           }}
-          transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+          transition={VIEW_MODE_TRANSITION}
           style={{ pointerEvents: viewMode === "swipe" ? "auto" : "none" }}
         >
           <SwipeView
             spots={spots}
-            userLocation={userLocation}
             isError={isError}
             onRetry={handleRetry}
+            onOpenRoutePlanner={handleOpenRoutePlanner}
           />
         </motion.div>
       </div>

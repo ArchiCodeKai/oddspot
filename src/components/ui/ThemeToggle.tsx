@@ -32,9 +32,12 @@ export function ThemeToggle() {
         e.currentTarget.style.color = "var(--muted)";
       }}
     >
-      {/* 月亮：所有 AppTheme 皆為深色系 */}
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      {/* 主題色切換：四格色票，避免沿用舊 light/dark 月亮語意 */}
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="square" aria-hidden="true">
+        <rect x="4" y="4" width="6" height="6" />
+        <rect x="14" y="4" width="6" height="6" />
+        <rect x="4" y="14" width="6" height="6" />
+        <rect x="14" y="14" width="6" height="6" />
       </svg>
     </button>
   );

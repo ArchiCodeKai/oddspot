@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence, Reorder, useDragControls, useReducedMotion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { useSavedStore } from "@/store/useSavedStore";
 import {
-  ROUTE_LOADING_COPY,
-  pickRandomLoadingCopy,
-  pickNextLoadingCopy,
-} from "@/lib/copy/route-loading";
+  REDUCED_SHEET_MOTION,
+  SHEET_DRAG_CLOSE_OFFSET,
+  SHEET_DRAG_CLOSE_VELOCITY,
+  SHEET_MOTION,
+} from "@/lib/motion/sheetMotion";
 import type { SpotMapPoint } from "@/types/spots";
 
 // 路線規劃底部 sheet。
@@ -50,7 +52,16 @@ const MONO_LABEL: React.CSSProperties = {
   textTransform: "uppercase",
 };
 
+function getRouteSheetHeight(spotCount: number, hasOrigin: boolean): string {
+  const routeRowCount = spotCount + (hasOrigin ? 1 : 0);
+  const contentHeight = Math.max(360, 286 + routeRowCount * 58);
+  return `min(86vh, ${contentHeight}px)`;
+}
+
 export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
+  const t = useTranslations("routeSheet");
+  const dragControls = useDragControls();
+  const shouldReduceMotion = useReducedMotion();
   const isOpen = useRoutePlannerStore((s) => s.isOpen);
   const selectedSpots = useRoutePlannerStore((s) => s.selectedSpots);
   const route = useRoutePlannerStore((s) => s.route);
@@ -61,20 +72,12 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
   const clear = useRoutePlannerStore((s) => s.clear);
   const closeSheet = useRoutePlannerStore((s) => s.closeSheet);
   const optimize = useRoutePlannerStore((s) => s.optimize);
+  const planInOrder = useRoutePlannerStore((s) => s.planInOrder);
+  const reorder = useRoutePlannerStore((s) => s.reorder);
 
   const savedIds = useSavedStore((s) => s.savedSpotIds);
   const [pickerOpen, setPickerOpen] = useState(false);
-
-  // OPTIMIZE 載入文案：每次按下時隨機抽，3s 換下一條
-  const [loadingCopy, setLoadingCopy] = useState<string>(ROUTE_LOADING_COPY[0]);
-  useEffect(() => {
-    if (!isOptimizing) return;
-    setLoadingCopy(pickRandomLoadingCopy());
-    const interval = window.setInterval(() => {
-      setLoadingCopy((curr) => pickNextLoadingCopy(curr));
-    }, 3000);
-    return () => window.clearInterval(interval);
-  }, [isOptimizing]);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
   // ≥5 點上限：用於控制「+ 從收藏選」按鈕與 picker 自動收起
   const atLimit = selectedSpots.length >= MAX_WAYPOINTS;
@@ -93,13 +96,33 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
   const canOptimize = userLocation
     ? selectedSpots.length >= 1
     : selectedSpots.length >= 2;
+  const routeSheetHeight = getRouteSheetHeight(
+    selectedSpots.length,
+    Boolean(userLocation)
+  );
 
   const handleOptimize = () => {
     void optimize(userLocation);
   };
 
+  const handlePlanInOrder = () => {
+    void planInOrder(userLocation);
+  };
+
   const handleStart = () => {
     onStart?.();
+  };
+
+  const handleReorder = (nextOrder: SpotMapPoint[]) => {
+    const changedIndex = nextOrder.findIndex(
+      (spot, index) => selectedSpots[index]?.id !== spot.id
+    );
+    if (changedIndex === -1) return;
+
+    const movedSpot = nextOrder[changedIndex];
+    const oldIndex = selectedSpots.findIndex((spot) => spot.id === movedSpot.id);
+    if (oldIndex === -1) return;
+    reorder(oldIndex, changedIndex);
   };
 
   const reordered = route ? isReordered(route.optimizedOrder) : false;
@@ -109,11 +132,24 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
       {isOpen && (
         <motion.div
           key="route-sheet"
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", stiffness: 320, damping: 34 }}
-          className="absolute left-0 right-0 bottom-0 z-30 flex flex-col"
+          variants={shouldReduceMotion ? REDUCED_SHEET_MOTION : SHEET_MOTION}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          drag={shouldReduceMotion ? false : "y"}
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.32 }}
+          onDragEnd={(_, info) => {
+            if (
+              info.offset.y > SHEET_DRAG_CLOSE_OFFSET ||
+              info.velocity.y > SHEET_DRAG_CLOSE_VELOCITY
+            ) {
+              closeSheet();
+            }
+          }}
+          className="absolute left-0 right-0 bottom-0 z-40 flex flex-col"
           style={{
             background: "var(--panel-glass-strong)",
             backdropFilter: "blur(20px)",
@@ -121,12 +157,20 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
             borderTop: "1px solid var(--line-strong)",
             borderTopLeftRadius: 2,
             borderTopRightRadius: 2,
-            maxHeight: "60vh",
+            height: routeSheetHeight,
+            maxHeight: "86vh",
             boxShadow: "0 -16px 48px rgb(var(--background-rgb) / 0.5)",
           }}
         >
           {/* drag handle */}
-          <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
+          <div
+            className="flex justify-center pt-2 pb-1 flex-shrink-0"
+            onPointerDown={(event) => dragControls.start(event)}
+            style={{ cursor: "grab", touchAction: "none" }}
+            aria-label={t("swipeDownToClose")}
+            role="button"
+            tabIndex={0}
+          >
             <div
               style={{
                 width: 40,
@@ -141,7 +185,8 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
           {/* header */}
           <div
             className="flex items-center justify-between px-4 py-2 flex-shrink-0"
-            style={{ borderBottom: "1px solid var(--line)" }}
+            onPointerDown={(event) => dragControls.start(event)}
+            style={{ borderBottom: "1px solid var(--line)", touchAction: "none" }}
           >
             <div
               style={{
@@ -151,11 +196,12 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                 color: "var(--muted)",
               }}
             >
-              archive://route · 歸檔行程
+              {t("title")}
             </div>
             <button
               onClick={closeSheet}
-              aria-label="關閉"
+              onPointerDown={(event) => event.stopPropagation()}
+              aria-label={t("close")}
               style={{
                 width: 24,
                 height: 24,
@@ -184,17 +230,18 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
             </button>
           </div>
 
-          {/* scrollable list */}
+          {/* route list */}
           <div
-            className="px-4 py-2 flex-1"
-            style={{ overflowY: "auto", minHeight: 0 }}
+            className="px-4 py-3 flex-shrink-0"
+            style={{ overflow: "visible" }}
           >
             {/* user location 起點固定列 */}
             {userLocation && (
               <div
-                className="flex items-center gap-2 py-2"
+                className="flex items-center gap-3 py-3 px-2"
                 style={{
                   borderBottom: "1px solid var(--line)",
+                  background: "rgb(var(--background-rgb) / 0.12)",
                   ...MONO_LABEL,
                   fontSize: 11,
                   color: "var(--muted)",
@@ -218,7 +265,7 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                     }}
                   />
                 </span>
-                <span>pin · 我的位置</span>
+                <span>{t("origin")}</span>
                 <span style={{ marginLeft: "auto", opacity: 0.6, fontSize: 10 }}>
                   {userLocation.lat.toFixed(3)}, {userLocation.lng.toFixed(3)}
                 </span>
@@ -236,80 +283,111 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                   opacity: 0.6,
                 }}
               >
-                點地圖 marker 或從收藏選擇
+                {t("empty")}
               </div>
             ) : (
-              <ul className="py-2" style={{ listStyle: "none", padding: 0 }}>
+              <Reorder.Group
+                axis="y"
+                values={selectedSpots}
+                onReorder={handleReorder}
+                className="py-2"
+                style={{
+                  listStyle: "none",
+                  padding: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                  gap: 8,
+                  width: "100%",
+                  minWidth: 0,
+                }}
+              >
                 {selectedSpots.map((spot, i) => {
-                  const isLast = i === selectedSpots.length - 1;
-                  const isEnd = isLast && selectedSpots.length > 1;
-                  let role: "start" | "waypoint" | "end";
-                  let num = 0;
-                  if (!userLocation && i === 0) {
-                    role = "start";
-                  } else if (isEnd) {
-                    role = "end";
-                  } else {
-                    role = "waypoint";
-                    num = userLocation ? i + 1 : i;
-                  }
-
                   return (
-                    <li
+                    <Reorder.Item
                       key={spot.id}
-                      className="flex items-center gap-2 py-1.5"
+                      value={spot}
+                      onDragStart={() => setDraggingIndex(i)}
+                      onDragEnd={() => setDraggingIndex(null)}
+                      className="flex items-center gap-3 transition-opacity"
+                      layout="position"
+                      style={{
+                        width: "100%",
+                        maxWidth: "100%",
+                        boxSizing: "border-box",
+                        flex: "0 0 auto",
+                        minHeight: 48,
+                        padding: "7px 10px",
+                        background:
+                          draggingIndex === i
+                            ? "rgb(var(--accent-rgb) / 0.1)"
+                            : "rgb(var(--background-rgb) / 0.16)",
+                        border: `1px solid ${
+                          draggingIndex === i
+                            ? "rgb(var(--accent-rgb) / 0.42)"
+                            : "var(--line)"
+                        }`,
+                        borderRadius: 2,
+                        opacity: draggingIndex === i ? 0.45 : 1,
+                        cursor: "grab",
+                        transformOrigin: "center",
+                        boxShadow:
+                          draggingIndex === i
+                            ? "0 0 20px rgb(var(--accent-rgb) / 0.14)"
+                            : "none",
+                      }}
                     >
+                      <span
+                        aria-label={t("dragHandle")}
+                        title={t("dragHandle")}
+                        style={{
+                          width: 20,
+                          minHeight: 34,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "var(--muted)",
+                          opacity: 0.65,
+                          fontFamily: "var(--font-jetbrains-mono), monospace",
+                          fontSize: 12,
+                          lineHeight: 1,
+                          cursor: "grab",
+                          touchAction: "none",
+                        }}
+                      >
+                        ⋮
+                      </span>
                       {/* role icon */}
                       <span
                         style={{
-                          width: 18,
-                          height: 18,
+                          width: 28,
+                          height: 28,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           flexShrink: 0,
                         }}
                       >
-                        {role === "start" && (
-                          <span
-                            style={{
-                              width: 8,
-                              height: 8,
-                              background: "var(--accent)",
-                            }}
-                          />
-                        )}
-                        {role === "end" && (
-                          <span
-                            style={{
-                              width: 8,
-                              height: 8,
-                              background: "var(--foreground)",
-                            }}
-                          />
-                        )}
-                        {role === "waypoint" && (
-                          <span
-                            style={{
-                              width: 18,
-                              height: 18,
-                              borderRadius: "50%",
-                              border: "1px solid var(--accent)",
-                              background: "var(--background)",
-                              color: "var(--accent)",
-                              fontFamily:
-                                "var(--font-jetbrains-mono), monospace",
-                              fontSize: 9,
-                              fontWeight: 700,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              lineHeight: 1,
-                            }}
-                          >
-                            {String(num).padStart(2, "0")}
-                          </span>
-                        )}
+                        <span
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: "50%",
+                            border: "1px solid var(--accent)",
+                            background: "rgb(var(--accent-rgb) / 0.08)",
+                            color: "var(--accent)",
+                            fontFamily:
+                              "var(--font-jetbrains-mono), monospace",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            lineHeight: 1,
+                          }}
+                        >
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
                       </span>
 
                       {/* name */}
@@ -326,13 +404,12 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                         {spot.name}
                       </span>
 
-                      {/* remove */}
                       <button
                         onClick={() => removeSpot(spot.id)}
-                        aria-label="移除"
+                        aria-label={t("remove")}
                         style={{
-                          width: 22,
-                          height: 22,
+                          width: 36,
+                          height: 36,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -357,10 +434,10 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                           <line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
                       </button>
-                    </li>
+                    </Reorder.Item>
                   );
                 })}
-              </ul>
+              </Reorder.Group>
             )}
 
             {/* + 從收藏選 toggle（到上限改 disabled 提示） */}
@@ -368,9 +445,9 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
               onClick={atLimit ? undefined : () => setPickerOpen(!pickerOpen)}
               disabled={atLimit}
               style={{
-                marginTop: 4,
+                marginTop: 8,
                 width: "100%",
-                padding: "8px 0",
+                padding: "11px 0",
                 background: "transparent",
                 border: "1px dashed var(--line-strong)",
                 borderRadius: 2,
@@ -383,10 +460,10 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
               }}
             >
               {atLimit
-                ? `已達 ${MAX_WAYPOINTS} 點上限`
+                ? t("limitReached", { max: MAX_WAYPOINTS })
                 : pickerOpen
-                  ? "− 收起收藏"
-                  : "+ 從收藏選"}
+                  ? t("collapseSaved")
+                  : t("addSaved")}
             </button>
 
             {/* saved picker panel（到上限自動收起） */}
@@ -403,8 +480,8 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                     }}
                   >
                     {savedIds.length === 0
-                      ? "尚未收藏景點 · 試試在景點頁面按收藏"
-                      : "本區無已收藏景點 · 試試拖動地圖或擴大搜尋範圍"}
+                      ? t("noSaved")
+                      : t("noSavedInArea")}
                   </div>
                 ) : (
                   <ul style={{ listStyle: "none", padding: 0 }}>
@@ -480,36 +557,47 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
             <div
               style={{
                 ...MONO_LABEL,
-                fontSize: 10,
+                fontSize: 11,
                 color: "var(--muted)",
-                marginBottom: 8,
-                opacity: route ? 1 : 0.5,
+                marginBottom: 10,
+                opacity: route ? 1 : 0.72,
               }}
             >
               {route ? (
                 <>
-                  total dist: {formatDistanceKm(route.distanceMeters)} km · est:{" "}
+                  {t("totalDist")}: {formatDistanceKm(route.distanceMeters)} km · {t("est")}:{" "}
                   {formatDuration(route.durationSeconds)}
                   {reordered && (
                     <span style={{ color: "var(--accent)" }}>
-                      {" · optimized ✓"}
+                      {" · "}
+                      {t("optimized")}
                     </span>
                   )}
                 </>
               ) : canOptimize ? (
-                "ready · 按下 optimize 計算最佳順序"
+                t("ready")
               ) : (
-                "尚需更多點 · 至少 2 點"
+                t("needMorePoints")
               )}
             </div>
 
             {/* actions */}
-            <div className="flex gap-2">
+            <div
+              className="grid gap-2"
+              style={{
+                gridTemplateColumns:
+                  selectedSpots.length > 0
+                    ? "repeat(3, minmax(0, 1fr))"
+                    : "repeat(2, minmax(0, 1fr))",
+              }}
+            >
               {selectedSpots.length > 0 && (
                 <button
                   onClick={clear}
                   style={{
-                    padding: "10px 14px",
+                    minHeight: 44,
+                    padding: "12px 14px",
+                    minWidth: 0,
                     background: "transparent",
                     border: "1px solid var(--line)",
                     borderRadius: 2,
@@ -520,37 +608,63 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                     cursor: "pointer",
                   }}
                 >
-                  清空
+                  {t("clear")}
                 </button>
               )}
-              {canOptimize && !route && (
+              {canOptimize && (
+                <button
+                  onClick={handlePlanInOrder}
+                  disabled={isOptimizing}
+                  style={{
+                    minHeight: 44,
+                    padding: "12px 12px",
+                    minWidth: 0,
+                    background: "transparent",
+                    border: "1px solid var(--line-strong)",
+                    borderRadius: 2,
+                    color: "var(--foreground)",
+                    ...MONO_LABEL,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.16em",
+                    cursor: isOptimizing ? "wait" : "pointer",
+                    opacity: isOptimizing ? 0.6 : 1,
+                  }}
+                >
+                  {t("planInOrder")}
+                </button>
+              )}
+              {canOptimize && (
                 <button
                   onClick={handleOptimize}
                   disabled={isOptimizing}
                   style={{
-                    flex: 1,
-                    padding: "10px 14px",
+                    minHeight: 44,
+                    padding: "12px 12px",
+                    minWidth: 0,
                     background: "rgb(var(--accent-rgb) / 0.15)",
                     border: "1px solid var(--accent)",
                     borderRadius: 2,
                     color: "var(--accent)",
                     ...MONO_LABEL,
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: 700,
-                    letterSpacing: "0.2em",
+                    letterSpacing: "0.16em",
                     cursor: isOptimizing ? "wait" : "pointer",
                     opacity: isOptimizing ? 0.6 : 1,
                   }}
+                  aria-label={isOptimizing ? t("optimizing") : t("optimize")}
                 >
-                  {isOptimizing ? loadingCopy : "optimize / 規劃路線"}
+                  {isOptimizing ? <LoadingDots /> : t("optimize")}
                 </button>
               )}
               {route && (
                 <button
                   onClick={handleStart}
                   style={{
-                    flex: 1,
-                    padding: "10px 14px",
+                    gridColumn: "1 / -1",
+                    padding: "12px 14px",
+                    minHeight: 46,
                     background: "var(--accent)",
                     border: "1px solid var(--accent)",
                     borderRadius: 2,
@@ -563,7 +677,7 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                     boxShadow: "0 0 16px rgb(var(--accent-rgb) / 0.4)",
                   }}
                 >
-                  start / 開始導航
+                  {t("start")}
                 </button>
               )}
             </div>
@@ -571,5 +685,44 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function LoadingDots() {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 4,
+        minHeight: 12,
+      }}
+    >
+      {[0, 1, 2].map((index) => (
+        <span
+          key={index}
+          className="route-loading-dot"
+          style={{
+            width: 4,
+            height: 4,
+            background: "currentColor",
+            borderRadius: 1,
+            animation: "route-dots 0.9s ease-in-out infinite",
+            animationDelay: `${index * 120}ms`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes route-dots {
+          0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+          40% { opacity: 1; transform: translateY(-3px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .route-loading-dot { animation: none !important; opacity: 1; }
+        }
+      `}</style>
+    </span>
   );
 }

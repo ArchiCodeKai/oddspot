@@ -2,14 +2,24 @@ import { create } from "zustand";
 import type { SpotMapPoint } from "@/types/spots";
 import {
   fetchOptimizedRoute,
+  fetchRouteInOrder,
   type DirectionsResponse,
 } from "@/lib/mapbox/directions";
+import {
+  getBrowserRouteStorage,
+  readRouteSpotsFromStorage,
+  writeRouteSpotsToStorage,
+} from "./routePlannerPersistence";
 
 // 路線規劃 store。
 // Stage 3 骨架：selectedSpots + add/remove/clear
 // Stage 4 擴充：sheet 開關、route 結果、optimize 流程、reorder
 
 const MAX_WAYPOINTS = 5;
+
+function persistRouteSpots(spots: SpotMapPoint[]) {
+  writeRouteSpotsToStorage(getBrowserRouteStorage(), spots);
+}
 
 interface LngLat {
   lat: number;
@@ -41,10 +51,11 @@ interface RoutePlannerStore {
 
   // routing
   optimize: (origin: LngLat | null) => Promise<void>;
+  planInOrder: (origin: LngLat | null) => Promise<void>;
 }
 
 export const useRoutePlannerStore = create<RoutePlannerStore>((set, get) => ({
-  selectedSpots: [],
+  selectedSpots: readRouteSpotsFromStorage(getBrowserRouteStorage()),
   isOpen: false,
   route: null,
   isOptimizing: false,
@@ -56,9 +67,11 @@ export const useRoutePlannerStore = create<RoutePlannerStore>((set, get) => ({
       if (state.selectedSpots.some((s) => s.id === spot.id)) return state;
       // 上限 5 個 waypoint
       if (state.selectedSpots.length >= MAX_WAYPOINTS) return state;
+      const selectedSpots = [...state.selectedSpots, spot];
+      persistRouteSpots(selectedSpots);
       // 新增點時 sheet 自動展開、清掉舊路線（因為點變了）
       return {
-        selectedSpots: [...state.selectedSpots, spot],
+        selectedSpots,
         isOpen: true,
         route: null,
         error: null,
@@ -66,11 +79,15 @@ export const useRoutePlannerStore = create<RoutePlannerStore>((set, get) => ({
     }),
 
   removeSpot: (id) =>
-    set((state) => ({
-      selectedSpots: state.selectedSpots.filter((s) => s.id !== id),
-      route: null,
-      error: null,
-    })),
+    set((state) => {
+      const selectedSpots = state.selectedSpots.filter((s) => s.id !== id);
+      persistRouteSpots(selectedSpots);
+      return {
+        selectedSpots,
+        route: null,
+        error: null,
+      };
+    }),
 
   reorder: (oldIndex, newIndex) =>
     set((state) => {
@@ -86,20 +103,57 @@ export const useRoutePlannerStore = create<RoutePlannerStore>((set, get) => ({
       const next = [...state.selectedSpots];
       const [moved] = next.splice(oldIndex, 1);
       next.splice(newIndex, 0, moved);
+      persistRouteSpots(next);
       return { selectedSpots: next, route: null, error: null };
     }),
 
-  clear: () =>
+  clear: () => {
+    persistRouteSpots([]);
     set({
       selectedSpots: [],
       route: null,
       error: null,
       isOpen: false,
-    }),
+    });
+  },
 
   toggleSheet: () => set((state) => ({ isOpen: !state.isOpen })),
   openSheet: () => set({ isOpen: true }),
   closeSheet: () => set({ isOpen: false }),
+
+  planInOrder: async (origin) => {
+    const { selectedSpots } = get();
+
+    const minSpots = origin ? 1 : 2;
+    if (selectedSpots.length < minSpots) {
+      set({ error: "至少需要兩個點才能規劃路線" });
+      return;
+    }
+
+    set({ isOptimizing: true, error: null });
+
+    try {
+      const inputPoints: LngLat[] = origin
+        ? [origin, ...selectedSpots.map((s) => ({ lat: s.lat, lng: s.lng }))]
+        : selectedSpots.map((s) => ({ lat: s.lat, lng: s.lng }));
+
+      const result = await fetchRouteInOrder({
+        origin: inputPoints[0],
+        destination: inputPoints[inputPoints.length - 1],
+        waypoints: inputPoints.slice(1, -1),
+      });
+
+      set({
+        route: result,
+        isOptimizing: false,
+      });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : "路線規劃失敗",
+        isOptimizing: false,
+      });
+    }
+  },
 
   optimize: async (origin) => {
     const { selectedSpots } = get();
@@ -153,6 +207,7 @@ export const useRoutePlannerStore = create<RoutePlannerStore>((set, get) => ({
         route: result,
         isOptimizing: false,
       });
+      persistRouteSpots(finalSpots);
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : "路線規劃失敗",

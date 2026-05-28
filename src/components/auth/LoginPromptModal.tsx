@@ -93,7 +93,7 @@ export function LoginPromptModal() {
         {/* 關閉按鈕（acid X 框） */}
         <button
           onClick={close}
-          aria-label="關閉"
+          aria-label={t("close")}
           className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center transition-colors"
           style={{
             background: "rgb(var(--accent-rgb) / 0.06)",
