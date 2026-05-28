@@ -31,7 +31,7 @@ export function OnboardingOverlay() {
     <div
       aria-modal="true"
       role="dialog"
-      aria-label="OddSpot 歡迎畫面"
+      aria-label={t("ariaLabel")}
       style={{
         position: "fixed",
         inset: 0,

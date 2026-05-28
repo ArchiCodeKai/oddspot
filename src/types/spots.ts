@@ -37,7 +37,11 @@ export interface SpotMapPoint {
   difficulty: "easy" | "medium" | "hard";
   lat: number;
   lng: number;
+  address?: string;
   coverImage: string;
+  images?: string[];
+  visitCount?: number;
+  recommendedTime?: string;
   distance?: number;
 }
 

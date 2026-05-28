@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/contexts/SessionContext";
 import { signIn, signOut } from "next-auth/react";
 import { useSavedStore } from "@/store/useSavedStore";
-import { useSwipeStore } from "@/store/useSwipeStore";
+import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { useTranslations } from "next-intl";
 
 export function AuthButton() {
@@ -14,7 +14,7 @@ export function AuthButton() {
   const t = useTranslations("auth");
 
   const savedCount = useSavedStore((s) => s.savedSpotIds.length);
-  const tripCount = useSwipeStore((s) => s.tripSpotIds.length);
+  const tripCount = useRoutePlannerStore((s) => s.selectedSpots.length);
 
   useEffect(() => {
     if (!open) return;

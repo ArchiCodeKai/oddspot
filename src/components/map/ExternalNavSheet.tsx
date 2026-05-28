@@ -1,8 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls, useReducedMotion } from "framer-motion";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
+import {
+  REDUCED_SHEET_MOTION,
+  SHEET_BACKDROP_TRANSITION,
+  SHEET_DRAG_CLOSE_OFFSET,
+  SHEET_DRAG_CLOSE_VELOCITY,
+  SHEET_MOTION,
+} from "@/lib/motion/sheetMotion";
 import {
   buildExternalNavLinks,
   tryAppSchemeWithFallback,
@@ -34,6 +41,8 @@ export function ExternalNavSheet({
   userLocation,
 }: ExternalNavSheetProps) {
   const selectedSpots = useRoutePlannerStore((s) => s.selectedSpots);
+  const dragControls = useDragControls();
+  const shouldReduceMotion = useReducedMotion();
 
   const navLinks = useMemo(() => {
     // 關閉狀態不算（省效能 + 確保 platform detect 在使用者實際開啟時觸發）
@@ -76,7 +85,7 @@ export function ExternalNavSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+            transition={SHEET_BACKDROP_TRANSITION}
             onClick={onClose}
             className="absolute inset-0 z-40"
             style={{
@@ -87,10 +96,23 @@ export function ExternalNavSheet({
           {/* sheet 本體 */}
           <motion.div
             key="ext-nav-sheet"
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 320, damping: 34 }}
+            variants={shouldReduceMotion ? REDUCED_SHEET_MOTION : SHEET_MOTION}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            drag={shouldReduceMotion ? false : "y"}
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.32 }}
+            onDragEnd={(_, info) => {
+              if (
+                info.offset.y > SHEET_DRAG_CLOSE_OFFSET ||
+                info.velocity.y > SHEET_DRAG_CLOSE_VELOCITY
+              ) {
+                onClose();
+              }
+            }}
             className="absolute left-0 right-0 bottom-0 z-50"
             style={{
               background: "var(--panel-glass-strong)",
@@ -103,7 +125,11 @@ export function ExternalNavSheet({
             }}
           >
             {/* drag handle */}
-            <div className="flex justify-center pt-2 pb-1">
+            <div
+              className="flex justify-center pt-2 pb-1"
+              onPointerDown={(event) => dragControls.start(event)}
+              style={{ cursor: "grab", touchAction: "none" }}
+            >
               <div
                 style={{
                   width: 40,

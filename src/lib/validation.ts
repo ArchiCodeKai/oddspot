@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CATEGORY_VALUES, type SpotCategory } from "./constants/categories";
+import { STATUS_VALUES, type SpotStatus } from "./constants/status";
 
 // CUID（Prisma 預設）：c + 24 字 lowercase a-z 0-9
 export const cuidSchema = z.string().regex(/^c[a-z0-9]{24}$/, "無效 ID 格式");
@@ -9,6 +10,9 @@ export const categorySchema = z.enum(
 );
 
 export const difficultySchema = z.enum(["easy", "medium", "hard"]);
+export const statusSchema = z.enum(
+  STATUS_VALUES as [SpotStatus, ...SpotStatus[]],
+);
 
 const latSchema = z.number().min(-90).max(90);
 const lngSchema = z.number().min(-180).max(180);
@@ -28,6 +32,16 @@ export const spotsQuerySchema = z
       .optional()
       .transform((v) => (v ? v.split(",").filter(Boolean) : []))
       .pipe(z.array(categorySchema)),
+    status: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v.split(",").filter(Boolean) : []))
+      .pipe(z.array(statusSchema)),
+    difficulty: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v.split(",").filter(Boolean) : []))
+      .pipe(z.array(difficultySchema)),
     cursor: cuidSchema.optional(),
     // bbox 字串："west,south,east,north"
     bbox: z

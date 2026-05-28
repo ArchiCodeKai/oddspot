@@ -4,55 +4,28 @@ import { useTranslations } from "next-intl";
 import { getCategoryLabel } from "@/lib/i18n/spotMeta";
 import { CATEGORY_GLYPHS } from "@/lib/constants/categoryGlyphs";
 import { CATEGORY_CODES } from "@/lib/constants/categories";
-import { useSwipeStore } from "@/store/useSwipeStore";
-import type { SpotMapPoint } from "@/types/spots";
+import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 
 interface TripPlanSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  spots: SpotMapPoint[];
-  userLocation: { lat: number; lng: number } | null;
+  onOpenRoutePlanner?: () => void;
 }
 
-function buildMapsUrl(
-  orderedSpots: SpotMapPoint[],
-  userLocation: { lat: number; lng: number } | null
-): string {
-  if (orderedSpots.length === 0) return "";
-
-  // TODO: 路線最佳化（v2 加入最近鄰演算法）
-  const last = orderedSpots[orderedSpots.length - 1];
-  const waypoints = orderedSpots
-    .slice(0, -1)
-    .map((s) => `${s.lat},${s.lng}`)
-    .join("|");
-
-  const base = "https://www.google.com/maps/dir/?api=1";
-  const origin = userLocation ? `&origin=${userLocation.lat},${userLocation.lng}` : "";
-  const dest = `&destination=${last.lat},${last.lng}`;
-  const wp = waypoints ? `&waypoints=${waypoints}` : "";
-
-  return `${base}${origin}${dest}${wp}&travelmode=walking`;
-}
-
-export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlanSheetProps) {
+export function TripPlanSheet({ isOpen, onClose, onOpenRoutePlanner }: TripPlanSheetProps) {
   const t = useTranslations("tripPlan");
   const tMeta = useTranslations("spotMeta");
-  const { tripSpotIds, removeFromTrip, clearSession } = useSwipeStore();
+  const selectedSpots = useRoutePlannerStore((s) => s.selectedSpots);
+  const removeSpot = useRoutePlannerStore((s) => s.removeSpot);
+  const clearRoute = useRoutePlannerStore((s) => s.clear);
 
-  const tripSpots = tripSpotIds
-    .map((id) => spots.find((s) => s.id === id))
-    .filter((s): s is SpotMapPoint => Boolean(s));
-
-  const mapsUrl = buildMapsUrl(tripSpots, userLocation);
-
-  const handleNavigate = () => {
-    if (!mapsUrl) return;
-    window.open(mapsUrl, "_blank", "noopener,noreferrer");
+  const handleOpenRoutePlanner = () => {
+    onClose();
+    onOpenRoutePlanner?.();
   };
 
   const handleClear = () => {
-    clearSession();
+    clearRoute();
     onClose();
   };
 
@@ -92,7 +65,7 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
           >
             {t("title")}
           </h3>
-          {tripSpots.length > 0 && (
+          {selectedSpots.length > 0 && (
             <button
               onClick={handleClear}
               className="text-xs transition-colors uppercase"
@@ -110,7 +83,7 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
           )}
         </div>
 
-        {tripSpots.length === 0 ? (
+        {selectedSpots.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm font-content" style={{ color: "var(--muted)" }}>
               {t("emptyTitle")}
@@ -121,7 +94,7 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
           </div>
         ) : (
           <div className="space-y-3 mb-6">
-            {tripSpots.map((spot, index) => {
+            {selectedSpots.map((spot, index) => {
               const Glyph = CATEGORY_GLYPHS[spot.category];
               const code = CATEGORY_CODES[spot.category];
               const label = getCategoryLabel(tMeta, spot.category);
@@ -168,7 +141,7 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
 
                   {/* 移除按鈕 */}
                   <button
-                    onClick={() => removeFromTrip(spot.id)}
+                    onClick={() => removeSpot(spot.id)}
                     className="flex-shrink-0 transition-colors"
                     style={{ color: "var(--muted)", cursor: "pointer" }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
@@ -191,18 +164,18 @@ export function TripPlanSheet({ isOpen, onClose, spots, userLocation }: TripPlan
         </p>
 
         <button
-          onClick={handleNavigate}
-          disabled={tripSpots.length === 0}
+          onClick={handleOpenRoutePlanner}
+          disabled={selectedSpots.length === 0}
           className="w-full py-3.5 text-sm font-semibold font-content transition-opacity disabled:opacity-40 disabled:cursor-not-allowed uppercase"
           style={{
             borderRadius: 2,
-            background: tripSpots.length > 0 ? "var(--foreground)" : "var(--panel-light)",
+            background: selectedSpots.length > 0 ? "var(--foreground)" : "var(--panel-light)",
             color: "var(--background)",
-            cursor: tripSpots.length > 0 ? "pointer" : "not-allowed",
+            cursor: selectedSpots.length > 0 ? "pointer" : "not-allowed",
             letterSpacing: "0.12em",
           }}
         >
-          {t("navigate")}
+          {t("openRoutePlanner")}
         </button>
       </div>
     </>

@@ -1,5 +1,6 @@
 import type { SpotMapPoint } from "@/types/spots";
 import type { Bbox } from "@/store/useMapStore";
+import { buildSpotsSearchParams } from "./spotsQueryParams";
 
 export interface SpotsListResponse {
   spots: SpotMapPoint[];
@@ -15,30 +16,13 @@ export interface FetchSpotsParams {
   radius?: number;
   bbox?: Bbox | null;
   categories?: string[];
+  status?: string[];
+  difficulty?: string[];
   cursor?: string;
 }
 
 export async function fetchSpots(params: FetchSpotsParams): Promise<SpotsListResponse> {
-  const { lat, lng, radius, bbox, categories, cursor } = params;
-
-  const searchParams = new URLSearchParams();
-
-  if (bbox) {
-    // viewport mode：bbox 優先
-    searchParams.set("bbox", `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`);
-  } else {
-    // radius mode
-    if (lat !== undefined) searchParams.set("lat", String(lat));
-    if (lng !== undefined) searchParams.set("lng", String(lng));
-    if (radius !== undefined) searchParams.set("radius", String(radius));
-  }
-
-  if (categories && categories.length > 0) {
-    searchParams.set("categories", categories.join(","));
-  }
-  if (cursor) {
-    searchParams.set("cursor", cursor);
-  }
+  const searchParams = buildSpotsSearchParams(params);
 
   const res = await fetch(`/api/spots?${searchParams.toString()}`);
 

@@ -20,7 +20,9 @@ interface MapState {
   zoom: number;
   selectedSpot: SpotMapPoint | null;
   filters: SpotFilters;
-  // TODO Step 4: viewMode: "map" | "swipe"
+  radius: number;
+  viewportBbox: Bbox | null;
+  queryMode: "radius" | "viewport";
 }
 ```
 
@@ -41,20 +43,50 @@ interface SavedState {
 
 localStorage key：`"oddspot-saved-spots"`
 
-## 計畫中的 Store（Step 4）
+### useRoutePlannerStore
 
-### useSwipeStore（討論中）
+**路徑**：`src/store/useRoutePlannerStore.ts`
+**用途**：地圖 RouteSheet 與探索 Swipe 共用的路線選點狀態
+**localStorage key**：`"oddspot-route"`
 
-可能的結構：
+```typescript
+interface RoutePlannerStore {
+  selectedSpots: SpotMapPoint[];
+  isOpen: boolean;
+  route: DirectionsResponse | null;
+  isOptimizing: boolean;
+  error: string | null;
+  addSpot(spot: SpotMapPoint): void;
+  removeSpot(id: string): void;
+  reorder(oldIndex: number, newIndex: number): void;
+  clear(): void;
+  planInOrder(origin: LngLat | null): Promise<void>;
+  optimize(origin: LngLat | null): Promise<void>;
+}
+```
+
+`selectedSpots` 是「目前路徑」的唯一資料來源。Swipe 的 + 按鈕會呼叫 `addSpot`；地圖 RouteSheet 直接讀同一份資料做 OPTIMIZE / START。
+
+`selectedSpots` 會持久化到 localStorage，使用者重新整理後仍保留目前路線。`addSpot` / `removeSpot` / `reorder` / `clear` / `optimize` 都會同步更新 storage。
+
+`planInOrder()` 只依目前排序畫路線；`optimize()` 會依 Mapbox 最佳化結果重排 `selectedSpots`。
+
+### useSwipeStore
+
+**路徑**：`src/store/useSwipeStore.ts`
+**用途**：滑卡片 session 狀態，不存路線資料
+
 ```typescript
 interface SwipeState {
-  skippedIds: string[];     // session 內略過的景點
+  skippedIds: string[];
+  lastSkippedId: string | null;
   addSkipped(id: string): void;
+  undoSkip(): string | null;
   clearSkipped(): void;
 }
 ```
 
-是否需要獨立 store，或合併進 useMapStore，待 Step 4 討論決定。
+設計取捨：`useSwipeStore` 只處理 swipe 行為本身；路線選點放在 `useRoutePlannerStore`，避免探索頁與地圖頁出現兩份互相不同步的行程狀態。
 
 ## 擴充指南
 

@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
     categories: searchParams.get("categories") ?? undefined,
     cursor: searchParams.get("cursor") ?? undefined,
     bbox: searchParams.get("bbox") ?? undefined,
+    status: searchParams.get("status") ?? undefined,
+    difficulty: searchParams.get("difficulty") ?? undefined,
   });
   if (!parsed.success) {
     return NextResponse.json<ApiResponse<null>>(
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   }
-  const { lat, lng, radius, categories, cursor, bbox } = parsed.data;
+  const { lat, lng, radius, categories, status, difficulty, cursor, bbox } = parsed.data;
 
   // bbox 模式優先；否則用 lat + lng + radius 算 bounding box
   // refine 保證至少有一組，但 TS narrow 不到，所以加防禦
@@ -63,6 +65,12 @@ export async function GET(request: NextRequest) {
         ...(categories.length > 0
           ? { category: { in: categories } }
           : {}),
+        ...(status.length > 0
+          ? { status: { in: status } }
+          : {}),
+        ...(difficulty.length > 0
+          ? { difficulty: { in: difficulty } }
+          : {}),
       },
       select: {
         id: true,
@@ -74,6 +82,9 @@ export async function GET(request: NextRequest) {
         images: true,
         lat: true,
         lng: true,
+        address: true,
+        visitCount: true,
+        recommendedTime: true,
       },
       take: MAX_SPOTS,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
@@ -90,6 +101,9 @@ export async function GET(request: NextRequest) {
       images: string;
       lat: number;
       lng: number;
+      address: string | null;
+      visitCount: number;
+      recommendedTime: string | null;
     }) => {
       const images: string[] = JSON.parse(spot.images || "[]");
       return {
@@ -101,7 +115,11 @@ export async function GET(request: NextRequest) {
         difficulty: spot.difficulty as SpotMapPoint["difficulty"],
         lat: spot.lat,
         lng: spot.lng,
+        address: spot.address ?? undefined,
         coverImage: images[0] ?? "",
+        images: images.slice(0, 3),
+        visitCount: spot.visitCount,
+        recommendedTime: spot.recommendedTime ?? undefined,
       };
     });
 

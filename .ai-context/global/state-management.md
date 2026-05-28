@@ -7,6 +7,7 @@
 | 伺服器資料 | TanStack React Query | API 呼叫、快取、重新 fetch |
 | UI 狀態 | Zustand | 選中景點、篩選器、地圖位置 |
 | Guest 收藏 | Zustand + localStorage | useSavedStore（persist 中介層）|
+| Guest 路線選點 | Zustand + localStorage | useRoutePlannerStore（`oddspot-route`）|
 | 表單狀態 | local useState | 不需要跨元件的臨時狀態 |
 
 ## 現有 Stores
@@ -43,6 +44,17 @@ const { isSaved, addSave, removeSave } = useSavedStore();
 | `isSaved(spotId)` | 是否已收藏 |
 | `clearAll()` | 登入 sync 後清空 |
 
+### useRoutePlannerStore（`src/store/useRoutePlannerStore.ts`）
+地圖 RouteSheet 與探索 Swipe 共用的路線選點狀態，`selectedSpots` 會持久化到 localStorage key `oddspot-route`。
+
+| 方法 | 說明 |
+|------|------|
+| `addSpot(spot)` | 加入目前路線，最多 5 點 |
+| `removeSpot(id)` | 從目前路線移除 |
+| `reorder(oldIndex, newIndex)` | 調整路線順序 |
+| `clear()` | 清空目前路線與 localStorage |
+| `optimize(origin)` | 呼叫 Mapbox Directions 並套用最佳化後順序 |
+
 ## React Query 使用模式
 
 ```typescript
@@ -58,6 +70,5 @@ const { data, isLoading } = useQuery({
 });
 ```
 
-## TODO（Step 4）
-- 滑卡片需要 `skippedIds: string[]` 狀態（session 內略過的景點）
-- 討論是否加入 useMapStore 或獨立一個 useSwipeStore
+## TODO
+- 評估是否需要完整 swipe history（目前只支援救回最近一次 skip）

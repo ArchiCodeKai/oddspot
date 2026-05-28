@@ -3,7 +3,7 @@
 **日期**：2026-05-21
 **範圍**：`src/components/map/FilterPanel.tsx`（新）、`RadiusSelector.tsx`（整合既有 `RadiusToggle`）
 **目標**：補完 `useMapStore.filters` + `radius` 的 UI 控制
-**狀態**：設計定案，待實作
+**狀態**：第一版已實作。FilterSheet 已接 `useMapStore.filters`，`/api/spots` 已支援 category / status / difficulty 查詢；RadiusToggle 沿用既有 segmented control。
 
 ---
 
@@ -14,10 +14,15 @@
 - `useMapStore.radius`：5KM / 10KM / 20KM / 50KM 切換邏輯已存在
 - 左上角 `FILTER` 按鈕 + 「6」徽章（顯示啟用篩選數）
 
-### 缺的
-- FilterPanel UI 元件
-- RadiusSelector 跟 RadiusToggle 整合或重寫
-- Filter 套用後 trigger spots 重 fetch 的邏輯
+### 已補齊
+- FilterSheet UI 元件（目前位於 `src/components/swipe/FilterSheet.tsx`，地圖 / 探索共用）
+- RadiusToggle segmented control
+- Filter 套用後 trigger spots refetch
+- API 查詢支援 `categories` / `status` / `difficulty`
+
+### 後續可改善
+- spec 原本規劃左側 slide-in panel；目前實作是 bottom sheet
+- spec 原本規劃 status / difficulty 多選；目前 UI 為單選，但資料流支援陣列
 
 ---
 

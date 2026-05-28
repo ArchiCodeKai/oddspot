@@ -74,6 +74,8 @@ npx prisma db seed
 npm run build
 ```
 
+`npm run build` uses webpack (`next build --webpack`) because the Turbopack build path can hang without surfacing the real `next/font` network failure when Google Fonts cannot be reached. Webpack reports that failure clearly and completes normally when network access is available.
+
 For full deployment notes (Vercel, Neon, OAuth callback URLs), see `DEPLOYMENT.md`.
 
 ## Roadmap
