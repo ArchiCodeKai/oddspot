@@ -76,13 +76,13 @@ export function SwipeView({
     setCurrentIndex((i) => i + 1);
   }, [currentSpot, addSkipped]);
 
-  const handleSave = useCallback(() => {
+  const handleSaveOnly = useCallback(() => {
     if (!currentSpot) return;
     addSave(currentSpot.id);
     setCurrentIndex((i) => i + 1);
   }, [currentSpot, addSave]);
 
-  const handleAddToTrip = useCallback(() => {
+  const handleSaveAndAddToTrip = useCallback(() => {
     if (!currentSpot) return;
     const alreadySelected = selectedSpots.some((spot) => spot.id === currentSpot.id);
     if (!alreadySelected && selectedSpots.length >= 5) {
@@ -382,8 +382,8 @@ export function SwipeView({
                 ref={cardRef}
                 spot={currentSpot}
                 onSwipeLeft={handleSkip}
-                onSwipeRight={handleSave}
-                onCollectToTrip={handleAddToTrip}
+                onSwipeRight={handleSaveAndAddToTrip}
+                onCollectToTrip={handleSaveOnly}
                 tripCount={selectedSpots.length}
                 showTripFlash={tripFlash}
                 isTop={true}
@@ -448,8 +448,8 @@ export function SwipeView({
               <div style={{ pointerEvents: "auto" }}>
                 <SwipeActionBar
                   onSkip={() => cardRef.current?.flyOut("left")}
-                  onAddToTrip={() => cardRef.current?.collectToTrip() ?? handleAddToTrip()}
-                  onSave={() => cardRef.current?.flyOut("right")}
+                  onSave={() => cardRef.current?.collectToTrip() ?? handleSaveOnly()}
+                  onSaveAndAddToTrip={() => cardRef.current?.flyOut("right")}
                   tripCount={selectedSpots.length}
                   showTripFlash={tripFlash}
                 />

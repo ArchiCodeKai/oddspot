@@ -10,6 +10,50 @@ const topRightClusterSource = readFileSync("src/components/map/TopRightCluster.t
 const apiSource = readFileSync("src/app/api/spots/route.ts", "utf8");
 const typesSource = readFileSync("src/types/spots.ts", "utf8");
 
+test("swipe decision feedback uses theme-aware lottie assets without replacing button shells", () => {
+  const decisionAnimationSource = readFileSync("src/components/swipe/SwipeDecisionAnimation.tsx", "utf8");
+  const lottieTintSource = readFileSync("src/lib/lottie/tintLottie.ts", "utf8");
+  const crossLottie = readFileSync("public/lottie/swipe/cross.json", "utf8");
+  const checkLottie = readFileSync("public/lottie/swipe/check.json", "utf8");
+
+  assert.match(crossLottie, /"nm":"blink"/);
+  assert.match(checkLottie, /"nm":"success"/);
+  assert.match(decisionAnimationSource, /lottie-react/);
+  assert.match(decisionAnimationSource, /preloadSwipeDecisionAnimations/);
+  assert.match(decisionAnimationSource, /SwipeDecisionAnimation/);
+  assert.match(decisionAnimationSource, /variant: "edge" \| "stamp" \| "button"/);
+  assert.match(decisionAnimationSource, /--accent-rgb/);
+  assert.match(decisionAnimationSource, /--muted-rgb/);
+  assert.match(decisionAnimationSource, /prefers-reduced-motion/);
+  assert.match(decisionAnimationSource, /variant === "edge"/);
+  assert.match(decisionAnimationSource, /setSpeed\(1\.8\)/);
+  assert.match(lottieTintSource, /tintLottieColors/);
+  assert.match(lottieTintSource, /key === "c"/);
+  assert.match(lottieTintSource, /isStaticColorValue\(value\.k\)/);
+  assert.doesNotMatch(lottieTintSource, /Array\.isArray\(value\.k\) && value\.k\.length >= 3/);
+  assert.match(cardSource, /SwipeDecisionAnimation/);
+  assert.match(cardSource, /preloadSwipeDecisionAnimations/);
+  assert.match(cardSource, /SWIPE_FEEDBACK_DURATION_MS = 1100/);
+  assert.match(cardSource, /SWIPE_ADVANCE_DELAY_MS = 620/);
+  assert.match(cardSource, /isInteractiveSwipeTarget/);
+  assert.match(cardSource, /handlePointerMove/);
+  assert.match(cardSource, /pointerDraggingRef/);
+  assert.match(cardSource, /setSwipeScrollLock/);
+  assert.match(cardSource, /onPointerDownCapture=\{handlePointerDown\}/);
+  assert.match(cardSource, /touchAction: "pan-y"/);
+  assert.match(cardSource, /event\.preventDefault\(\)/);
+  assert.match(cardSource, /window\.setTimeout\(advance, SWIPE_ADVANCE_DELAY_MS\)/);
+  assert.doesNotMatch(cardSource, /drag="x"/);
+  assert.doesNotMatch(cardSource, /onDragEnd/);
+  assert.match(cardSource, /variant="edge"/);
+  assert.match(cardSource, /variant="stamp"/);
+  assert.match(decisionAnimationSource, /swipe-decision-animation__underlay/);
+  assert.match(decisionAnimationSource, /tintedAnimationData && !reducedMotion/);
+  assert.match(actionBarSource, /swipe-action-button/);
+  assert.doesNotMatch(actionBarSource, /lottie-react/);
+  assert.doesNotMatch(decisionAnimationSource, /setAnimationData\(null\)[\s\S]{0,120}fetch\(assetPath\[type\]\)/);
+});
+
 test("swipe action buttons use press feedback and text tooltips instead of decorative lift", () => {
   assert.match(actionBarSource, /swipe-action-tooltip/);
   assert.match(actionBarSource, /transform: translateY\(2px\)/);
@@ -91,6 +135,18 @@ test("collecting to trip uses a folder target and card intake animation before a
   assert.match(cardSource, /collectTargetY/);
   assert.match(cardSource, /setFeedback\("trip"\)/);
   assert.match(cardSource, /animate\(scale, 0\.18/);
+});
+
+test("check action adds to saved and trip while plus action only saves", () => {
+  assert.match(viewSource, /const handleSaveOnly = useCallback/);
+  assert.match(viewSource, /const handleSaveAndAddToTrip = useCallback/);
+  assert.match(viewSource, /onSwipeRight=\{handleSaveAndAddToTrip\}/);
+  assert.match(viewSource, /onCollectToTrip=\{handleSaveOnly\}/);
+  assert.match(viewSource, /onSave=\{\(\) => cardRef\.current\?\.collectToTrip\(\) \?\? handleSaveOnly\(\)\}/);
+  assert.match(viewSource, /onSaveAndAddToTrip=\{\(\) => cardRef\.current\?\.flyOut\("right"\)\}/);
+  assert.match(actionBarSource, /onSaveAndAddToTrip/);
+  assert.match(actionBarSource, /aria-label=\{t\("addToTrip"\)\}/);
+  assert.match(actionBarSource, /aria-label=\{t\("save"\)\}/);
 });
 
 test("top right settings popover uses an opaque high layer on mobile", () => {

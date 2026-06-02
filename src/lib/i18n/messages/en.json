@@ -166,7 +166,7 @@
     "undo": "Undo",
     "undoLabel": "Restore last skipped spot",
     "gestureSkip": "Left · skip",
-    "gestureSave": "Right · save",
+    "gestureSave": "Right · add to trip",
     "gestureDetail": "Scroll · more info",
     "difficulty": {
       "easy": "Easy",

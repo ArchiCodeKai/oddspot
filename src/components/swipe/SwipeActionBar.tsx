@@ -6,16 +6,16 @@ import { useLoginPromptStore } from "@/store/useLoginPromptStore";
 
 interface SwipeActionBarProps {
   onSkip: () => void;
-  onAddToTrip: () => void;
   onSave: () => void;
+  onSaveAndAddToTrip: () => void;
   tripCount: number;
   showTripFlash: boolean;
 }
 
 export function SwipeActionBar({
   onSkip,
-  onAddToTrip,
   onSave,
+  onSaveAndAddToTrip,
   tripCount,
   showTripFlash,
 }: SwipeActionBarProps) {
@@ -146,9 +146,9 @@ export function SwipeActionBar({
         </svg>
       </button>
 
-      {/* 加入今日行程 */}
+      {/* 收藏（未登入時 → lazy auth） */}
       <button
-        onClick={onAddToTrip}
+        onClick={handleSaveClick}
         className="swipe-action-button swipe-action-main"
         style={{
           ...btnBase,
@@ -164,10 +164,10 @@ export function SwipeActionBar({
               }
             : {}),
         }}
-        aria-label={t("addToTrip")}
-        title={t("addToTrip")}
+        aria-label={t("save")}
+        title={!user ? t("loginToSave") : t("save")}
       >
-        <span className="swipe-action-tooltip">{t("addToTrip")}</span>
+        <span className="swipe-action-tooltip">{!user ? t("loginToSave") : t("save")}</span>
         <span className="acid-plus" aria-hidden="true">
           <span />
           <span />
@@ -187,15 +187,15 @@ export function SwipeActionBar({
         )}
       </button>
 
-      {/* 收藏（未登入時 → lazy auth） */}
+      {/* 收藏 + 加入今日行程 */}
       <button
-        onClick={handleSaveClick}
+        onClick={onSaveAndAddToTrip}
         className="swipe-action-button"
         style={btnBase}
-        aria-label={t("save")}
-        title={!user ? t("loginToSave") : t("save")}
+        aria-label={t("addToTrip")}
+        title={t("addToTrip")}
       >
-        <span className="swipe-action-tooltip">{!user ? t("loginToSave") : t("save")}</span>
+        <span className="swipe-action-tooltip">{t("addToTrip")}</span>
         <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="20 6 9 17 4 12" />
         </svg>
