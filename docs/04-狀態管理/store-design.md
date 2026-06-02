@@ -65,7 +65,7 @@ interface RoutePlannerStore {
 }
 ```
 
-`selectedSpots` 是「目前路徑」的唯一資料來源。Swipe 的 + 按鈕會呼叫 `addSpot`；地圖 RouteSheet 直接讀同一份資料做 OPTIMIZE / START。
+`selectedSpots` 是「目前路徑」的唯一資料來源。Swipe 的右滑 / 打勾會呼叫 `addSpot` 並同步收藏；Swipe 的中間 + 按鈕只收藏不加入路線。地圖 RouteSheet 直接讀同一份資料做 OPTIMIZE / START。
 
 `selectedSpots` 會持久化到 localStorage，使用者重新整理後仍保留目前路線。`addSpot` / `removeSpot` / `reorder` / `clear` / `optimize` 都會同步更新 storage。
 

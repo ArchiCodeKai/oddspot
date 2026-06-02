@@ -12,7 +12,7 @@
 - 從 `/map` 底部 nav「探索」分頁進入，使用 `viewMode: "map" | "swipe"` 切換
 - 卡片堆疊式 UI（看到後 1-2 張），左右拖拉決定行動
 - **完全 reuse Stage 4 的 `RoutePlannerStore.selectedSpots`**，加進「目前路徑」= 加進 RouteSheet 的選點清單
-- Guest mode：未登入也能滑、收藏、加目前路徑，動作存 localStorage，登入後 sync（沿用 Step 5 已完成的 `/api/saved/sync`）
+- Guest mode：未登入也能滑、收藏、透過右滑 / 打勾加目前路徑，動作存 localStorage，登入後 sync（沿用 Step 5 已完成的 `/api/saved/sync`）
 
 ## 二、入口
 
@@ -25,8 +25,8 @@
 | 手勢 | 行動 | Store 動作 |
 |---|---|---|
 | **左滑** | pass（不再出現） | `useSwipeStore.addSkipped(id)` |
-| **右滑** | 加進**收藏夾**（不加目前路徑） | `useSavedStore.addSave(id)` |
-| **超級按鈕**（卡片內 ⭐ icon） | 加進**收藏夾 + 目前路徑** | `addSave` + `RoutePlannerStore.addSpot` |
+| **右滑 / 打勾** | 加進**收藏夾 + 目前路徑** | `addSave` + `RoutePlannerStore.addSpot` |
+| **中間 + 按鈕** | 只加進**收藏夾** | `useSavedStore.addSave(id)` |
 | **上下滑 / 滾輪** | 卡片**內**滾動看完整詳情 | 無，純 UI |
 | **撤回箭頭**（卡片外按鈕） | 撤回上一張 | `useSwipeStore.undo()` |
 | **桌機滑鼠停卡片** + 滾輪 | 同上下滑（卡片內滾動） | 無 |
@@ -76,7 +76,7 @@ border-radius: 2px（acid 硬角）
 
 ### 4d. 滑動視覺反饋
 
-- 拖過閾值（100px）：邊緣染色（左滑染紅、右滑染綠、超級按鈕染金）
+- 拖過閾值（100px）：邊緣染色（左滑染紅、右滑染綠；中間 + 按鈕保留金色收藏視覺）
 - 釋放：spring 飛出（`bounceStiffness 300, bounceDamping 20`）
 - 撤回：spring 回彈（從畫面外飛回）
 
@@ -105,7 +105,7 @@ border-radius: 2px（acid 硬角）
 | **空位** | dashed 1px border, opacity 0.3 | 不可點 |
 | **有點** | mini 吉祥物 icon（blinking mood，6-8px） | 點 → 開 mini card |
 | **滿 5 個** | 所有 icon 開始 jitter 動畫（±2px 隨機抖） | 點任一個 → mini card |
-| **使用者超出**（按超級按鈕但滿） | 集體 shake + toast「目前路徑已滿 5 點，點底部 icon 編輯」 | — |
+| **使用者超出**（右滑 / 打勾但滿） | 集體 shake + toast「目前路徑已滿 5 點，點底部 icon 編輯」 | — |
 
 ### 5c. Mini Card（點 chip 後彈出）
 
@@ -154,7 +154,7 @@ border-radius: 2px（acid 硬角）
 
 ### 6c. 收藏夾整合（沿用 Stage 5）
 
-- 右滑 / 超級按鈕加進收藏 → `useSavedStore.addSave(id)`
+- 右滑 / 打勾 / 中間 + 按鈕都會加進收藏 → `useSavedStore.addSave(id)`；其中右滑 / 打勾額外加入今日行程
 - 未登入：存 localStorage（key: `oddspot-saved`）
 - 登入時：呼叫 `/api/saved/sync`（Step 5 已實作）
 
@@ -189,7 +189,7 @@ border-radius: 2px（acid 硬角）
 - 卡片旋轉 -2°
 - 邊緣 barcode sticker（左下角）
 - 卡片右上角 `[001/237]` 編號（archive 風格）
-- 左滑時邊緣染紅（`#ff3b3b`），右滑染綠（`#5fd9c0`），超級按鈕染金（`#ffd24a`）
+- 左滑時邊緣染紅（`#ff3b3b`），右滑染綠（`#5fd9c0`），中間 + 按鈕保留金色收藏視覺（`#ffd24a`）
 - 撤回按鈕用「迴轉箭頭」icon + acid sticker 框
 
 ## 十、算法
@@ -219,7 +219,7 @@ src/app/map/page.tsx      ← 地圖 / 探索雙模式入口
 src/components/swipe/
   SwipeView.tsx           ← 容器，管 swipe session + 渲染卡片堆疊
   SwipeCard.tsx           ← 單張卡片（Framer Motion drag + 內滾）
-  SwipeActionBar.tsx      ← 底部 skip / 加路線 / save 按鈕
+  SwipeActionBar.tsx      ← 底部 skip / save / save + trip 按鈕
   FilterSheet.tsx         ← 地圖 / 探索共用篩選 sheet
   TripPlanSheet.tsx       ← 顯示 RoutePlanner 選點，CTA 回地圖 RouteSheet
 

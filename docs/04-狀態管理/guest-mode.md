@@ -9,7 +9,7 @@
 
 ```
 [未登入狀態]
-用戶右滑 / 點收藏
+用戶右滑 / 打勾 / 點中間 + 收藏
   → useSavedStore.addSave(spotId)
   → 存入 localStorage("oddspot-saved-spots")
 

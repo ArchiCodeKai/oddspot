@@ -1,9 +1,10 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type PointerEvent } from "react";
+import { motion, useMotionValue, useMotionValueEvent, useTransform, animate } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { SwipeActionBar } from "./SwipeActionBar";
+import { SwipeDecisionAnimation, preloadSwipeDecisionAnimations } from "./SwipeDecisionAnimation";
 import { CATEGORY_CODES, type SpotCategory } from "@/lib/constants/categories";
 import { CATEGORY_GLYPHS } from "@/lib/constants/categoryGlyphs";
 import { CategoryBadge } from "@/components/ui/CategoryBadge";
@@ -13,6 +14,8 @@ import { getCategoryLabel } from "@/lib/i18n/spotMeta";
 import type { SpotMapPoint } from "@/types/spots";
 
 const SWIPE_THRESHOLD = 100;
+const SWIPE_FEEDBACK_DURATION_MS = 1100;
+const SWIPE_ADVANCE_DELAY_MS = 620;
 const CARD_RADIUS = 2; // v3：sharp corners 取代 rounded-3xl
 
 type DifficultyKey = "easy" | "medium" | "hard";
@@ -58,6 +61,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
     const rightEdgeOpacity = useTransform(x, [0, 24, 180], [0, 0.22, 0.08]);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [feedback, setFeedback] = useState<SwipeFeedback>(null);
+    const [edgeFeedback, setEdgeFeedback] = useState<Exclude<SwipeFeedback, "trip">>(null);
     const collectTargetX = 0;
     const collectTargetY = -8;
 
@@ -66,20 +70,121 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
     const categoryCode = CATEGORY_CODES[category];
     const categoryLabel = getCategoryLabel(tMeta, category);
     const didDrag = useRef(false);
+    const pointerStartRef = useRef<{ id: number; x: number; y: number; baseX: number } | null>(null);
+    const pointerDraggingRef = useRef(false);
     const images = useMemo(
       () => (spot.images && spot.images.length > 0 ? spot.images : spot.coverImage ? [spot.coverImage] : []).slice(0, 3),
       [spot.coverImage, spot.images]
     );
     const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}&travelmode=walking`;
 
+    useEffect(() => {
+      preloadSwipeDecisionAnimations();
+    }, []);
+
+    useMotionValueEvent(x, "change", (latest) => {
+      if (latest < -24) {
+        setEdgeFeedback("skip");
+      } else if (latest > 24) {
+        setEdgeFeedback("save");
+      } else {
+        setEdgeFeedback(null);
+      }
+    });
+
+    const setSwipeScrollLock = (locked: boolean) => {
+      const scrollNode = scrollRef.current;
+      if (!scrollNode) return;
+
+      scrollNode.style.overflowY = locked ? "hidden" : "auto";
+    };
+
     const flyOut = (direction: "left" | "right") => {
       const target = direction === "left" ? -600 : 600;
-      setFeedback(direction === "left" ? "skip" : "save");
-      window.setTimeout(() => setFeedback(null), 700);
-      animate(x, target, { duration: 0.34, ease: "easeOut" }).then(() => {
+      const advance = () => {
+        setEdgeFeedback(null);
         if (direction === "left") onSwipeLeft();
         else onSwipeRight();
+      };
+
+      setFeedback(direction === "left" ? "skip" : "save");
+      setEdgeFeedback(direction === "left" ? "skip" : "save");
+      window.setTimeout(() => setFeedback(null), SWIPE_FEEDBACK_DURATION_MS);
+      animate(x, target, { duration: 0.34, ease: "easeOut" }).then(() => {
+        window.setTimeout(advance, SWIPE_ADVANCE_DELAY_MS);
       });
+    };
+
+    const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (isInteractiveSwipeTarget(event.target)) return;
+
+      didDrag.current = false;
+
+      pointerStartRef.current = {
+        id: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        baseX: x.get(),
+      };
+      pointerDraggingRef.current = false;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    };
+
+    const releasePointerCapture = (event: PointerEvent<HTMLDivElement>) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    };
+
+    const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+      const start = pointerStartRef.current;
+      if (!start || start.id !== event.pointerId) return;
+
+      const dx = event.clientX - start.x;
+      const dy = event.clientY - start.y;
+
+      if (!pointerDraggingRef.current && Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.15) {
+        releasePointerCapture(event);
+        pointerStartRef.current = null;
+        pointerDraggingRef.current = false;
+        setSwipeScrollLock(false);
+        return;
+      }
+
+      if (!pointerDraggingRef.current && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        pointerDraggingRef.current = true;
+        setSwipeScrollLock(true);
+      }
+
+      if (!pointerDraggingRef.current) return;
+
+      event.preventDefault();
+      didDrag.current = true;
+      x.set(start.baseX + dx);
+    };
+
+    const handlePointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+      const start = pointerStartRef.current;
+      if (!start) return;
+
+      const dx = x.get() - start.baseX;
+      const wasHorizontalDrag = pointerDraggingRef.current;
+
+      releasePointerCapture(event);
+      pointerStartRef.current = null;
+      pointerDraggingRef.current = false;
+      setSwipeScrollLock(false);
+
+      if (!wasHorizontalDrag) return;
+
+      if (dx > SWIPE_THRESHOLD) {
+        flyOut("right");
+      } else if (dx < -SWIPE_THRESHOLD) {
+        flyOut("left");
+      } else {
+        animate(x, 0, { type: "spring", stiffness: 220, damping: 22 });
+      }
     };
 
     const collectToTrip = () => {
@@ -131,24 +236,6 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
           boxShadow: "0 16px 48px rgb(var(--background-rgb) / 0.5), 0 0 32px rgb(var(--accent-rgb) / 0.08)",
           touchAction: "pan-y",
         }}
-        drag="x"
-        dragMomentum={false}
-        dragElastic={0.2}
-        onDragStart={() => { didDrag.current = false; }}
-        onDrag={() => { didDrag.current = true; }}
-        onDragEnd={(_, info) => {
-          const dx = info.offset.x;
-          const dy = info.offset.y;
-          const horizontalDominant = Math.abs(dx) > Math.abs(dy);
-
-          if (horizontalDominant && dx > SWIPE_THRESHOLD) {
-            flyOut("right");
-          } else if (horizontalDominant && dx < -SWIPE_THRESHOLD) {
-            flyOut("left");
-          } else {
-            animate(x, 0, { type: "spring", stiffness: 220, damping: 22 });
-          }
-        }}
       >
         <style>{`
           .acid-card-scroll {
@@ -180,7 +267,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
             100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
           }
           .swipe-card-feedback {
-            animation: swipe-card-stamp 0.7s ease both;
+            animation: swipe-card-stamp 1.1s ease both;
           }
           .swipe-card-trip-folder {
             animation: swipe-card-folder-pulse 0.42s ease both;
@@ -216,10 +303,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
             color: "var(--muted)",
           }}
         >
-          <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          {edgeFeedback === "skip" && <SwipeDecisionAnimation type="skip" variant="edge" />}
         </motion.div>
         <motion.div
           className="swipe-edge-hint absolute right-0 top-1/2 z-10 h-24 w-24 -translate-y-1/2 items-center justify-center rounded-full pointer-events-none"
@@ -230,9 +314,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
             color: "var(--accent)",
           }}
         >
-          <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+          {edgeFeedback === "save" && <SwipeDecisionAnimation type="save" variant="edge" />}
         </motion.div>
         {/* SKIP 提示（左滑） */}
         <motion.div
@@ -302,36 +384,11 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
                 </svg>
               </div>
             ) : (
-              <div
+              <SwipeDecisionAnimation
+                type={feedback === "save" ? "save" : "skip"}
+                variant="stamp"
                 className="swipe-card-feedback"
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "50%",
-                  transform: "translate(-50%, -50%)",
-                  width: 112,
-                  height: 112,
-                  border: "2px solid currentColor",
-                  borderRadius: 2,
-                  color: feedback === "save" ? "var(--accent)" : "var(--muted)",
-                  background: "rgb(var(--background-rgb) / 0.34)",
-                  backdropFilter: "blur(4px)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {feedback === "save" ? (
-                  <svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                ) : (
-                  <svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                )}
-              </div>
+              />
             )}
           </div>
         )}
@@ -339,7 +396,11 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
         <div
           ref={scrollRef}
           className="acid-card-scroll h-full overflow-y-auto overscroll-contain"
-          style={{ background: "var(--panel)" }}
+          style={{ background: "var(--panel)", touchAction: "pan-y" }}
+          onPointerDownCapture={handlePointerDown}
+          onPointerMoveCapture={handlePointerMove}
+          onPointerUpCapture={handlePointerEnd}
+          onPointerCancelCapture={handlePointerEnd}
         >
         {/* 封面圖（無圖時顯示中央 glyph 作為 v3 placeholder） */}
         <div className="h-[58%] min-h-[300px] w-full relative overflow-hidden" style={{ background: "var(--panel-light)" }}>
@@ -522,8 +583,8 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
           >
             <SwipeActionBar
               onSkip={() => flyOut("left")}
-              onAddToTrip={collectToTrip}
-              onSave={() => flyOut("right")}
+              onSave={collectToTrip}
+              onSaveAndAddToTrip={() => flyOut("right")}
               tripCount={tripCount}
               showTripFlash={showTripFlash}
             />
@@ -560,4 +621,8 @@ function InfoCell({ label, value }: { label: string; value: string }) {
       </p>
     </div>
   );
+}
+
+function isInteractiveSwipeTarget(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest("a, button, input, textarea, select, [role='button']"));
 }

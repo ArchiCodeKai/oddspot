@@ -166,7 +166,7 @@
     "undo": "戻す",
     "undoLabel": "さっきスキップしたのを戻す",
     "gestureSkip": "左 · スキップ",
-    "gestureSave": "右 · 保存",
+    "gestureSave": "右 · ルートに追加",
     "gestureDetail": "スクロール · 詳細",
     "difficulty": {
       "easy": "簡単",

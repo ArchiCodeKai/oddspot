@@ -28,11 +28,21 @@ SwipeView 左側的還原按鈕採用與底部 action rail 相同語言：預設
 ## 底部 Action Rail
 
 - 三顆按鈕放在卡片容器內，用 `z-index: 32` 浮在卡片底部上方，避免桌機全螢幕時看起來藏在卡片後面。
-- 左右按鈕為 64px 圓形；中間「加入行程」為 76px 圓形主按鈕。
-- 中間加號不是細線 icon，而是寬胖圓角十字，讓主要 CTA 跟 skip/save 有明確視覺層級。
+- 左右按鈕為 64px 圓形；中間「收藏」為 76px 圓形主按鈕。
+- 中間加號不是細線 icon，而是寬胖圓角十字；目前行為是「只收藏」，打勾才是「收藏 + 加今日行程」。
 - 按鈕不再承擔主要動畫：移除頂部短線與過強 glow，hover / focus 只顯示文字 tooltip，active 只做 `translateY(2px)` 按壓感。
-- 行動結果回饋放回卡片中央：skip / save 顯示 0.7s acid stamp；加入行程顯示資料夾 icon，卡片先回到中心再縮小淡出，形成被收進資料夾的 intake 動畫。
+- 行動結果回饋放回卡片中央：skip / 右滑打勾由 `SwipeDecisionAnimation` 播放 Lottie，但外層仍是 OddSpot 既有 2px hard-corner acid stamp；中間加號目前改成只收藏，仍沿用資料夾 intake 視覺，卡片先回到中心再縮小淡出。加號 Lottie 暫停，等後續選定資產再接。
 - 手機版不在首屏顯示 action rail；使用者需要滾到卡片底部才看到三顆 68/82px 觸控按鈕。桌機版保留卡片外浮動按鈕，方便滑鼠操作。
+
+## Lottie Decision Feedback
+
+- 資產位置：`public/lottie/swipe/cross.json` 與 `public/lottie/swipe/check.json`。
+- Runtime：`SwipeCard` mount 後會呼叫 `preloadSwipeDecisionAnimations()` 預載 player 需要的 JSON；`SwipeDecisionAnimation` 只在中央 stamp 播放 Lottie。側邊 hint 維持輕量 SVG，避免拖曳時渲染 525KB success Lottie 造成卡頓。
+- 外觀規則：Lottie 只替換內層 X / check 的動態，不替換 action button 外框，也不替換中央 stamp 外框。
+- 主題色：元件讀取 `--accent-rgb` / `--muted-rgb`，用 `tintLottieColors` 將 JSON 內的 shape color runtime tint；切換 `data-theme` 後下一次播放會跟著變色。
+- Reduced motion：`prefers-reduced-motion` 時不播放 Lottie，回到靜態 SVG fallback。
+- 觸發時機：拖曳超過 24px 先出現低透明度 edge hint；放手達 100px 閾值或點擊 skip/save 後，中央播放加速後的 1.1s 明顯 Lottie stamp，按鈕本身只保留 active 下壓。
+- 手勢：`SwipeCard` 採單一 pointer swipe engine。滑鼠、手指、觸控筆都直接寫入 `x` motion value；Framer Motion 不再負責 drag 判斷，只負責 `x` 驅動的旋轉、邊緣 hint 與 flyOut 動畫。事件綁在 `.acid-card-scroll` 的 capture 階段，讓內滾容器本身先判斷水平 / 垂直意圖；水平位移超過 12px 且明顯大於垂直位移時開始 swipe，並暫時鎖住內部 `overflowY`，避免行動裝置拖曳時跟 scrollbar 搶事件。若先判定為垂直手勢，會釋放 pointer capture，讓使用者正常上下看詳情。放手後用同一個 100px 閾值判斷左 / 右滑。卡片飛出後再延遲 620ms 才切下一張，避免中央 feedback 還沒播完就卸載。
 
 ## FilterSheet
 
@@ -49,8 +59,8 @@ SwipeView 左側的還原按鈕採用與底部 action rail 相同語言：預設
 | 手勢 | 行動 |
 |---|---|
 | 左滑（>100px） | pass |
-| 右滑（>100px） | 加收藏夾 |
-| 超級按鈕（底部 + icon） | 加收藏 + 加目前路徑 |
+| 右滑（>100px）/ 打勾 | 加收藏夾 + 加今日探險行程 |
+| 中間 + 按鈕 | 只加收藏夾 |
 | 上下滑 / 桌機滾輪在卡片內 | 整張卡片內滾動 |
 | 撤回箭頭（chip bar） | 撤回上一張 |
 
@@ -63,30 +73,22 @@ SwipeView 左側的還原按鈕採用與底部 action rail 相同語言：預設
 - 卡片右側 scrollbar 採低透明 acid 樣式，滾動時提供「還有內容」的提示，但不搶主視覺。
 - 詳情區提供 `導航前往 Google Maps`，這是單點即刻出發，不加入 OddSpot 路線排程；行程規劃仍由 RouteSheet 負責。
 
-## Framer Motion 拖拉設定
+## Pointer Swipe 設定
 
 ```typescript
-<motion.div
-  drag="x"                    // 只允許 x 軸
-  dragDirectionLock           // 一旦判定方向就鎖
-  dragElastic={0.2}
-  dragMomentum
-  dragTransition={{
-    bounceStiffness: 300,
-    bounceDamping: 20,
-  }}
-  onDragEnd={(_, info) => {
-    if (info.offset.x > 100) handleSwipeRight();
-    if (info.offset.x < -100) handleSwipeLeft();
-  }}
+<div
+  className="acid-card-scroll"
+  style={{ overflowY: "auto", touchAction: "pan-y" }}
+  onPointerDownCapture={handlePointerDown}
+  onPointerMoveCapture={handlePointerMove}
+  onPointerUpCapture={handlePointerEnd}
+  onPointerCancelCapture={handlePointerEnd}
 >
-  <div style={{ overflowY: "auto", touchAction: "pan-y" }}>
-    {/* 內滾區 */}
-  </div>
-</motion.div>
+  {/* 內滾區 */}
+</div>
 ```
 
-關鍵：`dragDirectionLock` + 內滾 `touchAction: pan-y` 讓瀏覽器自動分派垂直/水平手勢。
+關鍵：不要同時交給 Framer Motion `drag` 與內部 scroll 容器處理。OddSpot 目前只讓 pointer engine 決定水平 swipe，Framer Motion 只負責 motion value 動畫；這樣能避免手機和平板上「拖到一半被內部 scrollbar 取消」的問題。
 
 ## 卡片堆疊視覺
 
@@ -99,11 +101,11 @@ SwipeView 左側的還原按鈕採用與底部 action rail 相同語言：預設
 
 - 拖過閾值（100px）：邊緣染色
   - 左滑 → 紅色 `#ff3b3b`（pass）
-  - 右滑 → 綠色 `#5fd9c0`（收藏）
-  - 超級按鈕 → 金色 `#ffd24a`（加路徑）
+  - 右滑 → 綠色 `#5fd9c0`（收藏 + 加今日行程）
+  - 中間 + 按鈕 → 金色 `#ffd24a`（只收藏）
 - 釋放：spring 飛出（依方向）
 - 撤回：spring 從畫面外飛回
-- 手機與桌機拖曳中：左 / 右邊緣各有低透明度的 X / check icon 從邊緣往卡片中心滑入，越靠中心越淡，切到下一張後消失。桌機仍額外保留較明確的文字 stamp，讓滑鼠拖曳時判定更清楚。
+- 手機與桌機拖曳中：左 / 右邊緣各有低透明度的 X / check icon 從邊緣往卡片中心滑入，越靠中心越淡，切到下一張後消失。這裡刻意不用大型 Lottie，以免拖曳路徑掉幀；桌機仍額外保留較明確的文字 stamp，讓滑鼠拖曳時判定更清楚。
 
 ## 行程計數與 TripPlanSheet
 
