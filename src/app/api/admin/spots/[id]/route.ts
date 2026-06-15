@@ -1,3 +1,4 @@
+import { del } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -5,7 +6,20 @@ import { cuidSchema, adminActionSchema, formatZodError } from "@/lib/validation"
 import { isAdminSession } from "@/lib/admin";
 import type { ApiResponse } from "@/types/api";
 
-// 審核景點：approve（通過）或 reject（拒絕刪除）
+function getBlobImages(images: string): string[] {
+  try {
+    const parsed = JSON.parse(images || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((value): value is string =>
+      typeof value === "string" &&
+      (value.startsWith("https://") || value.startsWith("spots/"))
+    );
+  } catch {
+    return [];
+  }
+}
+
+// 審核景點：approve（通過）或 reject（拒絕並清掉 Blob 圖片）
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -49,9 +63,38 @@ export async function PATCH(
     }
 
     // 走到這裡 action 必為 "reject"（zod 已限定 enum）
-    await prisma.spot.delete({ where: { id } });
-    return NextResponse.json<ApiResponse<{ id: string }>>({
-      data: { id },
+    const existing = await prisma.spot.findUnique({
+      where: { id },
+      select: { id: true, name: true, images: true },
+    });
+    if (!existing) {
+      return NextResponse.json<ApiResponse<null>>(
+        { data: null, success: false, error: "找不到景點" },
+        { status: 404 }
+      );
+    }
+
+    const blobImages = getBlobImages(existing.images);
+    const deleteResults = await Promise.allSettled(
+      blobImages.map((image) => del(image))
+    );
+    const failedDeletes = deleteResults.filter((result) => result.status === "rejected").length;
+    if (failedDeletes > 0) {
+      console.error(`[PATCH /api/admin/spots/${id}] Blob cleanup failed: ${failedDeletes}`);
+    }
+
+    const spot = await prisma.spot.update({
+      where: { id },
+      data: {
+        status: "rejected",
+        images: JSON.stringify([]),
+        expiresAt: null,
+      },
+      select: { id: true, name: true, status: true },
+    });
+
+    return NextResponse.json<ApiResponse<typeof spot>>({
+      data: spot,
       success: true,
     });
   } catch (error) {

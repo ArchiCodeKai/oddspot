@@ -35,7 +35,9 @@ export function getCategoryOptions(t: Translator) {
 }
 
 export function getStatusOptions(t: Translator, includePending = false) {
-  const values = includePending ? STATUS_VALUES : STATUS_VALUES.filter((v) => v !== "pending");
+  const values = includePending
+    ? STATUS_VALUES
+    : STATUS_VALUES.filter((v) => v !== "pending" && v !== "rejected");
   return values.map((value) => ({
     value,
     label: getStatusLabel(t, value),

@@ -48,12 +48,13 @@
 | `.ai-context/features/map/_module.md` | 地圖功能模組 |
 | `.ai-context/features/spots/_module.md` | 景點功能模組 |
 | `.ai-context/features/auth/_module.md` | 認證模組（Step 5）|
-| `.ai-context/features/swipe/_module.md` | 滑卡片功能（Step 4，待討論）|
+| `.ai-context/features/swipe/_module.md` | 滑卡片功能（Step 4，已整合在 `/map` 探索模式）|
 | `docs/01-專案規劃/` | 架構、功能範圍、技術棧 |
 | `docs/02-MVP規劃/` | MVP v1 開發順序 |
 | `docs/03-元件設計/` | 各元件設計規範 |
 | `docs/04-狀態管理/` | Store 設計、Guest mode |
 | `docs/05-API設計/` | API endpoints 規格 |
+| `docs/specs/2026-06-08-current-status-roadmap.md` | 目前功能狀態、下一步優先順序、未來擴充 |
 
 ---
 
@@ -103,9 +104,12 @@ visitCount Int  // 欄位存在，v1 UI 不顯示，v2 才有更新機制
 | Step 2+ | 游標軌跡 + 地圖點擊特效 + 頁面轉場動畫 | ✅ 完成 |
 | Step 2+ | Design System v2 方向確立（Acid/Y2K） | 🔄 設計優化中 |
 | Step 2++ | 地圖路線 A 改造（Mapbox + Acid 風格 + 多點路線）| ✅ Stage 4 主功能完成（待視覺驗證；spec：`docs/specs/2026-05-06-map-route-a-acid-redesign.md`）|
-| Step 3 | 景點詳情頁（Shell + 動畫已完成，內容補完中） | 🔄 進行中 |
-| Step 4 | 滑卡片 + Guest mode | ⏳ 待開始 |
-| Step 5 | NextAuth + 收藏同步 | ✅ 完成（NextAuth v5 + Google/LINE OAuth + Guest sync） |
+| Step 2++ | 投稿精簡強化（P0 pending 外洩修正 + Google Maps 貼上 + 前端照片壓縮） | ✅ 完成（照片正式改走 Vercel Blob URL；data URL 僅保留相容 fallback） |
+| Step 3 | 景點詳情頁（基本資訊 + 動畫 + 行動按鈕） | ✅ 第一版完成，內容與照片牆可再強化 |
+| Step 4 | 滑卡片 + Guest mode + 今日行程整合 | ✅ 第一版完成（桌機 / 平板 / 手機 RWD 已多輪調整，待真機手勢 QA） |
+| Step 5 | NextAuth + 收藏同步 | ✅ 完成（NextAuth v5 + Google/LINE OAuth + Guest sync，待 Production callback / env 驗證） |
+| Step 5+ | P0/P1 收斂：admin production check、投稿防濫用、路線 sheet 小 UX、個人收藏/投稿狀態 | ✅ 第一版完成，待 Vercel production 實際驗證 |
+| Next | 收尾驗證：Vercel env / OAuth callback / Blob smoke test、reject reason、外部導航 fallback | ⏭️ 建議下一步 |
 
 
 

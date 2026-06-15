@@ -48,7 +48,7 @@ const CATEGORY_COLORS = {
 | 頁面 | 背景 | 說明 |
 |------|------|------|
 | Landing page | `bg-zinc-950` | 深色，沉浸感 |
-| 地圖頁 | Google Maps | 全螢幕，深色 Loading 狀態 |
+| 地圖頁 | Mapbox vector style | 全螢幕，四套 theme JSON，深色 Loading 狀態 |
 | 景點詳情頁 | 混搭（Hero 圖 + 深色內容區） | 見下方詳細說明 |
 | 滑卡片（Step 4） | `bg-zinc-950` | 維持深色調性 |
 
@@ -108,7 +108,7 @@ const CATEGORY_COLORS = {
 
 ### 圖片
 - Seed data 使用 `/public/spots/xxx.jpg`（本地靜態）
-- v2 Cloudinary URL 格式相同，無需額外處理
+- 投稿照片使用 Vercel Blob 公開 URL，DB 的 `images` 欄位只存 URL 陣列 JSON
 - 圖片載入失敗時顯示 `bg-zinc-800` 佔位符
 
 ---

@@ -20,6 +20,7 @@ Claude Code 每次工作前，請依照以下順序讀取文件：
 4. `.ai-context/features/spots/_module.md`
 5. `docs/05-API設計/spots-api.md`
 6. `docs/01-專案規劃/04-資料模型.md`
+7. `docs/specs/2026-06-08-current-status-roadmap.md`（判斷下一步優先順序時必讀）
 
 ### 修改狀態管理
 4. `.ai-context/global/state-management.md`
@@ -40,3 +41,4 @@ Claude Code 每次工作前，請依照以下順序讀取文件：
 - 更新 `CLAUDE.md` 的「開發進度」表格
 - 更新對應的 `.ai-context/features/` 模組文件
 - 新增的 API/Store/元件要在對應的 `docs/` 文件補充
+- 若功能狀態或下一步優先順序改變，同步更新 `docs/specs/2026-06-08-current-status-roadmap.md`

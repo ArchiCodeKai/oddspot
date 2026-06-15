@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
 import { spotsQuerySchema, createSpotSchema, formatZodError } from "@/lib/validation";
+import {
+  SPOT_DAILY_LIMIT,
+  SPOT_SUBMIT_WINDOW_LIMIT,
+  SPOT_SUBMIT_WINDOW_MS,
+  checkRateLimit,
+  formatRetryAfterSeconds,
+  getTaipeiDayStart,
+} from "@/lib/security/rateLimit";
+import {
+  DUPLICATE_SEARCH_DEGREES,
+  findDuplicateSpot,
+} from "@/lib/spots/duplicate";
 import type { ApiResponse } from "@/types/api";
 import type { SpotMapPoint } from "@/types/spots";
 
@@ -23,6 +35,11 @@ function getBoundingBox(lat: number, lng: number, radiusKm: number) {
 }
 
 const MAX_SPOTS = 50;
+const PUBLIC_SPOT_STATUSES: SpotMapPoint["status"][] = [
+  "active",
+  "uncertain",
+  "disappeared",
+];
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -43,6 +60,12 @@ export async function GET(request: NextRequest) {
     );
   }
   const { lat, lng, radius, categories, status, difficulty, cursor, bbox } = parsed.data;
+  const publicStatuses =
+    status.length > 0
+      ? status.filter((value): value is SpotMapPoint["status"] =>
+        PUBLIC_SPOT_STATUSES.includes(value as SpotMapPoint["status"])
+      )
+      : PUBLIC_SPOT_STATUSES;
 
   // bbox 模式優先；否則用 lat + lng + radius 算 bounding box
   // refine 保證至少有一組，但 TS narrow 不到，所以加防禦
@@ -65,9 +88,7 @@ export async function GET(request: NextRequest) {
         ...(categories.length > 0
           ? { category: { in: categories } }
           : {}),
-        ...(status.length > 0
-          ? { status: { in: status } }
-          : {}),
+        status: { in: publicStatuses },
         ...(difficulty.length > 0
           ? { difficulty: { in: difficulty } }
           : {}),
@@ -149,6 +170,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const burstLimit = checkRateLimit(
+    `spot-submit:${session.user.id}`,
+    SPOT_SUBMIT_WINDOW_LIMIT,
+    SPOT_SUBMIT_WINDOW_MS,
+  );
+  if (!burstLimit.allowed) {
+    return NextResponse.json<ApiResponse<null>>(
+      { data: null, success: false, error: "投稿太頻繁，請稍後再試" },
+      {
+        status: 429,
+        headers: { "Retry-After": formatRetryAfterSeconds(burstLimit.resetAt) },
+      },
+    );
+  }
+
   try {
     const body = await request.json();
     const parsed = createSpotSchema.safeParse(body);
@@ -158,9 +194,65 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { name, nameEn, description, category, lat, lng, address, difficulty, recommendedTime, legend, imageUrl } = parsed.data;
+    const { name, nameEn, description, category, lat, lng, address, difficulty, recommendedTime, legend, imageUrl, imageUrls, imageDataUrls } = parsed.data;
 
-    const images = imageUrl ? JSON.stringify([imageUrl]) : JSON.stringify([]);
+    const submittedToday = await prisma.spot.count({
+      where: {
+        submittedById: session.user.id,
+        createdAt: { gte: getTaipeiDayStart() },
+      },
+    });
+    if (submittedToday >= SPOT_DAILY_LIMIT) {
+      return NextResponse.json<ApiResponse<null>>(
+        { data: null, success: false, error: `今日投稿已達 ${SPOT_DAILY_LIMIT} 筆上限` },
+        { status: 429 },
+      );
+    }
+
+    const duplicateCandidates = await prisma.spot.findMany({
+      where: {
+        status: { in: PUBLIC_SPOT_STATUSES.concat("pending") },
+        OR: [
+          { name: { equals: name, mode: "insensitive" } },
+          {
+            lat: {
+              gte: lat - DUPLICATE_SEARCH_DEGREES,
+              lte: lat + DUPLICATE_SEARCH_DEGREES,
+            },
+            lng: {
+              gte: lng - DUPLICATE_SEARCH_DEGREES,
+              lte: lng + DUPLICATE_SEARCH_DEGREES,
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        lat: true,
+        lng: true,
+        status: true,
+      },
+      take: 30,
+    });
+    const duplicate = findDuplicateSpot({ name, lat, lng }, duplicateCandidates);
+    if (duplicate) {
+      return NextResponse.json<ApiResponse<null>>(
+        {
+          data: null,
+          success: false,
+          error: `可能已存在相似景點：${duplicate.name}`,
+        },
+        { status: 409 },
+      );
+    }
+
+    const submittedImages = imageUrls?.length
+      ? imageUrls
+      : imageDataUrls?.length
+        ? imageDataUrls
+        : (imageUrl ? [imageUrl] : []);
+    const images = JSON.stringify(submittedImages);
     // pending 景點 30 天內未審核自動到期
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 

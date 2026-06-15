@@ -123,5 +123,7 @@ TripPlanSheet
 
 ## 開放問題（實作前再確認）
 
-- 是否要補完整 history undo（目前只支援救回最近一次 skip）
-- 桌機滾輪在卡片**外**怎麼處理（捲動整頁 vs 鎖住）
+- 是否要補完整 history undo（目前只支援救回最近一次 skip）。
+- 桌機滾輪在卡片**外**怎麼處理（捲動整頁 vs 鎖住）。
+- 左右滑手勢已多輪修正，但仍需要真機確認 iOS Safari、Android Chrome、iPadOS Safari 的手感。
+- 打勾 = 收藏 + 加入今日行程；中間 + = 只收藏。若後續使用者仍混淆，需要在 tooltip 或結果 feedback 補更清楚的語意。

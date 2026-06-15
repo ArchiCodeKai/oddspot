@@ -1,9 +1,9 @@
 # 地圖元件設計
 
-> **改造中**：Google Maps → Mapbox 路線 A 改造規劃完成，待實作。
+> **目前狀態**：Mapbox 路線 A 主功能已完成，待跨裝置視覺 / UX 驗證。
 > 完整規格見 `docs/specs/2026-05-06-map-route-a-acid-redesign.md`。
 
-## 元件樹（改造後）
+## 元件樹（目前實作）
 
 ```
 map/page.tsx（Page，資料獲取層）
@@ -193,11 +193,10 @@ TODO：整合 useMapStore（目前 selectedSpot 在 local state）
 
 ## 擴充指南
 
-**加入篩選器**（仍待實作）：
-1. 在 `map/page.tsx` 加入篩選器 UI（下拉選單或 tag chips）
-2. 從 `useMapStore` 讀取 `filters`
-3. 將 `filters` 加入 API query string
-4. API 已支援 `categories` 參數
+**篩選器現況**：
+- FilterSheet 第一版已實作並接上 `useMapStore.filters`。
+- API 已支援 `categories` / `status` / `difficulty`。
+- 後續可加強「已套用 N 個條件」與 clear affordance。
 
 **升級為 React Query**（仍待實作）：
 ```typescript

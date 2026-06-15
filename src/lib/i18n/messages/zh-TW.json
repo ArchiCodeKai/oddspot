@@ -28,6 +28,7 @@
     "logout": "登出",
     "saved": "已收藏",
     "trip": "今日行程",
+    "submissions": "我的投稿",
     "user": "用戶",
     "prompt": {
       "badge": "err_anon · auth_required",
@@ -70,7 +71,8 @@
       "active": "可探索",
       "uncertain": "狀況不明",
       "disappeared": "已消失",
-      "pending": "審核中"
+      "pending": "審核中",
+      "rejected": "已拒絕"
     },
     "difficulty": {
       "easy": "容易",
@@ -97,6 +99,27 @@
     "navigate": "在 Google Maps 中導航",
     "openRoutePlanner": "回地圖規劃路線",
     "remove": "移除"
+  },
+  "savedPage": {
+    "title": "已收藏景點",
+    "description": "這裡只放你真正想回來看的點，也可以直接加入今日行程。",
+    "back": "回地圖",
+    "count": "{count} 個收藏",
+    "empty": "目前還沒有收藏。先回地圖或滑卡片，看到想保留的點再按收藏。",
+    "addToTrip": "加入今日行程",
+    "remove": "移除收藏",
+    "removing": "移除中"
+  },
+  "submissionsPage": {
+    "title": "我的投稿狀態",
+    "description": "投稿後會先進入審核；通過才會出現在公開地圖，被拒絕的投稿會保留狀態但清掉圖片。",
+    "back": "回地圖",
+    "newSubmission": "新增投稿",
+    "empty": "目前還沒有投稿。你可以先貼上 Google Maps 連結或座標建立第一個點。",
+    "viewSpot": "查看景點",
+    "pendingHint": "正在審核中，通過後會出現在地圖。",
+    "rejectedHint": "此投稿已被拒絕，照片已從 Blob 清理。",
+    "closedHint": "此投稿已結案。"
   },
   "routeSheet": {
     "title": "archive://route · 歸檔行程",

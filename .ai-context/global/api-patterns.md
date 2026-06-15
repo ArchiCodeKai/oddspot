@@ -37,9 +37,14 @@ return NextResponse.json<ApiResponse<null>>(
 | Endpoint | Method | 說明 | 狀態 |
 |----------|--------|------|------|
 | `/api/spots` | GET | 取得附近景點 | ✅ 完成 |
-| `/api/spots/[id]` | GET | 取得單一景點詳情 | ⏳ Step 3 |
-| `/api/saved` | GET/POST/DELETE | 收藏管理 | ⏳ Step 5 |
-| `/api/saved/sync` | POST | Guest saves 同步 | ⏳ Step 5 |
+| `/api/spots` | POST | 投稿新景點，建立 pending | ✅ 完成 |
+| `/api/uploads/spots` | POST | 投稿照片上傳到 Vercel Blob | ✅ 完成 |
+| `/api/spots/[id]` | GET | 取得單一景點詳情 | ✅ 完成 |
+| `/api/saved` | GET/POST | 收藏管理 | ✅ 完成 |
+| `/api/saved/[spotId]` | DELETE | 移除收藏 | ✅ 完成 |
+| `/api/saved/sync` | POST | Guest saves 同步 | ✅ 完成 |
+| `/api/admin/spots` | GET | 取得 pending 投稿 | ✅ 第一版完成 |
+| `/api/admin/spots/[id]` | PATCH | approve / reject 投稿 | ✅ 第一版完成 |
 
 ## /api/spots 參數規格
 

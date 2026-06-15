@@ -44,12 +44,13 @@
 | `.ai-context/features/map/_module.md` | 地圖功能模組 |
 | `.ai-context/features/spots/_module.md` | 景點功能模組 |
 | `.ai-context/features/auth/_module.md` | 認證模組（Step 5）|
-| `.ai-context/features/swipe/_module.md` | 滑卡片功能（Step 4，待討論）|
+| `.ai-context/features/swipe/_module.md` | 滑卡片功能（Step 4，已整合在 `/map` 探索模式）|
 | `docs/01-專案規劃/` | 架構、功能範圍、技術棧 |
 | `docs/02-MVP規劃/` | MVP v1 開發順序 |
 | `docs/03-元件設計/` | 各元件設計規範 |
 | `docs/04-狀態管理/` | Store 設計、Guest mode |
 | `docs/05-API設計/` | API endpoints 規格 |
+| `docs/specs/2026-06-08-current-status-roadmap.md` | 目前功能狀態、下一步優先順序、未來擴充 |
 
 ---
 
@@ -98,9 +99,12 @@ visitCount Int  // 欄位存在，v1 UI 不顯示，v2 才有更新機制
 | Step 2 | 地圖頁 + MapView | 🔄 進行中 |
 | Step 2+ | 游標軌跡 + 地圖點擊特效 + 頁面轉場動畫 | ✅ 完成 |
 | Step 2+ | Design System v2 方向確立（Acid/Y2K） | 🔄 設計優化中 |
-| Step 3 | 景點詳情頁（Shell + 動畫已完成，內容補完中） | 🔄 進行中 |
-| Step 4 | 滑卡片 + Guest mode | ⏳ 待開始 |
-| Step 5 | NextAuth + 收藏同步 | ⏳ 待開始 |
+| Step 2++ | Mapbox 地圖改造 + 多點路線規劃 | ✅ 主功能完成，待跨裝置視覺驗證 |
+| Step 2++ | 投稿強化（pending 防漏、Google Maps 貼上、照片壓縮與 Blob URL） | ✅ 精簡版完成，照片功能目前先暫停延伸 |
+| Step 3 | 景點詳情頁（基本資訊 + 動畫 + 行動按鈕） | ✅ 第一版完成，內容與照片牆可再強化 |
+| Step 4 | 滑卡片 + Guest mode + 今日行程整合 | ✅ 第一版完成，待真機手勢 QA |
+| Step 5 | NextAuth + Google/LINE OAuth + 收藏同步 | ✅ 功能完成，待 Production env / callback 驗證 |
+| Next | P0/P1 收斂：部署驗證、投稿防濫用、路線 sheet 小 UX、個人收藏/投稿狀態 | ⏭️ 建議下一步 |
 
 
 

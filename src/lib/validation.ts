@@ -16,6 +16,21 @@ export const statusSchema = z.enum(
 
 const latSchema = z.number().min(-90).max(90);
 const lngSchema = z.number().min(-180).max(180);
+export const MAX_SUBMIT_IMAGE_DATA_URL_LENGTH = 500_000;
+
+const imageDataUrlSchema = z
+  .string()
+  .max(MAX_SUBMIT_IMAGE_DATA_URL_LENGTH)
+  .regex(
+    /^data:image\/(jpeg|png|webp);base64,[a-zA-Z0-9+/=]+$/,
+    "圖片必須是壓縮後的 JPG、PNG 或 WebP data URL",
+  );
+
+const imageUrlSchema = z
+  .string()
+  .url()
+  .max(500)
+  .refine((value) => new URL(value).protocol === "https:", "圖片網址必須使用 https");
 
 // GET /api/spots query
 // 兩種互斥模式（必須擇一）：
@@ -86,7 +101,9 @@ export const createSpotSchema = z.object({
   difficulty: difficultySchema.optional().default("easy"),
   recommendedTime: z.string().trim().max(100).optional(),
   legend: z.string().trim().max(2000).optional(),
-  imageUrl: z.string().url().max(500).optional(),
+  imageUrl: imageUrlSchema.optional(),
+  imageUrls: z.array(imageUrlSchema).max(3, "最多只能上傳 3 張圖片").optional(),
+  imageDataUrls: z.array(imageDataUrlSchema).max(3, "最多只能上傳 3 張圖片").optional(),
 });
 
 // POST /api/saved body（單筆收藏）

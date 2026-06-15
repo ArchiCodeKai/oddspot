@@ -5,6 +5,22 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/contexts/SessionContext";
 import { getCategoryOptions, getDifficultyLabel } from "@/lib/i18n/spotMeta";
+import { compressSubmitImage, MAX_SUBMIT_PHOTOS } from "@/lib/submit/imageCompression";
+import { parseGoogleMapsInput } from "@/lib/submit/googleMapsPaste";
+
+const emptySubmitForm = {
+  name: "",
+  nameEn: "",
+  description: "",
+  category: "",
+  lat: "",
+  lng: "",
+  address: "",
+  difficulty: "easy",
+  recommendedTime: "",
+  legend: "",
+  imageUrl: "",
+};
 
 export default function SubmitPage() {
   const router = useRouter();
@@ -13,19 +29,11 @@ export default function SubmitPage() {
   const session = user ? { user } : null;
   const tMeta = useTranslations("spotMeta");
 
-  const [form, setForm] = useState({
-    name: "",
-    nameEn: "",
-    description: "",
-    category: "",
-    lat: "",
-    lng: "",
-    address: "",
-    difficulty: "easy",
-    recommendedTime: "",
-    legend: "",
-    imageUrl: "",
-  });
+  const [form, setForm] = useState(emptySubmitForm);
+  const [mapPaste, setMapPaste] = useState("");
+  const [mapPasteStatus, setMapPasteStatus] = useState("");
+  const [compressedPhotoDataUrls, setCompressedPhotoDataUrls] = useState<string[]>([]);
+  const [photoStatus, setPhotoStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -53,6 +61,72 @@ export default function SubmitPage() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
+  function handleMapPasteParse() {
+    const parsed = parseGoogleMapsInput(mapPaste);
+    if (!parsed) {
+      setMapPasteStatus("尚未讀到座標。短網址請先打開後複製完整 Google Maps 網址或座標。");
+      return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      lat: String(Number(parsed.lat.toFixed(6))),
+      lng: String(Number(parsed.lng.toFixed(6))),
+    }));
+    setMapPasteStatus(`已帶入座標 ${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}`);
+  }
+
+  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []).slice(0, MAX_SUBMIT_PHOTOS);
+    e.target.value = "";
+    if (files.length === 0) return;
+
+    setError("");
+    setPhotoStatus("壓縮中...");
+
+    try {
+      const compressed = await Promise.all(files.map((file) => compressSubmitImage(file)));
+      setCompressedPhotoDataUrls(compressed);
+      setPhotoStatus(`已壓縮 ${compressed.length} 張照片，送出時會上傳到雲端並送審。`);
+    } catch (photoError) {
+      setCompressedPhotoDataUrls([]);
+      setPhotoStatus("");
+      setError(photoError instanceof Error ? photoError.message : "照片處理失敗，請重新選擇");
+    }
+  }
+
+  function handleRemovePhoto(index: number) {
+    const nextPhotos = compressedPhotoDataUrls.filter((_, photoIndex) => photoIndex !== index);
+    setCompressedPhotoDataUrls(nextPhotos);
+    setPhotoStatus(nextPhotos.length > 0 ? `已壓縮 ${nextPhotos.length} 張照片，送出時會上傳到雲端並送審。` : "");
+  }
+
+  function resetForm() {
+    setForm(emptySubmitForm);
+    setMapPaste("");
+    setMapPasteStatus("");
+    setCompressedPhotoDataUrls([]);
+    setPhotoStatus("");
+  }
+
+  async function uploadSubmitPhoto(dataUrl: string, index: number) {
+    const photoBlob = await fetch(dataUrl).then((response) => response.blob());
+    const formData = new FormData();
+    formData.append("file", photoBlob, `spot-photo-${index + 1}.jpg`);
+
+    const res = await fetch("/api/uploads/spots", {
+      method: "POST",
+      body: formData,
+    });
+    const payload = await res.json();
+
+    if (!payload.success || !payload.data?.url) {
+      throw new Error(payload.error ?? "照片上傳失敗");
+    }
+
+    return payload.data.url as string;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -68,6 +142,14 @@ export default function SubmitPage() {
     }
 
     try {
+      const imageUrls = compressedPhotoDataUrls.length > 0
+        ? await Promise.all(compressedPhotoDataUrls.map((dataUrl, index) => uploadSubmitPhoto(dataUrl, index)))
+        : [];
+
+      if (imageUrls.length > 0) {
+        setPhotoStatus("照片已上傳，正在送出審核。");
+      }
+
       const res = await fetch("/api/spots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,7 +164,7 @@ export default function SubmitPage() {
           difficulty: form.difficulty,
           recommendedTime: form.recommendedTime || undefined,
           legend: form.legend || undefined,
-          imageUrl: form.imageUrl || undefined,
+          imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
         }),
       });
 
@@ -103,7 +185,16 @@ export default function SubmitPage() {
   if (success) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-zinc-950 px-6">
-        <div className="text-4xl">🗺️</div>
+        <div
+          className="px-3 py-2 text-[10px] uppercase tracking-[0.28em]"
+          style={{
+            border: "1px solid var(--line)",
+            color: "var(--accent)",
+            boxShadow: "0 0 18px rgb(var(--accent-rgb) / 0.16)",
+          }}
+        >
+          archive://pending
+        </div>
         <h2 className="text-white text-lg font-medium">投稿成功！</h2>
         <p className="text-zinc-400 text-sm text-center">
           你的景點已送出審核，通過後會出現在地圖上。
@@ -112,11 +203,17 @@ export default function SubmitPage() {
           <button
             onClick={() => {
               setSuccess(false);
-              setForm({ name: "", nameEn: "", description: "", category: "", lat: "", lng: "", address: "", difficulty: "easy", recommendedTime: "", legend: "", imageUrl: "" });
+              resetForm();
             }}
             className="px-4 py-2 text-sm border border-zinc-700 text-zinc-300 rounded-xs"
           >
             繼續投稿
+          </button>
+          <button
+            onClick={() => router.push("/submissions")}
+            className="px-4 py-2 text-sm border border-zinc-700 text-zinc-300 rounded-xs"
+          >
+            查看投稿狀態
           </button>
           <button
             onClick={() => router.push("/map")}
@@ -189,6 +286,33 @@ export default function SubmitPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
+            <label className="text-sm text-zinc-400">Google Maps 貼上（選填）</label>
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+              <input
+                value={mapPaste}
+                onChange={(e) => setMapPaste(e.target.value)}
+                placeholder="貼上座標或 Google Maps 網址"
+                className="min-w-0 bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+              />
+              <button
+                type="button"
+                onClick={handleMapPasteParse}
+                className="px-3 py-2.5 text-xs font-bold tracking-[0.16em] uppercase border border-zinc-700 text-zinc-300 rounded-xs hover:border-zinc-500 hover:text-white"
+              >
+                解析
+              </button>
+            </div>
+            <p className="text-xs text-zinc-600">
+              支援一般座標、Google Maps `@lat,lng`、`q=` 與 `ll=` 格式。
+            </p>
+            {mapPasteStatus && (
+              <p className="text-xs" style={{ color: mapPasteStatus.startsWith("已") ? "var(--accent)" : "var(--muted)" }}>
+                {mapPasteStatus}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
             <label className="text-sm text-zinc-400">GPS 座標 *</label>
             <div className="flex gap-2">
               <input
@@ -209,7 +333,7 @@ export default function SubmitPage() {
               />
             </div>
             <p className="text-xs text-zinc-600">
-              在 Google Maps 上長按地點，即可複製座標
+              可手動填寫，也可用上方貼上欄位自動帶入。
             </p>
           </div>
 
@@ -275,15 +399,47 @@ export default function SubmitPage() {
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">圖片網址（選填）</label>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm text-zinc-400">照片（選填，最多 3 張）</label>
             <input
-              name="imageUrl"
-              value={form.imageUrl}
-              onChange={handleChange}
-              placeholder="https://..."
-              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={handlePhotoSelect}
+              className="bg-zinc-900 border border-dashed border-zinc-700 rounded-xs px-3 py-3 text-sm text-zinc-300 file:mr-3 file:border-0 file:bg-white file:px-3 file:py-2 file:text-xs file:font-bold file:text-zinc-900 file:rounded-xs"
             />
+            <p className="text-xs text-zinc-600">
+              系統會先壓縮照片，再上傳到雲端儲存並送審。
+            </p>
+            {photoStatus && (
+              <p className="text-xs" style={{ color: "var(--accent)" }}>
+                {photoStatus}
+              </p>
+            )}
+            {compressedPhotoDataUrls.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {compressedPhotoDataUrls.map((src, index) => (
+                  <div
+                    key={`${src.slice(0, 32)}-${index}`}
+                    className="relative aspect-square overflow-hidden border border-zinc-800 rounded-xs bg-zinc-900"
+                  >
+                    <img
+                      src={src}
+                      alt={`投稿照片預覽 ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePhoto(index)}
+                      aria-label={`移除第 ${index + 1} 張照片`}
+                      className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center border border-zinc-700 bg-zinc-950/80 text-xs text-zinc-300 rounded-xs"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && (

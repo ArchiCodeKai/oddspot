@@ -28,6 +28,7 @@
     "logout": "Logout",
     "saved": "Saved",
     "trip": "Today's Trip",
+    "submissions": "My Submissions",
     "user": "User",
     "prompt": {
       "badge": "err_anon · auth_required",
@@ -70,7 +71,8 @@
       "active": "Explorable",
       "uncertain": "Uncertain",
       "disappeared": "Gone",
-      "pending": "Pending Review"
+      "pending": "Pending Review",
+      "rejected": "Rejected"
     },
     "difficulty": {
       "easy": "Easy",
@@ -97,6 +99,27 @@
     "navigate": "Open in Google Maps",
     "openRoutePlanner": "Plan Route on Map",
     "remove": "Remove"
+  },
+  "savedPage": {
+    "title": "Saved Spots",
+    "description": "A focused place for spots you actually want to revisit. Add any of them to today's route.",
+    "back": "Back to Map",
+    "count": "{count} saved",
+    "empty": "No saved spots yet. Go back to the map or swipe cards, then save the spots you want to keep.",
+    "addToTrip": "Add to Trip",
+    "remove": "Remove Save",
+    "removing": "Removing"
+  },
+  "submissionsPage": {
+    "title": "My Submission Status",
+    "description": "Submissions enter review first. Approved spots become public; rejected ones keep their status while uploaded images are cleaned up.",
+    "back": "Back to Map",
+    "newSubmission": "New Submission",
+    "empty": "No submissions yet. Paste a Google Maps link or coordinates to create your first spot.",
+    "viewSpot": "View Spot",
+    "pendingHint": "This spot is still under review. It will appear on the map after approval.",
+    "rejectedHint": "This submission was rejected and its Blob images were cleaned up.",
+    "closedHint": "This submission has been closed."
   },
   "routeSheet": {
     "title": "archive://route · Route Plan",
