@@ -1,49 +1,71 @@
 # 景點詳情頁設計（Step 3）
 
-## 路由
-`/spots/[id]`
+最後更新：2026-06-08
 
-## 資料來源
-`GET /api/spots/[id]`（待實作）
+## 狀態：第一版已完成
 
-## 頁面區塊
+路由：`/spots/[id]`
+
+目前頁面由 Server Component 直接查 Prisma：
+
+```
+src/app/spots/[id]/page.tsx
+```
+
+API 也已存在，可供其他前端資料流使用：
+
+```
+GET /api/spots/[id]
+src/app/api/spots/[id]/route.ts
+```
+
+## 目前頁面區塊
 
 ### Hero 區
-- 圖片輪播（images JSON 陣列）
-- 返回按鈕（← 回地圖）
+
+- 第一張圖片作為 cover image。
+- 無圖片時改用 category glyph placeholder。
+- 有 CRT scanline 與底部漸層遮罩，接到內容區。
 
 ### 基本資訊
-- 名稱（中 + 英）
-- 分類 badge + 狀態 badge + 難度
-- 地址 + 距離
+
+- 中文名稱。
+- 英文名稱（如有）。
+- 分類 badge。
+- 狀態 badge。
+- 難度文字。
+- 地址。
 
 ### 描述
-- description（中文）
-- 傳說 / 來由（legend，如有）
 
-### 實用資訊
-- 推薦到訪時段（recommendedTime）
+- `description`。
+- `legend`（如有）。
+- `recommendedTime`（如有）。
 
 ### 行動按鈕
-- 收藏按鈕（useSavedStore）
-- 一鍵導航（opens Google Maps）
 
-### v2 預留區域
-- 「我已到達」打卡按鈕（Step v2）
-- 用戶上傳照片牆（Step v2）
+由 `src/components/spots/SpotActionBar.tsx` 負責：
+
+- 收藏。
+- 一鍵導航。
 
 ## API 設計
 
 ```typescript
 // GET /api/spots/[id]
-// Response: ApiResponse<Spot>（完整欄位，不是 SpotMapPoint）
+// Response: ApiResponse<Spot>
 ```
 
-## 導航至 Google Maps
+實作要點：
 
-```typescript
-const openNavigation = (lat: number, lng: number, name: string) => {
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${name}`;
-  window.open(url, "_blank");
-};
-```
+- 使用 `cuidSchema` 驗證 id。
+- 找不到 spot 回傳 404。
+- `images` 保持 JSON string，前端自行 parse。
+
+## 下一步可補強
+
+- 圖片牆：最多 3 張投稿照片，桌機 / 手機都要有穩定尺寸。
+- 查詢 / 造訪數、推薦時段、GPS、外部 Google Maps link 的資訊密度可再優化。
+- 「加入今日行程」入口可與 RoutePlannerStore 整合。
+- 若照片來自 Vercel Blob，未來可補 blur placeholder 或固定 aspect-ratio，避免圖片載入造成版面跳動。
+- v2 才做「我已到達」打卡、使用者照片牆、檢舉與回報。

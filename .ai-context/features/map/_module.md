@@ -1,9 +1,9 @@
 # 地圖功能模組
 
-> **Status**: 改造中。Google Maps → Mapbox 路線 A 改造規劃完成，待實作。
+> **Status**: Mapbox 路線 A 主功能已完成，正在做跨裝置視覺 / UX 收斂。
 > **規格 source of truth**：`docs/specs/2026-05-06-map-route-a-acid-redesign.md`
 
-## 元件結構（改造後目標）
+## 元件結構（目前實作）
 
 ```
 src/components/map/
@@ -161,23 +161,34 @@ MapClickEffect  →  listen "oddspot:markerclick"，從 cursorState 讀取軌跡
 
 | 階段 | 狀態 | 對應 spec 章節 |
 |---|---|---|
-| 0：Mapbox token 申請 | ⏳ 待使用者執行 | 五 |
-| 1：4 themes JSON | ⏳ 待開始 | 三、3a–3b |
-| 2：MVP 替換 | ⏳ 待開始 | 六 |
-| 3：LocateMeButton + 加入路線 | ⏳ 待開始 | 三、3f；四 |
+| 0：Mapbox token 申請 | ✅ 完成，`NEXT_PUBLIC_MAPBOX_TOKEN` 必填 | 五 |
+| 1：4 themes JSON | ✅ 完成 | 三、3a–3b |
+| 2：MVP 替換 | ✅ 完成，地圖已改用 `react-map-gl/mapbox` | 六 |
+| 3：LocateMeButton + 加入路線 | ✅ 完成 | 三、3f；四 |
 | 4：RoutePlanner（含 Directions API + deep link） | ✅ 完成 | 三、3d–3e；四 |
-| 5：Polish（acid marker / 動畫 / 文案） | ⏳ 待開始 | 八 |
+| 5：Polish（acid marker / 動畫 / 文案） | 🔄 進行中，先收斂 UX 明確性 | 八 |
 
 ## 已知限制
 
-- SpotPopup 的「查看詳情」連結到 `/spots/[id]`，景點詳情頁 Step 3 已有 Shell，內容持續補完
-- 目前 [MapView.tsx](../../../src/components/map/MapView.tsx) 用 `@vis.gl/react-google-maps` + CSS filter（`invert(1) hue-rotate(180deg)`）做深色化，是改造前的暫時方案
+- SpotPopup 的「查看詳情」連結到 `/spots/[id]`，景點詳情頁第一版已可顯示基本資訊與行動按鈕，照片牆與更多資料仍可再補強。
+- Mapbox theme 切換與 RoutePolyline 顏色理論上已跟 `theme` 重算；仍需要桌機 / 平板 / 手機實際切換驗證。
+- iOS Google Maps app scheme 沒裝 app 時的 fallback chain 還沒做，容易出現點了沒反應的體感。
+- RouteSheet 滿 5 點時已保留 disabled「已達 5 點上限」按鈕，避免使用者誤判功能消失。
+- Saved picker 空狀態已區分「完全沒收藏」與「目前地圖範圍沒有收藏」。
 
-## TODO（改造後仍未解決）
+## 下一步 TODO
 
-- 篩選器 UI 第一版已接上 `useMapStore.filters`，API 支援 category / status / difficulty；後續可補 spec 原規劃的左側 slide-in 視覺與多選 status / difficulty UI
-- 半徑選擇器第一版已接上 RadiusToggle segmented control
-- 收藏列表勾選介面（階段 4 中實作，但 Saved Spots store 要等 Step 5 才存後端）
+### P0 / P1 收斂
+
+- `ExternalNavSheet`：補 iOS app scheme fallback 到 Google Maps web URL。
+- `LocateMeButton`：確認展開 sheet 時與 sheet 的動態曲線一致；目前可先用 CSS bezier 微調，必要時再改 motion button。
+- `RoutePolyline`：跨 theme 快速切換時確認線色不殘留。
+
+### 已完成但仍可 polish
+
+- 篩選器 UI 第一版已接上 `useMapStore.filters`，API 支援 category / status / difficulty；後續可補更明確的篩選摘要與「已套用 N 個條件」狀態。
+- 半徑選擇器第一版已接上 `RadiusToggle` segmented control；平板斷點已加大 touch target，仍需實機確認。
+- 收藏列表勾選介面已可搭配 Step 5 saved sync 使用；下一步是做個人收藏頁或更完整 picker。
 
 ## 未排程 / Stage 5+ polish 候選
 

@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/contexts/SessionContext";
 import { signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useSavedStore } from "@/store/useSavedStore";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { useTranslations } from "next-intl";
 
 export function AuthButton() {
+  const router = useRouter();
   const { user } = useSession();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -166,7 +168,10 @@ export function AuthButton() {
             }
             label={t("saved")}
             badge={savedCount}
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              router.push("/saved");
+              setOpen(false);
+            }}
           />
 
           <DropdownItem
@@ -180,7 +185,26 @@ export function AuthButton() {
             }
             label={t("trip")}
             badge={tripCount}
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              router.push("/map");
+              setOpen(false);
+            }}
+          />
+
+          <DropdownItem
+            icon={
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16v16H4z"/>
+                <path d="M8 8h8"/>
+                <path d="M8 12h8"/>
+                <path d="M8 16h5"/>
+              </svg>
+            }
+            label={t("submissions")}
+            onClick={() => {
+              router.push("/submissions");
+              setOpen(false);
+            }}
           />
 
           <div style={{ height: "1px", background: "var(--line)", margin: "4px 0" }} />
@@ -260,7 +284,7 @@ function DropdownItem({
 }: {
   icon: React.ReactNode;
   label: string;
-  badge: number;
+  badge?: number;
   onClick: () => void;
 }) {
   return (
@@ -275,15 +299,17 @@ function DropdownItem({
         {icon}
         {label}
       </span>
-      <span
-        className="text-[10px] px-1.5 py-0.5 rounded-sm font-bold"
-        style={{
-          background: badge > 0 ? "rgb(var(--accent-rgb) / 0.12)" : "rgb(var(--foreground-rgb) / 0.04)",
-          color: badge > 0 ? "var(--accent)" : "var(--muted)",
-        }}
-      >
-        {badge}
-      </span>
+      {badge !== undefined && (
+        <span
+          className="text-[10px] px-1.5 py-0.5 rounded-sm font-bold"
+          style={{
+            background: badge > 0 ? "rgb(var(--accent-rgb) / 0.12)" : "rgb(var(--foreground-rgb) / 0.04)",
+            color: badge > 0 ? "var(--accent)" : "var(--muted)",
+          }}
+        >
+          {badge}
+        </span>
+      )}
     </button>
   );
 }

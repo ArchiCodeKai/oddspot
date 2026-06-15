@@ -25,6 +25,16 @@ interface PendingSpot {
   createdAt: string;
 }
 
+interface AdminHealthPayload {
+  readiness: {
+    missing: string[];
+  };
+  database: {
+    ok: boolean;
+    error?: string;
+  };
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -33,6 +43,10 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [healthStatus, setHealthStatus] = useState("");
+  const [blobStatus, setBlobStatus] = useState("");
+  const [checkingHealth, setCheckingHealth] = useState(false);
+  const [checkingBlob, setCheckingBlob] = useState(false);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -69,6 +83,42 @@ export default function AdminPage() {
     }
   }
 
+  async function handleHealthCheck() {
+    setCheckingHealth(true);
+    setHealthStatus("");
+    try {
+      const res = await fetch("/api/admin/health");
+      const payload = await res.json();
+      if (!payload.success) {
+        setHealthStatus(payload.error ?? "Production 檢查失敗");
+        return;
+      }
+      const data = payload.data as AdminHealthPayload;
+      const missing = data.readiness.missing.length;
+      setHealthStatus(
+        `DB ${data.database.ok ? "OK" : "ERR"} · 缺 ${missing} 個 env${missing > 0 ? `：${data.readiness.missing.join(", ")}` : ""}`,
+      );
+    } catch {
+      setHealthStatus("Production 檢查失敗");
+    } finally {
+      setCheckingHealth(false);
+    }
+  }
+
+  async function handleBlobSmokeTest() {
+    setCheckingBlob(true);
+    setBlobStatus("");
+    try {
+      const res = await fetch("/api/admin/blob-smoke", { method: "POST" });
+      const payload = await res.json();
+      setBlobStatus(payload.success ? "Blob upload/delete OK" : (payload.error ?? "Blob smoke test 失敗"));
+    } catch {
+      setBlobStatus("Blob smoke test 失敗");
+    } finally {
+      setCheckingBlob(false);
+    }
+  }
+
   function getCategoryLabel(value: string) {
     return getTranslatedCategoryLabel(tMeta, value);
   }
@@ -98,6 +148,36 @@ export default function AdminPage() {
             {spots.length} 筆待審核
           </span>
         </div>
+
+        {!forbidden && (
+          <div className="mb-6 rounded-xs border border-zinc-800 bg-zinc-900 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Production checks
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                onClick={handleHealthCheck}
+                disabled={checkingHealth}
+                className="rounded-xs border border-zinc-700 px-3 py-2 text-xs text-zinc-300 disabled:opacity-50"
+              >
+                {checkingHealth ? "檢查中..." : "檢查 env / DB"}
+              </button>
+              <button
+                onClick={handleBlobSmokeTest}
+                disabled={checkingBlob}
+                className="rounded-xs border border-zinc-700 px-3 py-2 text-xs text-zinc-300 disabled:opacity-50"
+              >
+                {checkingBlob ? "測試中..." : "Blob smoke test"}
+              </button>
+            </div>
+            {(healthStatus || blobStatus) && (
+              <div className="mt-3 space-y-1 text-xs text-zinc-500">
+                {healthStatus && <p>{healthStatus}</p>}
+                {blobStatus && <p>{blobStatus}</p>}
+              </div>
+            )}
+          </div>
+        )}
 
         {forbidden && (
           <div className="text-center py-12 text-zinc-500 text-sm">
@@ -177,7 +257,7 @@ export default function AdminPage() {
                   disabled={processing === spot.id}
                   className="flex-1 py-2 text-sm border border-zinc-700 text-zinc-400 rounded-xs disabled:opacity-50"
                 >
-                  拒絕刪除
+                  拒絕並清圖
                 </button>
               </div>
             </div>

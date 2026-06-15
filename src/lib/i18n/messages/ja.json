@@ -28,6 +28,7 @@
     "logout": "ログアウト",
     "saved": "保存済み",
     "trip": "今日のルート",
+    "submissions": "自分の投稿",
     "user": "ユーザー",
     "prompt": {
       "badge": "err_anon · auth_required",
@@ -70,7 +71,8 @@
       "active": "探索可",
       "uncertain": "状況不明",
       "disappeared": "消失",
-      "pending": "審査中"
+      "pending": "審査中",
+      "rejected": "却下済み"
     },
     "difficulty": {
       "easy": "簡単",
@@ -97,6 +99,27 @@
     "navigate": "Google Maps で開く",
     "openRoutePlanner": "マップでルート計画",
     "remove": "削除"
+  },
+  "savedPage": {
+    "title": "保存済みスポット",
+    "description": "あとで見返したいスポットをまとめる場所です。今日のルートにも直接追加できます。",
+    "back": "マップへ戻る",
+    "count": "{count} 件保存",
+    "empty": "保存済みスポットはまだありません。マップやカードから気になる場所を保存してください。",
+    "addToTrip": "今日のルートに追加",
+    "remove": "保存を解除",
+    "removing": "削除中"
+  },
+  "submissionsPage": {
+    "title": "自分の投稿状況",
+    "description": "投稿はまず審査に入ります。承認後に公開され、却下された投稿は状態を残して画像を削除します。",
+    "back": "マップへ戻る",
+    "newSubmission": "新規投稿",
+    "empty": "投稿はまだありません。Google Maps のリンクや座標から最初のスポットを作成できます。",
+    "viewSpot": "スポットを見る",
+    "pendingHint": "審査中です。承認後にマップへ表示されます。",
+    "rejectedHint": "この投稿は却下され、Blob 画像は削除されました。",
+    "closedHint": "この投稿は終了しています。"
   },
   "routeSheet": {
     "title": "archive://route · ルート計画",
