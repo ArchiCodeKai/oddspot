@@ -41,7 +41,11 @@
 ## 投稿座標輔助
 
 - `/submit` 支援 Google Maps 貼上解析，位置：`src/lib/submit/googleMapsPaste.ts`
-- 目前支援 `lat,lng`、`@lat,lng`、`q=lat,lng`、`ll=lat,lng`
+- 投稿表單已把「貼上 Google Maps 連結或座標」放在表單最上方，作為主要位置輸入。
+- 使用者貼上後會即時解析並自動帶入 `lat` / `lng`，成功訊息格式為「已讀取座標：lat, lng」。
+- 手動經緯度欄位已收進「進階座標」，預設收合，保留給解析失敗或進階使用者。
+- 解析成功後會顯示小型位置預覽 pin，讓使用者確認座標已被讀取。
+- 目前支援 `lat,lng`、`@lat,lng`、`q=lat,lng`、`ll=lat,lng`、`!3dlat!4dlng`
 - `maps.app.goo.gl` 短網址暫不展開，避免精簡版需要外部網路解析
 
 ## 景點詳情頁（Step 3 進行中）
