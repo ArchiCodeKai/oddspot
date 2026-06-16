@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/contexts/SessionContext";
 import {
   getCategoryLabel as getTranslatedCategoryLabel,
   getDifficultyLabel,
@@ -37,7 +37,7 @@ interface AdminHealthPayload {
 
 export default function AdminPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { user } = useSession();
   const tMeta = useTranslations("spotMeta");
   const [spots, setSpots] = useState<PendingSpot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,20 +49,35 @@ export default function AdminPage() {
   const [checkingBlob, setCheckingBlob] = useState(false);
 
   useEffect(() => {
-    if (status === "loading") return;
-    if (!session) { router.push("/map"); return; }
+    if (!user) {
+      setLoading(false);
+      router.push("/map");
+      return;
+    }
 
+    let active = true;
+    setLoading(true);
+    setForbidden(false);
     fetch("/api/admin/spots")
       .then((res) => {
-        if (res.status === 403) { setForbidden(true); return null; }
+        if (res.status === 403) {
+          if (active) setForbidden(true);
+          return null;
+        }
         return res.json();
       })
       .then((data) => {
-        if (data?.success) setSpots(data.data);
+        if (active && data?.success) setSpots(data.data);
       })
       .catch((err) => console.error("載入待審核景點失敗", err))
-      .finally(() => setLoading(false));
-  }, [session, status, router]);
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user, router]);
 
   async function handleAction(id: string, action: "approve" | "reject") {
     setProcessing(id);
@@ -123,7 +138,7 @@ export default function AdminPage() {
     return getTranslatedCategoryLabel(tMeta, value);
   }
 
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-950">
         <div className="text-zinc-500 text-sm">載入中...</div>
@@ -131,7 +146,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!session) return null;
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
