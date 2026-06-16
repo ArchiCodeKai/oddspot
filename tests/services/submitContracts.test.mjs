@@ -69,3 +69,12 @@ test("submit page exposes maps paste and compressed photo upload controls", () =
   assert.match(submitSource, /accept="image\/jpeg,image\/png,image\/webp"/);
   assert.match(submitSource, /Google Maps/);
 });
+
+test("submit page makes maps paste the primary location input", () => {
+  assert.match(submitSource, /貼上 Google Maps 連結或座標/);
+  assert.match(submitSource, /handleMapPasteChange/);
+  assert.match(submitSource, /已讀取座標/);
+  assert.match(submitSource, /進階座標/);
+  assert.match(submitSource, /LocationPreview/);
+  assert.doesNotMatch(submitSource, />解析</);
+});

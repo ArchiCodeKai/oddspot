@@ -61,8 +61,14 @@ export default function SubmitPage() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  function handleMapPasteParse() {
-    const parsed = parseGoogleMapsInput(mapPaste);
+  function handleMapPasteChange(value: string) {
+    setMapPaste(value);
+    if (!value.trim()) {
+      setMapPasteStatus("");
+      return;
+    }
+
+    const parsed = parseGoogleMapsInput(value);
     if (!parsed) {
       setMapPasteStatus("尚未讀到座標。短網址請先打開後複製完整 Google Maps 網址或座標。");
       return;
@@ -73,7 +79,7 @@ export default function SubmitPage() {
       lat: String(Number(parsed.lat.toFixed(6))),
       lng: String(Number(parsed.lng.toFixed(6))),
     }));
-    setMapPasteStatus(`已帶入座標 ${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}`);
+    setMapPasteStatus(`已讀取座標：${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}`);
   }
 
   async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -136,7 +142,7 @@ export default function SubmitPage() {
     const lng = parseFloat(form.lng);
 
     if (!form.name || !form.category || isNaN(lat) || isNaN(lng)) {
-      setError("名稱、分類、緯度、經度為必填");
+      setError("名稱、分類、位置座標為必填");
       setSubmitting(false);
       return;
     }
@@ -226,6 +232,10 @@ export default function SubmitPage() {
     );
   }
 
+  const previewLat = Number(form.lat);
+  const previewLng = Number(form.lng);
+  const hasLocationPreview = Number.isFinite(previewLat) && Number.isFinite(previewLng);
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="max-w-lg mx-auto px-4 py-6">
@@ -244,6 +254,27 @@ export default function SubmitPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm text-zinc-300">貼上 Google Maps 連結或座標 *</label>
+            <input
+              value={mapPaste}
+              onChange={(e) => handleMapPasteChange(e.target.value)}
+              placeholder="貼上 Google Maps 連結或座標"
+              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
+            />
+            <p className="text-xs text-zinc-600">
+              支援一般座標、Google Maps `@lat,lng`、`q=`、`ll=` 與 `!3d!4d` 格式。
+            </p>
+            {mapPasteStatus && (
+              <p className="text-xs" style={{ color: mapPasteStatus.startsWith("已") ? "var(--accent)" : "var(--muted)" }}>
+                {mapPasteStatus}
+              </p>
+            )}
+            {hasLocationPreview && (
+              <LocationPreview lat={previewLat} lng={previewLng} />
+            )}
+          </div>
+
           <div className="flex flex-col gap-1.5">
             <label className="text-sm text-zinc-400">景點名稱 *</label>
             <input
@@ -285,57 +316,33 @@ export default function SubmitPage() {
             </select>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">Google Maps 貼上（選填）</label>
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-              <input
-                value={mapPaste}
-                onChange={(e) => setMapPaste(e.target.value)}
-                placeholder="貼上座標或 Google Maps 網址"
-                className="min-w-0 bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
-              />
-              <button
-                type="button"
-                onClick={handleMapPasteParse}
-                className="px-3 py-2.5 text-xs font-bold tracking-[0.16em] uppercase border border-zinc-700 text-zinc-300 rounded-xs hover:border-zinc-500 hover:text-white"
-              >
-                解析
-              </button>
-            </div>
-            <p className="text-xs text-zinc-600">
-              支援一般座標、Google Maps `@lat,lng`、`q=` 與 `ll=` 格式。
-            </p>
-            {mapPasteStatus && (
-              <p className="text-xs" style={{ color: mapPasteStatus.startsWith("已") ? "var(--accent)" : "var(--muted)" }}>
-                {mapPasteStatus}
+          <details className="group rounded-xs border border-zinc-800 bg-zinc-950/40">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-sm text-zinc-400">
+              <span>進階座標</span>
+              <span className="text-xs text-zinc-600 transition-transform group-open:rotate-180">⌄</span>
+            </summary>
+            <div className="border-t border-zinc-800 px-3 py-3">
+              <div className="flex gap-2">
+                <input
+                  name="lat"
+                  value={form.lat}
+                  onChange={handleChange}
+                  placeholder="緯度（例：25.0478）"
+                  className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+                />
+                <input
+                  name="lng"
+                  value={form.lng}
+                  onChange={handleChange}
+                  placeholder="經度（例：121.5319）"
+                  className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+                />
+              </div>
+              <p className="mt-2 text-xs text-zinc-600">
+                如果 Google Maps 連結無法讀取，可以手動貼上緯度與經度。
               </p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">GPS 座標 *</label>
-            <div className="flex gap-2">
-              <input
-                name="lat"
-                value={form.lat}
-                onChange={handleChange}
-                placeholder="緯度（例：25.0478）"
-                className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
-                required
-              />
-              <input
-                name="lng"
-                value={form.lng}
-                onChange={handleChange}
-                placeholder="經度（例：121.5319）"
-                className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
-                required
-              />
             </div>
-            <p className="text-xs text-zinc-600">
-              可手動填寫，也可用上方貼上欄位自動帶入。
-            </p>
-          </div>
+          </details>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm text-zinc-400">地址（選填）</label>
@@ -454,6 +461,45 @@ export default function SubmitPage() {
             {submitting ? "送出中..." : "送出審核"}
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function LocationPreview({ lat, lng }: { lat: number; lng: number }) {
+  return (
+    <div
+      className="relative overflow-hidden rounded-xs border border-zinc-800 bg-zinc-950 px-3 py-3"
+      aria-label={`位置預覽 ${lat.toFixed(6)}, ${lng.toFixed(6)}`}
+    >
+      <div className="absolute inset-0 opacity-70">
+        <div className="h-full w-full bg-[linear-gradient(90deg,rgba(113,113,122,0.18)_1px,transparent_1px),linear-gradient(0deg,rgba(113,113,122,0.18)_1px,transparent_1px)] bg-[size:28px_28px]" />
+      </div>
+      <div
+        className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          background: "rgb(var(--accent-rgb) / 0.08)",
+          boxShadow: "0 0 32px rgb(var(--accent-rgb) / 0.2)",
+        }}
+      />
+      <div className="relative flex min-h-24 items-center justify-center">
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-full border"
+          style={{
+            borderColor: "rgb(var(--accent-rgb) / 0.72)",
+            color: "var(--accent)",
+            background: "rgb(var(--background-rgb) / 0.82)",
+            boxShadow: "0 0 18px rgb(var(--accent-rgb) / 0.18)",
+          }}
+        >
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--accent)" }} />
+        </div>
+      </div>
+      <div className="relative flex items-center justify-between gap-3 border-t border-zinc-800 pt-2 text-[11px] text-zinc-500">
+        <span>位置預覽</span>
+        <span className="text-right font-mono text-zinc-400">
+          {lat.toFixed(6)}, {lng.toFixed(6)}
+        </span>
       </div>
     </div>
   );

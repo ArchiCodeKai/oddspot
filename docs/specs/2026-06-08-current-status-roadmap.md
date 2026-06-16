@@ -43,7 +43,7 @@
 
 - `/submit` 需要登入。
 - 投稿會建立 `status: "pending"`，公開 `/api/spots` 排除 pending。
-- 投稿支援 Google Maps 貼上解析座標。
+- 投稿支援 Google Maps 貼上解析座標，且已改為主要位置入口：貼上即解析、顯示座標讀取結果與小型位置預覽；手動經緯度改為進階收合區。
 - 投稿照片已有前端壓縮 + `/api/uploads/spots` + Vercel Blob URL 精簡版。
 - `/admin` 與 admin API 已有第一版 pending 審核。
 - 已補投稿防濫用 MVP：短時間 rate limit、每日投稿上限、每日照片上傳上限、duplicate check。

@@ -92,12 +92,15 @@ ApiResponse<{ url: string; pathname: string }>
 
 ### 投稿頁輔助
 
-`/submit` 可貼 Google Maps 文字自動解析座標。支援：
+`/submit` 以「貼上 Google Maps 連結或座標」作為主要位置輸入。使用者貼上後會即時解析座標、自動帶入 `lat` / `lng`，並顯示「已讀取座標：lat, lng」與小型位置預覽。手動經緯度欄位保留在「進階座標」收合區。
+
+目前支援：
 
 - `25.0478, 121.5319`
 - `https://www.google.com/maps/@25.0478,121.5319,17z`
 - `https://www.google.com/maps?q=25.0478,121.5319`
 - `https://www.google.com/maps?ll=25.0478,121.5319`
+- `https://www.google.com/maps/place/...!3d25.0478!4d121.5319`
 
 `maps.app.goo.gl` 短網址暫不展開。
 
