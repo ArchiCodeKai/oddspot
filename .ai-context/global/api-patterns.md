@@ -39,6 +39,7 @@ return NextResponse.json<ApiResponse<null>>(
 | `/api/spots` | GET | 取得附近景點 | ✅ 完成 |
 | `/api/spots` | POST | 投稿新景點，建立 pending | ✅ 完成 |
 | `/api/uploads/spots` | POST | 投稿照片上傳到 Vercel Blob | ✅ 完成 |
+| `/api/maps/resolve` | POST | 解析 Google Maps 手機分享短網址座標 | ✅ 完成 |
 | `/api/spots/[id]` | GET | 取得單一景點詳情 | ✅ 完成 |
 | `/api/saved` | GET/POST | 收藏管理 | ✅ 完成 |
 | `/api/saved/[spotId]` | DELETE | 移除收藏 | ✅ 完成 |

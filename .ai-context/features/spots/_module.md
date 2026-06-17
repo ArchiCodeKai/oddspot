@@ -46,7 +46,8 @@
 - 手動經緯度欄位已收進「進階座標」，預設收合，保留給解析失敗或進階使用者。
 - 解析成功後會顯示小型位置預覽 pin，讓使用者確認座標已被讀取。
 - 目前支援 `lat,lng`、`@lat,lng`、`q=lat,lng`、`ll=lat,lng`、`!3dlat!4dlng`
-- `maps.app.goo.gl` 短網址暫不展開，避免精簡版需要外部網路解析
+- 手機 Google Maps 分享的 `maps.app.goo.gl` 短網址已支援：前端會呼叫 `/api/maps/resolve`，由後端追蹤 Google Maps redirect 後解析座標。
+- `/api/maps/resolve` 需登入、有 rate limit，且只允許 Google Maps 白名單網域，避免 SSRF 風險。
 
 ## 景點詳情頁（Step 3 進行中）
 

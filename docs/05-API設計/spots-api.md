@@ -101,8 +101,31 @@ ApiResponse<{ url: string; pathname: string }>
 - `https://www.google.com/maps?q=25.0478,121.5319`
 - `https://www.google.com/maps?ll=25.0478,121.5319`
 - `https://www.google.com/maps/place/...!3d25.0478!4d121.5319`
+- `https://maps.app.goo.gl/...` 手機分享短網址
 
-`maps.app.goo.gl` 短網址暫不展開。
+手機分享短網址會透過 `POST /api/maps/resolve` 由後端追蹤 Google Maps redirect 後解析座標。
+
+## POST /api/maps/resolve
+
+已實作（`src/app/api/maps/resolve/route.ts`），需登入。
+
+### 用途
+
+解析手機 Google Maps 分享出來的 `maps.app.goo.gl` 短網址，回傳座標供 `/submit` 自動帶入。
+
+### 規則
+
+- 需要登入。
+- 有短時間 rate limit。
+- 只接受 Google Maps 相關白名單網域 redirect。
+- 最多追蹤 5 次 redirect。
+- 不回傳 HTML 或完整網頁內容，只回傳座標或錯誤訊息。
+
+### 回應
+
+```typescript
+ApiResponse<{ lat: number; lng: number }>
+```
 
 ## GET /api/spots/[id]
 

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/contexts/SessionContext";
 import { getCategoryOptions, getDifficultyLabel } from "@/lib/i18n/spotMeta";
 import { compressSubmitImage, MAX_SUBMIT_PHOTOS } from "@/lib/submit/imageCompression";
-import { parseGoogleMapsInput } from "@/lib/submit/googleMapsPaste";
+import { isGoogleMapsShortUrl, parseGoogleMapsInput } from "@/lib/submit/googleMapsPaste";
 
 const emptySubmitForm = {
   name: "",
@@ -61,7 +61,37 @@ export default function SubmitPage() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  function handleMapPasteChange(value: string) {
+  function applyParsedCoordinates(lat: number, lng: number) {
+    setForm((prev) => ({
+      ...prev,
+      lat: String(Number(lat.toFixed(6))),
+      lng: String(Number(lng.toFixed(6))),
+    }));
+    setMapPasteStatus(`已讀取座標：${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+  }
+
+  async function resolveGoogleMapsShortLink(value: string) {
+    setMapPasteStatus("正在解析 Google Maps 手機分享連結...");
+    try {
+      const res = await fetch("/api/maps/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: value }),
+      });
+      const payload = await res.json();
+
+      if (!payload.success || !payload.data) {
+        setMapPasteStatus(payload.error ?? "尚未讀到座標，請改貼座標或完整 Google Maps 網址。");
+        return;
+      }
+
+      applyParsedCoordinates(payload.data.lat, payload.data.lng);
+    } catch {
+      setMapPasteStatus("Google Maps 短網址解析失敗，請改貼座標或完整 Google Maps 網址。");
+    }
+  }
+
+  async function handleMapPasteChange(value: string) {
     setMapPaste(value);
     if (!value.trim()) {
       setMapPasteStatus("");
@@ -69,17 +99,17 @@ export default function SubmitPage() {
     }
 
     const parsed = parseGoogleMapsInput(value);
-    if (!parsed) {
-      setMapPasteStatus("尚未讀到座標。短網址請先打開後複製完整 Google Maps 網址或座標。");
+    if (parsed) {
+      applyParsedCoordinates(parsed.lat, parsed.lng);
       return;
     }
 
-    setForm((prev) => ({
-      ...prev,
-      lat: String(Number(parsed.lat.toFixed(6))),
-      lng: String(Number(parsed.lng.toFixed(6))),
-    }));
-    setMapPasteStatus(`已讀取座標：${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}`);
+    if (isGoogleMapsShortUrl(value)) {
+      await resolveGoogleMapsShortLink(value);
+      return;
+    }
+
+    setMapPasteStatus("尚未讀到座標，請改貼座標或 Google Maps 網址。");
   }
 
   async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
