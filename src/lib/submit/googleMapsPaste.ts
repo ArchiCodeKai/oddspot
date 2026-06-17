@@ -31,6 +31,15 @@ function safeDecode(value: string): string {
   }
 }
 
+export function isGoogleMapsShortUrl(input: string) {
+  try {
+    const url = new URL(input.trim());
+    return url.protocol === "https:" && url.hostname === "maps.app.goo.gl";
+  } catch {
+    return false;
+  }
+}
+
 export function parseGoogleMapsInput(input: string): ParsedGoogleMapsCoordinates | null {
   const value = input.trim();
   if (!value) return null;

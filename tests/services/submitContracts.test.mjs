@@ -7,6 +7,8 @@ const submitSource = readFileSync("src/app/submit/page.tsx", "utf8");
 const validationSource = readFileSync("src/lib/validation.ts", "utf8");
 const uploadRoutePath = "src/app/api/uploads/spots/route.ts";
 const uploadSource = existsSync(uploadRoutePath) ? readFileSync(uploadRoutePath, "utf8") : "";
+const mapsResolveRoutePath = "src/app/api/maps/resolve/route.ts";
+const mapsResolveSource = existsSync(mapsResolveRoutePath) ? readFileSync(mapsResolveRoutePath, "utf8") : "";
 
 test("public spots API excludes moderation-only statuses even when status query is provided", () => {
   assert.match(apiSource, /PUBLIC_SPOT_STATUSES/);
@@ -42,7 +44,7 @@ test("spot image upload route stores authenticated compressed photos in Vercel B
 });
 
 test("google maps paste parser extracts coordinates from common map formats", async () => {
-  const { parseGoogleMapsInput } = await import("../../src/lib/submit/googleMapsPaste.ts");
+  const { isGoogleMapsShortUrl, parseGoogleMapsInput } = await import("../../src/lib/submit/googleMapsPaste.ts");
 
   assert.deepEqual(parseGoogleMapsInput("25.0478, 121.5319"), {
     lat: 25.0478,
@@ -57,6 +59,53 @@ test("google maps paste parser extracts coordinates from common map formats", as
     lng: 121.5319,
   });
   assert.equal(parseGoogleMapsInput("https://maps.app.goo.gl/example"), null);
+  assert.equal(isGoogleMapsShortUrl("https://maps.app.goo.gl/jR3EGXTdzx1qqhbU8?g_st=ic"), true);
+  assert.equal(isGoogleMapsShortUrl("https://www.google.com/maps/@25.0478,121.5319,17z"), false);
+});
+
+test("google maps short link resolver follows only allowed maps redirects", async () => {
+  const { resolveGoogleMapsShortUrl } = await import("../../src/lib/submit/googleMapsResolve.ts");
+
+  const fetches = [];
+  const mockFetch = async (url) => {
+    fetches.push(String(url));
+    if (String(url).startsWith("https://maps.app.goo.gl/")) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          location: "https://www.google.com/maps/place/test/@25.0478,121.5319,17z",
+        },
+      });
+    }
+    return new Response(null, { status: 200 });
+  };
+
+  assert.deepEqual(
+    await resolveGoogleMapsShortUrl("https://maps.app.goo.gl/jR3EGXTdzx1qqhbU8?g_st=ic", mockFetch),
+    { lat: 25.0478, lng: 121.5319 },
+  );
+  assert.deepEqual(fetches, [
+    "https://maps.app.goo.gl/jR3EGXTdzx1qqhbU8?g_st=ic",
+  ]);
+
+  await assert.rejects(
+    () => resolveGoogleMapsShortUrl(
+      "https://maps.app.goo.gl/jR3EGXTdzx1qqhbU8",
+      async () => new Response(null, {
+        status: 302,
+        headers: { location: "https://example.com/not-allowed" },
+      }),
+    ),
+    /不支援的 Google Maps 轉址/,
+  );
+});
+
+test("maps resolve API is authenticated and rate limited", () => {
+  assert.equal(existsSync(mapsResolveRoutePath), true);
+  assert.match(mapsResolveSource, /auth\(\)/);
+  assert.match(mapsResolveSource, /resolveGoogleMapsShortUrl/);
+  assert.match(mapsResolveSource, /checkRateLimit/);
+  assert.match(mapsResolveSource, /maps-resolve/);
 });
 
 test("submit page exposes maps paste and compressed photo upload controls", () => {
@@ -76,5 +125,7 @@ test("submit page makes maps paste the primary location input", () => {
   assert.match(submitSource, /已讀取座標/);
   assert.match(submitSource, /進階座標/);
   assert.match(submitSource, /LocationPreview/);
+  assert.match(submitSource, /resolveGoogleMapsShortLink/);
+  assert.match(submitSource, /\/api\/maps\/resolve/);
   assert.doesNotMatch(submitSource, />解析</);
 });
