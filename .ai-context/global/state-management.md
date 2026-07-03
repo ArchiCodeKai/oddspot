@@ -29,20 +29,24 @@ const { selectedSpot, setSelectedSpot, filters, setFilters } = useMapStore();
 | `filters` | `SpotFilters` | 篩選條件 |
 
 ### useSavedStore（`src/store/useSavedStore.ts`）
-Guest mode 收藏，自動持久化到 localStorage。
+收藏的單一 source of truth。未登入時等同 localStorage 快取；登入後由 store 內部自動同步後端 `/api/saved`。
+只持久化 `savedSpotIds`（`partialize`），`userId` 不落地、每次由 session 重設。
 
 ```typescript
-// 使用方式
+// 使用方式（建議用 reactive selector 讀取，hydrate / 樂觀更新後才會即時反映）
 import { useSavedStore } from "@/store/useSavedStore";
-const { isSaved, addSave, removeSave } = useSavedStore();
+const isSaved = useSavedStore((s) => s.savedSpotIds.includes(spotId));
+const addSave = useSavedStore((s) => s.addSave);
 ```
 
 | 方法 | 說明 |
 |------|------|
-| `addSave(spotId)` | 加入收藏 |
-| `removeSave(spotId)` | 移除收藏 |
+| `addSave(spotId)` | 加入收藏；登入態下樂觀更新後 POST `/api/saved`，失敗自動還原 |
+| `removeSave(spotId)` | 移除收藏；登入態下樂觀更新後 DELETE `/api/saved/[spotId]`，失敗自動還原 |
 | `isSaved(spotId)` | 是否已收藏 |
-| `clearAll()` | 登入 sync 後清空 |
+| `setUserId(userId)` | 由 `useAuthSync` 在登入狀態變更時設定；決定是否同步後端 |
+| `hydrateFromServer(spotIds)` | 登入後把 DB 完整收藏載回 store（取代舊版 sync 後清空）|
+| `clearAll()` | 登出時清掉快取 |
 
 ### useRoutePlannerStore（`src/store/useRoutePlannerStore.ts`）
 地圖 RouteSheet 與探索 Swipe 共用的路線選點狀態，`selectedSpots` 會持久化到 localStorage key `oddspot-route`。

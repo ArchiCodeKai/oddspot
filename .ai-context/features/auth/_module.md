@@ -27,7 +27,9 @@ layout.tsx
   → ClientAuthProvider(userId, userName, userEmail, userImage)
   → SessionProvider 提供 client-side user
   → useAuthSync(userId)
-  → 若 localStorage 有 savedSpotIds，POST /api/saved/sync
+    → setUserId(userId)
+    → 若 localStorage 有 guest 收藏，先 POST /api/saved/sync 合併進 DB
+    → 再 GET /api/saved，hydrateFromServer 把完整收藏載回 useSavedStore
 ```
 
 ## 待驗證 / 待補強清單
@@ -42,10 +44,14 @@ layout.tsx
 ```
 1. 用戶右滑收藏 → useSavedStore.addSave(id) → localStorage
 2. 用戶點擊登入 → NextAuth OAuth
-3. 登入成功 → 觸發 POST /api/saved/sync（body: savedSpotIds）
-4. API 寫入 SavedSpot 表（忽略已存在的）
-5. 前端呼叫 useSavedStore.clearAll()
+3. 登入成功 → useAuthSync 設定 store.userId
+4. 若有 guest 收藏 → POST /api/saved/sync 合併進 SavedSpot 表（忽略已存在的）
+5. GET /api/saved → hydrateFromServer 把 DB 完整收藏載回 store
+6. 此後 addSave / removeSave 會即時同步後端，不再需要一次性 sync
 ```
+
+> 舊版在步驟 5 是 `clearAll()` 清空 localStorage，會導致登入後愛心全變空心、
+> 且登入後的新收藏進不了 DB；已改為從 DB hydrate（見 `docs/04-狀態管理/guest-mode.md`）。
 
 ## 環境變數（待填入）
 
@@ -73,6 +79,6 @@ https://your-domain.vercel.app/api/auth/callback/line
 
 ## 已新增登入後入口
 
-- Auth dropdown 的「已收藏」會導向 `/saved`。
-- Auth dropdown 的「我的投稿」會導向 `/submissions`。
+- 右上角設定 popover 第一層會顯示帳號捷徑：`/saved`、`/map` 今日行程、`/submissions`。
+- `AuthButton` 已登入狀態只顯示使用者身分列與直接登出按鈕，不再包第二層導覽 dropdown。
 - 投稿成功畫面增加「查看投稿狀態」入口。

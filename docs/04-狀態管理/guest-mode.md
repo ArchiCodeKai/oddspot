@@ -1,32 +1,38 @@
 # Guest Mode 設計
 
-最後更新：2026-06-08
+最後更新：2026-06-29
 
 ## 概念
 
 未登入使用者可以完整使用探索功能，收藏的景點先存在 localStorage。
 登入後自動同步到後端，不丟失收藏記錄。
 
+收藏的單一 source of truth 是 `useSavedStore`；「要不要寫後端」由 store 內部依登入狀態決定，
+所有入口（地圖 popup、滑卡、詳情頁）只呼叫 `addSave` / `removeSave`，不各自判斷。
+
 ## 目前資料流
 
 ```
-[未登入狀態]
+[未登入狀態（store.userId === null）]
 使用者按中間 + / 打勾 / 右滑收藏
   → useSavedStore.addSave(spotId)
-  → 存入 localStorage("oddspot-saved-spots")
+  → 只存入 localStorage("oddspot-saved-spots")
 
-[登入成功後]
-layout.tsx
-  → auth()
-  → ClientAuthProvider(userId)
-  → useAuthSync(userId)
-  → 讀取 useSavedStore.savedSpotIds
-  → POST /api/saved/sync { spotIds: [...] }
-  → API 批次 upsert SavedSpot 表
-  → sync 成功後 useSavedStore.clearAll()
+[登入後（store.userId 已設定）]
+useSavedStore.addSave / removeSave
+  → 先樂觀更新本地 state（UI 即時反映）
+  → 同步打 POST /api/saved 或 DELETE /api/saved/[spotId]
+  → API 失敗時自動還原本地 state（rollback）
 
-[登入後]
-後端收藏資料由 /api/saved 提供
+[登入當下：合併 + hydrate]
+layout.tsx → auth() → ClientAuthProvider(userId) → useAuthSync(userId)
+  → setUserId(userId)
+  → 若 localStorage 有 guest 收藏，先 POST /api/saved/sync 合併進 DB
+  → 再 GET /api/saved，hydrateFromServer 把 DB 完整收藏載回 store
+  （取代舊版「sync 成功後 clearAll 清空」，避免登入後愛心全變空心）
+
+[登出（先前已登入 → 現在未登入）]
+useAuthSync → clearAll() 清掉 DB 快取，避免外洩給下一個 guest
 ```
 
 ## Sync API
@@ -42,11 +48,13 @@ layout.tsx
 
 | 情境 | 處理方式 |
 |------|----------|
-| sync 失敗 | 保留 localStorage，下次登入再試 |
-| 景點已被刪除 | 目前單筆 upsert 會失敗並記 log；不阻斷其他 spot |
-| 重複收藏 | SavedSpot `@@unique([userId, spotId])` + upsert |
+| sync 失敗 | `syncedRef` 重設、允許下次重試；localStorage guest 收藏保留 |
+| 登入後寫後端失敗 | 樂觀更新自動還原（rollback）並 `console.error` |
+| 景點已被刪除 | DB 外鍵約束擋下；單筆 upsert 失敗記 log，不阻斷其他 spot |
+| 重複收藏 | SavedSpot `@@unique([userId, spotId])` + upsert（冪等）|
 | 未登入但 localStorage 空 | 不觸發 sync |
-| 已登入且 localStorage 有收藏 | `useAuthSync` 一次性同步，成功後清空 |
+| 初次 guest 載入 | 不清快取，保留 guest 自己的 localStorage（用 `prevUserIdRef` 區分初次 mount 與登出）|
+| 真正登出 | `clearAll()` 清掉 DB 快取，避免下一個 guest 看到上一位的收藏 |
 
 ## UI 整合要點
 
@@ -58,7 +66,9 @@ layout.tsx
 // 打勾 / 右滑：收藏並加入今日行程
 ```
 
-未登入時先用 `useSavedStore` 顯示收藏狀態。若後續要讓登入後 UI 也即時反映後端收藏，建議統一做一層 `useSavedSpotsQuery`，不要讓每個元件各自判斷 localStorage / server source。
+收藏狀態統一由 `useSavedStore.savedSpotIds` 提供：未登入時是 localStorage，登入後由 `hydrateFromServer` 從 DB 載入。
+元件一律用 reactive selector 讀取（例如 `useSavedStore((s) => s.savedSpotIds.includes(id))`），
+就能在 hydrate / 樂觀更新後即時反映，不需各自判斷 localStorage / server source。
 
 ## 下一步
 
