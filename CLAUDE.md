@@ -5,6 +5,45 @@
 本文件是 Claude Code 的操作原則入口。
 詳細架構文件請依序閱讀：`.ai-context/README.md`
 
+**接手任何工作前，先讀這四份 2026-07-03 規格（按需要挑）：**
+
+| 想知道什麼 | 讀哪份 |
+|-----------|--------|
+| 現在該做什麼、任務怎麼領 | `docs/specs/2026-07-03-roadmap-task-packages.md`（**狀態唯一來源**） |
+| 什麼該做、什麼明確不做 | `docs/specs/2026-07-03-product-spec.md` |
+| 架構為什麼長這樣、哪些決策不可推翻 | `docs/specs/2026-07-03-technical-spec.md` |
+| 專案體質與技術債全貌 | `docs/specs/2026-07-03-project-analysis.md` |
+
+---
+
+## 目前狀態（2026-07-03）
+
+- MVP v1 六大功能（地圖、滑卡、行程路線、收藏同步、投稿審核、認證）程式層面完成。
+- `npm run build` 零錯誤；測試 43/43 綠（`npm test`，若 script 尚未建立則用
+  `node --test tests/**/*.test.mjs`）。
+- **最大缺口是「上線」不是「功能」**：production 部署驗證、真機 QA、WIP commit 收斂。
+- 功能狀態細節見 `docs/specs/2026-06-08-current-status-roadmap.md`（快照）；
+  下一步一律以 2026-07-03 roadmap 為準。
+
+---
+
+## 標準工作流程（接手模型照做）
+
+1. 從 `docs/specs/2026-07-03-roadmap-task-packages.md` 領一個任務包（依 Phase 順序）。
+2. 只讀該包「範圍檔案」+ 技術規格書對應 ADR，不要通讀整個專案。
+3. 動手前確認不碰「禁區」與下方凍結清單。
+4. 完成 = 驗收條件全勾 + `npm run build` 零錯誤 + 測試全綠 + 回寫 roadmap 狀態欄。
+5. 發現範圍外的問題：加 TODO 註解 + 回報，**不要順手修**。
+
+### 凍結清單（沒有使用者明確同意，一律不做）
+
+- `src/components/landing/` 全區（~6,000 行 Three.js）：只修 bug，不加功能、不重構（ADR AD-10）
+- i18n server 端行為與 locale 路由（ADR AD-8)
+- next-auth 版本升級（ADR AD-4）
+- schema 變更（唯一例外：`Spot.rejectReason`，見技術規格書第二節）
+- 社群功能、收藏夾分類、AI 審核、到訪驗證、評分 UI、Redis rate limit
+- `src/design-reference/claude-design-source/`（設計 baseline，唯讀）
+
 ---
 
 ## Vibe Coding 操作原則
@@ -20,13 +59,15 @@
 
 ### 每次提交前必做
 1. 執行 `npm run build`，確認零錯誤、零 TypeScript 警告
-2. 列出本次修改的所有檔案清單
-3. 更新對應的文件（CLAUDE.md 或 .ai-context/ 下的相關 md）
+2. 執行測試，確認全綠
+3. 列出本次修改的所有檔案清單
+4. 更新對應的文件（roadmap 狀態欄或 .ai-context/ 下的相關 md）
 
 ### 文件同步原則
 - 做完一個功能或元件後，必須更新 `.ai-context/` 對應的 md
 - 新增的 Zustand store、API route、元件，都要更新文件
 - 文件優先反映「目前實際狀態」，不是「計畫中的狀態」
+- 進度狀態只更新 `docs/specs/2026-07-03-roadmap-task-packages.md`，不在多處維護進度表
 
 ### 最小影響範圍
 - 只修改被請求的檔案，不「順便優化」其他部分
@@ -34,27 +75,39 @@
 
 ---
 
+## 硬規則速查（違反即打回）
+
+- 顏色一律 CSS 變數（`var(--accent)` 等），寫死 hex 只允許 8 個分類色
+- 新 UI 必須在四個 theme（terminal/blueprint/caution/midnight）下檢查
+- 圓角預設 2px；wireframe 元素 no fill、stroke 0.5–1px
+- 所有寫入 API 要有 Zod 驗證；公開 API 不可回傳 `pending` / `rejected` spot
+- 錯誤訊息繁體中文；回應格式統一 `ApiResponse<T>`
+- 註解簡潔中文、不用 emoji、不過度註解
+
+---
+
 ## 專案快速索引
 
 | 文件 | 說明 |
 |------|------|
+| `docs/specs/2026-07-03-*.md` | **四份權威規格（見頁首）** |
 | `.ai-context/README.md` | AI 讀取優先順序 |
 | `.ai-context/global/restrictions.md` | 禁止操作完整清單 |
 | `.ai-context/global/coding-standards.md` | 編碼規範 |
-| `.ai-context/global/visual-design.md` | 視覺設計規範 v1（基礎規則）|
+| `.ai-context/global/visual-design.md` | 視覺設計規範 v1（部分已被 v2 停用）|
 | `.ai-context/global/design-direction-v2.md` | 視覺設計 v2 Acid/Y2K 方向（**優先於 v1**）|
 | `.ai-context/global/state-management.md` | Zustand + React Query 分工 |
 | `.ai-context/global/api-patterns.md` | API 設計模式 |
 | `.ai-context/features/map/_module.md` | 地圖功能模組 |
 | `.ai-context/features/spots/_module.md` | 景點功能模組 |
-| `.ai-context/features/auth/_module.md` | 認證模組（Step 5）|
-| `.ai-context/features/swipe/_module.md` | 滑卡片功能（Step 4，已整合在 `/map` 探索模式）|
+| `.ai-context/features/auth/_module.md` | 認證模組 |
+| `.ai-context/features/swipe/_module.md` | 滑卡片功能（已整合在 `/map` 探索模式）|
 | `docs/01-專案規劃/` | 架構、功能範圍、技術棧 |
 | `docs/02-MVP規劃/` | MVP v1 開發順序 |
 | `docs/03-元件設計/` | 各元件設計規範 |
 | `docs/04-狀態管理/` | Store 設計、Guest mode |
 | `docs/05-API設計/` | API endpoints 規格 |
-| `docs/specs/2026-06-08-current-status-roadmap.md` | 目前功能狀態、下一步優先順序、未來擴充 |
+| `docs/specs/2026-06-08-current-status-roadmap.md` | 功能狀態快照（下一步章節已由 07-03 roadmap 取代）|
 
 ---
 
@@ -89,40 +142,25 @@
 
 ```prisma
 images  String  // JSON string: ["url1", "url2"]，第一張 = coverImage
-status  String  // "active" | "uncertain" | "disappeared"
+status  String  // 公開："active" | "uncertain" | "disappeared"
+                // 審核中/被拒："pending" | "rejected"（公開 API 永不回傳）
 difficulty String // "easy" | "medium" | "hard"
 rating  Float   // 欄位存在，v1 UI 不顯示
 visitCount Int  // 欄位存在，v1 UI 不顯示，v2 才有更新機制
 ```
 
-## 開發進度（持續更新）
+完整資料模型與欄位使用狀態見技術規格書第二節。
 
-| 步驟 | 功能 | 狀態 |
-|------|------|------|
-| Step 1 | Schema + Seed Data | ✅ 完成 |
-| Step 2 | 地圖頁 + MapView | 🔄 進行中 |
-| Step 2+ | 游標軌跡 + 地圖點擊特效 + 頁面轉場動畫 | ✅ 完成 |
-| Step 2+ | Design System v2 方向確立（Acid/Y2K） | 🔄 設計優化中 |
-| Step 2++ | 地圖路線 A 改造（Mapbox + Acid 風格 + 多點路線）| ✅ Stage 4 主功能完成（待視覺驗證；spec：`docs/specs/2026-05-06-map-route-a-acid-redesign.md`）|
-| Step 2++ | 投稿精簡強化（P0 pending 外洩修正 + Google Maps 貼上 + 前端照片壓縮） | ✅ 完成（照片正式改走 Vercel Blob URL；data URL 僅保留相容 fallback） |
-| Step 3 | 景點詳情頁（基本資訊 + 動畫 + 行動按鈕） | ✅ 第一版完成，內容與照片牆可再強化 |
-| Step 4 | 滑卡片 + Guest mode + 今日行程整合 | ✅ 第一版完成（桌機 / 平板 / 手機 RWD 已多輪調整，待真機手勢 QA） |
-| Step 5 | NextAuth + 收藏同步 | ✅ 完成（NextAuth v5 + Google/LINE OAuth + Guest sync，待 Production callback / env 驗證） |
-| Step 5+ | P0/P1 收斂：admin production check、投稿防濫用、路線 sheet 小 UX、個人收藏/投稿狀態 | ✅ 第一版完成，待 Vercel production 實際驗證 |
-| Next | 收尾驗證：Vercel env / OAuth callback / Blob smoke test、reject reason、外部導航 fallback | ⏭️ 建議下一步 |
+## 知識庫使用
 
+當需要查詢我的日記或筆記時：
+1. 先閱讀 `~/Vault/查詢指南.md`
+2. 按照指南的路徑規則定位檔案
 
+當需要幫我撰寫日記時：
+1. 先閱讀 `~/Vault/撰寫指南.md`
+2. 按照指南的格式撰寫內容
 
- ## 知識庫使用
+日記路徑範例：`~/Vault/日記/2026/03/2026-03-26.md`
 
-  當需要查詢我的日記或筆記時：
-  1. 先閱讀 `~/Vault/查詢指南.md`
-  2. 按照指南的路徑規則定位檔案
-
-  當需要幫我撰寫日記時：
-  1. 先閱讀 `~/Vault/撰寫指南.md`
-  2. 按照指南的格式撰寫內容
-
-  日記路徑範例：`~/Vault/日記/2026/03/2026-03-26.md`
-
-  請注意知識庫位置是 Vault>專案>
+請注意知識庫位置是 Vault>專案>
