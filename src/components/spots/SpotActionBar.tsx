@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useSavedStore } from "@/store/useSavedStore";
+import { useSession } from "@/contexts/SessionContext";
+import { useLoginPromptStore } from "@/store/useLoginPromptStore";
 
 interface SpotActionBarProps {
   lat: number;
@@ -11,27 +12,20 @@ interface SpotActionBarProps {
 
 export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-  const { addSave, removeSave, isSaved } = useSavedStore();
-  const [saved, setSaved] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { user } = useSession();
+  const openLoginPrompt = useLoginPromptStore((s) => s.open);
+  const saved = useSavedStore((s) => s.savedSpotIds.includes(spotId));
+  const addSave = useSavedStore((s) => s.addSave);
+  const removeSave = useSavedStore((s) => s.removeSave);
 
-  useEffect(() => {
-    setSaved(isSaved(spotId));
-  }, [spotId, isSaved]);
-
-  const handleToggleSave = async () => {
-    setLoading(true);
-    try {
-      if (saved) {
-        removeSave(spotId);
-        setSaved(false);
-      } else {
-        addSave(spotId);
-        setSaved(true);
-      }
-    } finally {
-      setLoading(false);
+  const handleToggleSave = () => {
+    // 未登入 → 彈出登入提示（與地圖 popup / 滑卡行為一致）
+    if (!user) {
+      openLoginPrompt();
+      return;
     }
+    if (saved) removeSave(spotId);
+    else addSave(spotId);
   };
 
   return (
@@ -44,7 +38,6 @@ export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
     >
       <button
         onClick={handleToggleSave}
-        disabled={loading}
         className="flex-1 py-3 text-sm font-medium transition-colors uppercase"
         style={{
           borderRadius: 2,
@@ -53,7 +46,7 @@ export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
           border: `1px solid ${saved ? "rgb(var(--accent-rgb) / 0.4)" : "var(--line)"}`,
           fontFamily: "var(--font-jetbrains-mono), monospace",
           letterSpacing: "0.12em",
-          cursor: loading ? "wait" : "pointer",
+          cursor: "pointer",
         }}
       >
         {saved ? "♥" : "♡"} {saved ? "已收藏" : "收藏"}

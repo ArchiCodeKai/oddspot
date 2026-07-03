@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/contexts/SessionContext";
 import { getCategoryOptions, getDifficultyLabel } from "@/lib/i18n/spotMeta";
@@ -22,6 +23,19 @@ const emptySubmitForm = {
   imageUrl: "",
 };
 
+type SubmitCoords = {
+  lat: number;
+  lng: number;
+};
+
+const SubmitLocationMapPreview = dynamic(
+  () => import("@/components/submit/SubmitLocationMapPreview").then((mod) => mod.SubmitLocationMapPreview),
+  {
+    ssr: false,
+    loading: () => <LocationPreviewSkeleton />,
+  }
+);
+
 export default function SubmitPage() {
   const router = useRouter();
   const { user } = useSession();
@@ -32,6 +46,8 @@ export default function SubmitPage() {
   const [form, setForm] = useState(emptySubmitForm);
   const [mapPaste, setMapPaste] = useState("");
   const [mapPasteStatus, setMapPasteStatus] = useState("");
+  const [sourceCoords, setSourceCoords] = useState<SubmitCoords | null>(null);
+  const [locationPreviewResetKey, setLocationPreviewResetKey] = useState(0);
   const [compressedPhotoDataUrls, setCompressedPhotoDataUrls] = useState<string[]>([]);
   const [photoStatus, setPhotoStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -62,12 +78,39 @@ export default function SubmitPage() {
   }
 
   function applyParsedCoordinates(lat: number, lng: number) {
+    const nextCoords = {
+      lat: Number(lat.toFixed(6)),
+      lng: Number(lng.toFixed(6)),
+    };
     setForm((prev) => ({
       ...prev,
-      lat: String(Number(lat.toFixed(6))),
-      lng: String(Number(lng.toFixed(6))),
+      lat: String(nextCoords.lat),
+      lng: String(nextCoords.lng),
     }));
+    setSourceCoords(nextCoords);
+    setLocationPreviewResetKey((current) => current + 1);
     setMapPasteStatus(`已讀取座標：${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+  }
+
+  function handleLocationPreviewChange(coords: { lat: number; lng: number }) {
+    setForm((prev) => ({
+      ...prev,
+      lat: String(coords.lat),
+      lng: String(coords.lng),
+    }));
+    setMapPasteStatus(`已微調座標：${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`);
+  }
+
+  function handleResetLocationPreview() {
+    if (!sourceCoords) return;
+
+    setForm((prev) => ({
+      ...prev,
+      lat: String(sourceCoords.lat),
+      lng: String(sourceCoords.lng),
+    }));
+    setLocationPreviewResetKey((current) => current + 1);
+    setMapPasteStatus(`已回到原始座標：${sourceCoords.lat.toFixed(6)}, ${sourceCoords.lng.toFixed(6)}`);
   }
 
   async function resolveGoogleMapsShortLink(value: string) {
@@ -95,6 +138,7 @@ export default function SubmitPage() {
     setMapPaste(value);
     if (!value.trim()) {
       setMapPasteStatus("");
+      setSourceCoords(null);
       return;
     }
 
@@ -141,6 +185,8 @@ export default function SubmitPage() {
     setForm(emptySubmitForm);
     setMapPaste("");
     setMapPasteStatus("");
+    setSourceCoords(null);
+    setLocationPreviewResetKey(0);
     setCompressedPhotoDataUrls([]);
     setPhotoStatus("");
   }
@@ -163,6 +209,21 @@ export default function SubmitPage() {
     return payload.data.url as string;
   }
 
+  // 投稿未完成時清掉已上傳的孤兒圖片（best-effort，不阻斷錯誤回報）
+  async function cleanupUploadedPhotos(urls: string[]) {
+    const valid = urls.filter(Boolean);
+    if (valid.length === 0) return;
+    try {
+      await fetch("/api/uploads/spots", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls: valid }),
+      });
+    } catch (err) {
+      console.error("清理已上傳照片失敗", err);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -177,12 +238,16 @@ export default function SubmitPage() {
       return;
     }
 
-    try {
-      const imageUrls = compressedPhotoDataUrls.length > 0
-        ? await Promise.all(compressedPhotoDataUrls.map((dataUrl, index) => uploadSubmitPhoto(dataUrl, index)))
-        : [];
+    // 依 index 就地填入，部分上傳成功後若有失敗，仍能在 catch 清理已成功的圖
+    const uploadedUrls: string[] = [];
 
-      if (imageUrls.length > 0) {
+    try {
+      if (compressedPhotoDataUrls.length > 0) {
+        await Promise.all(
+          compressedPhotoDataUrls.map(async (dataUrl, index) => {
+            uploadedUrls[index] = await uploadSubmitPhoto(dataUrl, index);
+          })
+        );
         setPhotoStatus("照片已上傳，正在送出審核。");
       }
 
@@ -200,18 +265,22 @@ export default function SubmitPage() {
           difficulty: form.difficulty,
           recommendedTime: form.recommendedTime || undefined,
           legend: form.legend || undefined,
-          imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+          imageUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
         }),
       });
 
       const data = await res.json();
       if (!data.success) {
+        // 投稿被後端拒絕（重複 / 每日上限 / 驗證等）→ 清掉已上傳的孤兒圖
+        await cleanupUploadedPhotos(uploadedUrls);
         setError(data.error ?? "投稿失敗");
         return;
       }
 
       setSuccess(true);
     } catch {
+      // 照片上傳中途失敗或網路錯誤 → 清掉已成功上傳的孤兒圖
+      await cleanupUploadedPhotos(uploadedUrls);
       setError("網路錯誤，請稍後再試");
     } finally {
       setSubmitting(false);
@@ -265,6 +334,7 @@ export default function SubmitPage() {
   const previewLat = Number(form.lat);
   const previewLng = Number(form.lng);
   const hasLocationPreview = Number.isFinite(previewLat) && Number.isFinite(previewLng);
+  const canResetLocation = sourceCoords !== null && hasLocationPreview;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -279,29 +349,39 @@ export default function SubmitPage() {
           <h1 className="text-lg font-medium">投稿奇特景點</h1>
         </div>
 
-        <p className="text-zinc-500 text-sm mb-6">
-          發現了什麼奇怪的地方？分享給大家！投稿審核通過後會出現在地圖上。
-        </p>
-
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <label className="text-sm text-zinc-300">貼上 Google Maps 連結或座標 *</label>
-            <input
-              value={mapPaste}
-              onChange={(e) => handleMapPasteChange(e.target.value)}
-              placeholder="貼上 Google Maps 連結或座標"
-              className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
-            />
-            <p className="text-xs text-zinc-600">
-              支援一般座標、Google Maps `@lat,lng`、`q=`、`ll=` 與 `!3d!4d` 格式。
-            </p>
+            <div className="relative">
+              <input
+                value={mapPaste}
+                onChange={(e) => handleMapPasteChange(e.target.value)}
+                placeholder="貼上 Google Maps 連結或座標"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-3 pr-16 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
+              />
+              {canResetLocation && (
+                <button
+                  type="button"
+                  onClick={handleResetLocationPreview}
+                  aria-label="回到原始座標"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[5px] border border-zinc-700 bg-zinc-950/90 px-2 py-1 text-[11px] text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
+                >
+                  復位
+                </button>
+              )}
+            </div>
             {mapPasteStatus && (
               <p className="text-xs" style={{ color: mapPasteStatus.startsWith("已") ? "var(--accent)" : "var(--muted)" }}>
                 {mapPasteStatus}
               </p>
             )}
             {hasLocationPreview && (
-              <LocationPreview lat={previewLat} lng={previewLng} />
+              <SubmitLocationMapPreview
+                lat={previewLat}
+                lng={previewLng}
+                resetKey={locationPreviewResetKey}
+                onLocationChange={handleLocationPreviewChange}
+              />
             )}
           </div>
 
@@ -496,11 +576,11 @@ export default function SubmitPage() {
   );
 }
 
-function LocationPreview({ lat, lng }: { lat: number; lng: number }) {
+function LocationPreviewSkeleton() {
   return (
     <div
       className="relative overflow-hidden rounded-xs border border-zinc-800 bg-zinc-950 px-3 py-3"
-      aria-label={`位置預覽 ${lat.toFixed(6)}, ${lng.toFixed(6)}`}
+      aria-label="位置預覽載入中"
     >
       <div className="absolute inset-0 opacity-70">
         <div className="h-full w-full bg-[linear-gradient(90deg,rgba(113,113,122,0.18)_1px,transparent_1px),linear-gradient(0deg,rgba(113,113,122,0.18)_1px,transparent_1px)] bg-[size:28px_28px]" />
@@ -526,10 +606,8 @@ function LocationPreview({ lat, lng }: { lat: number; lng: number }) {
         </div>
       </div>
       <div className="relative flex items-center justify-between gap-3 border-t border-zinc-800 pt-2 text-[11px] text-zinc-500">
-        <span>位置預覽</span>
-        <span className="text-right font-mono text-zinc-400">
-          {lat.toFixed(6)}, {lng.toFixed(6)}
-        </span>
+        <span>載入地圖預覽</span>
+        <span className="text-right font-mono text-zinc-400">Mapbox</span>
       </div>
     </div>
   );

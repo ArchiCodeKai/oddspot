@@ -3,16 +3,17 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
+import { useSession } from "@/contexts/SessionContext";
 import { LangToggle } from "@/components/ui/LangToggle";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { AuthButton } from "@/components/auth/AuthButton";
+import { AccountShortcutLinks, AuthButton } from "@/components/auth/AuthButton";
 
-// 右上角收合 cluster：globe button + 向下彈出 popover
-// 內部直接 reuse LangToggle / ThemeToggle / AuthButton，不重寫邏輯
-// AuthButton 自己內部還有一個 dropdown（已登入時的選單），雙層 dropdown 共存
+// 右上角收合 cluster：globe button + 向下彈出 popover。
+// 常用帳號入口直接放第一層；AuthButton 只處理登入 / 登出。
 
 export function TopRightCluster() {
   const t = useTranslations("settings");
+  const { user } = useSession();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -52,9 +53,6 @@ export function TopRightCluster() {
         }
         .top-cluster-auth > div > button {
           justify-content: center;
-        }
-        .top-cluster-auth > div > div {
-          right: 0;
         }
         @media (max-width: 767px) {
           .top-right-popover {
@@ -128,26 +126,34 @@ export function TopRightCluster() {
               position: "absolute",
               top: 52,
               right: 0,
-              width: 168,
+              width: 232,
               border: "1px solid var(--line)",
               borderRadius: 2,
               boxShadow: "0 16px 48px rgb(var(--background-rgb) / 0.4)",
               transformOrigin: "top right",
-              // overflow visible 讓內部 AuthButton 的 dropdown 能往左外露
+              // 未登入時 AuthButton 仍需要展開 OAuth provider 選單。
               overflow: "visible",
             }}
           >
-            <PopoverItem delay={0.04} label={t("language")}>
+            {user && (
+              <>
+                <PopoverItem delay={0.04}>
+                  <AccountShortcutLinks />
+                </PopoverItem>
+                <PopoverDivider />
+              </>
+            )}
+            <PopoverItem delay={user ? 0.08 : 0.04} label={t("language")}>
               <LangToggle />
             </PopoverItem>
             <PopoverDivider />
-            <PopoverItem delay={0.08} label={t("theme")}>
+            <PopoverItem delay={user ? 0.12 : 0.08} label={t("theme")}>
               <ThemeToggle />
             </PopoverItem>
             <PopoverDivider />
-            <PopoverItem delay={0.12}>
+            <PopoverItem delay={user ? 0.16 : 0.12}>
               <div className="top-cluster-auth" style={{ width: "100%" }}>
-              <AuthButton />
+                <AuthButton />
               </div>
             </PopoverItem>
           </motion.div>
@@ -178,7 +184,7 @@ function PopoverItem({
         justifyContent: label ? "space-between" : "center",
         alignItems: "center",
         gap: 10,
-        width: 144,
+        width: 208,
         margin: "0 auto",
       }}
     >

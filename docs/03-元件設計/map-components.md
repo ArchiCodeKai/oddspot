@@ -68,11 +68,13 @@ TODO：整合 useMapStore（目前 selectedSpot 在 local state）
 
 **路徑**：`src/components/map/TopRightCluster.tsx`
 
-- 右上角 44×44 wireframe globe 按鈕，展開語言、主題、登入控制。
+- 右上角 44×44 wireframe globe 按鈕，展開帳號捷徑、語言、主題、登入 / 登出控制。
 - 外層使用 `z-50`，要蓋過 swipe card、行程吉祥物列、filter / radius 控制列。
 - 桌機面板保留玻璃感；手機版 popover 使用 `--panel-solid` 實底，避免背景 UI 透出造成閱讀與點擊干擾。
 - 手機版取消 backdrop blur，改用實底、強邊框與陰影建立層級，讓面板本身清楚可辨識。
-- 內部邏輯只組合 `LangToggle`、`ThemeToggle`、`AuthButton`，不複製語言 / 主題 / 登入狀態。
+- 已登入時第一層排序為：`AccountShortcutLinks`（已收藏 / 今日行程 / 我的投稿）→ `LangToggle` → `ThemeToggle` → `AuthButton`。
+- `AuthButton` 已登入狀態只顯示使用者身分與登出按鈕；不再把收藏、行程、投稿藏在頭像 dropdown 裡。
+- 內部邏輯只組合既有元件，不複製語言 / 主題 / 登入狀態。
 
 ## Map Top Controls
 

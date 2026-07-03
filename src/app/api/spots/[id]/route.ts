@@ -4,7 +4,7 @@ import { cuidSchema } from "@/lib/validation";
 import type { ApiResponse } from "@/types/api";
 import type { SpotDetail } from "@/types/spots";
 import type { SpotCategory } from "@/lib/constants/categories";
-import type { SpotStatus } from "@/lib/constants/status";
+import { PUBLIC_SPOT_STATUSES, type SpotStatus } from "@/lib/constants/status";
 
 export async function GET(
   _request: NextRequest,
@@ -23,7 +23,8 @@ export async function GET(
   try {
     const spot = await prisma.spot.findUnique({ where: { id } });
 
-    if (!spot) {
+    // pending / rejected 不對外，回傳與「不存在」相同的 404 避免洩露其存在
+    if (!spot || !PUBLIC_SPOT_STATUSES.includes(spot.status as SpotStatus)) {
       return NextResponse.json<ApiResponse<null>>(
         { data: null, success: false, error: "找不到景點" },
         { status: 404 }

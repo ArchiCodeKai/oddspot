@@ -8,6 +8,13 @@ export const STATUS_VALUES: SpotStatus[] = [
   "rejected",
 ];
 
+// 公開可見的景點狀態白名單；pending / rejected 不對外回傳
+export const PUBLIC_SPOT_STATUSES: SpotStatus[] = [
+  "active",
+  "uncertain",
+  "disappeared",
+];
+
 export const STATUS_LABELS: Record<SpotStatus, string> = {
   active:      "可探索",
   uncertain:   "狀況不明",
