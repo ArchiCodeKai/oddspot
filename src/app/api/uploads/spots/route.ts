@@ -1,13 +1,15 @@
 import { put, del } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import {
   UPLOAD_DAILY_LIMIT,
   UPLOAD_WINDOW_LIMIT,
   UPLOAD_WINDOW_MS,
-  checkDailyMemoryLimit,
   checkRateLimit,
+  evaluateDailyLimit,
   formatRetryAfterSeconds,
+  getTaipeiDayStart,
 } from "@/lib/security/rateLimit";
 import type { ApiResponse } from "@/types/api";
 
@@ -47,10 +49,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const dailyLimit = checkDailyMemoryLimit(
-    `spot-upload-daily:${session.user.id}`,
-    UPLOAD_DAILY_LIMIT,
-  );
+  // 每日上限以 DB 計數，跨 instance 正確（AD-7）
+  const uploadedToday = await prisma.uploadLog.count({
+    where: {
+      userId: session.user.id,
+      createdAt: { gte: getTaipeiDayStart() },
+    },
+  });
+  const dailyLimit = evaluateDailyLimit(uploadedToday, UPLOAD_DAILY_LIMIT);
   if (!dailyLimit.allowed) {
     return NextResponse.json<ApiResponse<null>>(
       { data: null, success: false, error: `今日照片上傳已達 ${UPLOAD_DAILY_LIMIT} 張上限` },
@@ -97,6 +103,9 @@ export async function POST(request: NextRequest) {
       addRandomSuffix: false,
       contentType: file.type,
     });
+
+    // 上傳成功才記一筆，供每日上限 DB 計數
+    await prisma.uploadLog.create({ data: { userId: session.user.id } });
 
     return NextResponse.json<ApiResponse<{ url: string; pathname: string }>>({
       data: { url: blob.url, pathname: blob.pathname },

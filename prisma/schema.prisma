@@ -27,6 +27,7 @@ model User {
   // OddSpot 業務關聯
   savedSpots   SavedSpot[]
   visitedSpots VisitedSpot[]
+  uploadLogs   UploadLog[]
 }
 
 // --- NextAuth 5 必要 Models ---
@@ -124,4 +125,16 @@ model VisitedSpot {
   spot Spot @relation(fields: [spotId], references: [id], onDelete: Cascade)
 
   @@unique([userId, spotId])
+}
+
+// 照片上傳紀錄：每日上限改用 DB 計數（跨 instance 正確，見 AD-7）
+// 上傳成功寫一筆，檢查時 count 當日（Asia/Taipei 起算）
+model UploadLog {
+  id        String   @id @default(cuid())
+  userId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

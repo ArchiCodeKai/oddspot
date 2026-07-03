@@ -26,12 +26,18 @@ test("spot submissions apply burst limit, daily limit, and duplicate guard", () 
   assert.match(spotsRouteSource, /status:\s*409/);
 });
 
-test("photo uploads apply burst and daily limits before blob put", () => {
+test("photo uploads apply burst limit and DB-based daily limit before blob put", () => {
   assert.match(uploadRouteSource, /checkRateLimit/);
-  assert.match(uploadRouteSource, /checkDailyMemoryLimit/);
   assert.match(uploadRouteSource, /UPLOAD_WINDOW_LIMIT/);
   assert.match(uploadRouteSource, /UPLOAD_DAILY_LIMIT/);
   assert.match(uploadRouteSource, /status:\s*429/);
+  // 每日上限改用 DB 計數（跨 instance 正確，AD-7）
+  assert.match(uploadRouteSource, /prisma\.uploadLog\.count/);
+  assert.match(uploadRouteSource, /getTaipeiDayStart/);
+  assert.match(uploadRouteSource, /evaluateDailyLimit/);
+  // 上傳成功後寫入紀錄供計數
+  assert.match(uploadRouteSource, /prisma\.uploadLog\.create/);
+  assert.doesNotMatch(uploadRouteSource, /checkDailyMemoryLimit/);
 });
 
 test("admin reject cleans blob images and preserves rejected submission status", () => {

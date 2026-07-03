@@ -20,9 +20,9 @@
 
 | 包 | 名稱 | Phase | 狀態 |
 |----|------|-------|------|
-| W0 | WIP 收斂 commit | 0 | ⬜ 未開始 |
-| T1 | Production 部署驗證 🧑 | 1 | ⬜ 未開始 |
-| T2 | 照片每日上限改 DB 計數 | 1 | ⬜ 未開始 |
+| W0 | WIP 收斂 commit | 0 | ✅ 完成（PR #38，2026-07-03 merge） |
+| T1 | Production 部署驗證 🧑 | 1 | ✅ 已部署（2026-07-03）；驗收清單四項若未逐一走過建議補跑 |
+| T2 | 照片每日上限改 DB 計數 | 1 | ✅ 程式完成（2026-07-03）；migration 檔已建，待使用者對 Neon 執行 `prisma migrate deploy` |
 | T3 | scripts 補齊與依賴清理 | 1 | ⬜ 未開始 |
 | T4 | Reject reason 全鏈路 | 2 | ⬜ 未開始 |
 | T5 | 資訊架構收斂（動作回饋與入口） | 2 | ⬜ 未開始 |
@@ -71,11 +71,12 @@
 - **範圍檔案**：`prisma/schema.prisma`（migration）、`src/app/api/uploads/spots/route.ts`、
   `src/lib/security/rateLimit.ts`、`tests/services/securityContracts.test.mjs`。
 - **驗收**：
-  - [ ] 每日上限計數存於 DB，重啟/多 instance 不影響
-  - [ ] burst limit（記憶體）保留不動
-  - [ ] securityContracts 測試更新並通過；新增至少一個行為測試驗證「第 16 張被拒」
-  - [ ] `prisma migrate dev` 產生 migration 檔
-- **禁區**：不引入 Redis/Upstash；不動投稿（`/api/spots`）的限流邏輯。
+  - [x] 每日上限計數存於 DB（新增 `UploadLog` 表；上傳成功寫一筆，檢查時 count 當日 Asia/Taipei）
+  - [x] burst limit（記憶體）保留不動（`checkRateLimit` 未改）
+  - [x] securityContracts 測試更新並通過；新增行為測試 `tests/services/rateLimit.test.mjs` 驗證「第 16 張被拒」
+  - [x] migration 檔已產生（`prisma/migrations/20260703000000_add_upload_log/`，手寫比照 Prisma 格式；
+        因 `DATABASE_URL` 指向遠端 Neon，未自動 apply，**待使用者跑 `prisma migrate deploy`**）
+- **禁區**：不引入 Redis/Upstash；不動投稿（`/api/spots`）的限流邏輯。（皆已遵守）
 
 ### T3 — scripts 補齊與依賴清理
 
