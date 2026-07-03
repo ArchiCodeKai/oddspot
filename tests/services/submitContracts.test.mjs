@@ -4,6 +4,8 @@ import test from "node:test";
 
 const apiSource = readFileSync("src/app/api/spots/route.ts", "utf8");
 const submitSource = readFileSync("src/app/submit/page.tsx", "utf8");
+const submitPreviewPath = "src/components/submit/SubmitLocationMapPreview.tsx";
+const submitPreviewSource = existsSync(submitPreviewPath) ? readFileSync(submitPreviewPath, "utf8") : "";
 const validationSource = readFileSync("src/lib/validation.ts", "utf8");
 const uploadRoutePath = "src/app/api/uploads/spots/route.ts";
 const uploadSource = existsSync(uploadRoutePath) ? readFileSync(uploadRoutePath, "utf8") : "";
@@ -123,9 +125,46 @@ test("submit page makes maps paste the primary location input", () => {
   assert.match(submitSource, /貼上 Google Maps 連結或座標/);
   assert.match(submitSource, /handleMapPasteChange/);
   assert.match(submitSource, /已讀取座標/);
+  assert.match(submitSource, /sourceCoords/);
+  assert.match(submitSource, /locationPreviewResetKey/);
+  assert.match(submitSource, /setLocationPreviewResetKey/);
+  assert.match(submitSource, /handleResetLocationPreview/);
+  assert.match(submitSource, />\s*復位\s*</);
+  assert.match(submitSource, /回到原始座標/);
   assert.match(submitSource, /進階座標/);
-  assert.match(submitSource, /LocationPreview/);
+  assert.match(submitSource, /LocationPreviewSkeleton/);
   assert.match(submitSource, /resolveGoogleMapsShortLink/);
   assert.match(submitSource, /\/api\/maps\/resolve/);
+  assert.doesNotMatch(submitSource, /發現了什麼奇怪的地方/);
+  assert.doesNotMatch(submitSource, /支援一般座標/);
   assert.doesNotMatch(submitSource, />解析</);
+});
+
+test("submit location preview lazy-loads a Mapbox map with a fixed center pin", () => {
+  assert.match(submitSource, /dynamic\(/);
+  assert.match(submitSource, /SubmitLocationMapPreview/);
+  assert.doesNotMatch(submitSource, /from "react-map-gl\/mapbox"/);
+  assert.match(submitSource, /onLocationChange/);
+
+  assert.match(submitPreviewSource, /from "react-map-gl\/mapbox"/);
+  assert.match(submitPreviewSource, /mapbox-gl\/dist\/mapbox-gl\.css/);
+  assert.match(submitPreviewSource, /onMoveEnd/);
+  assert.match(submitPreviewSource, /center-pin/);
+  assert.match(submitPreviewSource, /submit-map-preview/);
+  assert.match(submitPreviewSource, /mapboxgl-ctrl-logo/);
+  assert.match(submitPreviewSource, /opacity: 0\.56/);
+  assert.match(submitPreviewSource, /resetKey: number/);
+  assert.match(submitPreviewSource, /const previewMinZoom = 13/);
+  assert.match(submitPreviewSource, /minZoom=\{previewMinZoom\}/);
+  assert.match(submitPreviewSource, /maxZoom=\{previewZoom\}/);
+  assert.match(submitPreviewSource, /zoom: shouldResetZoom \? previewZoom : current\.zoom/);
+  assert.match(submitPreviewSource, /scrollZoom=\{true\}/);
+  assert.match(submitPreviewSource, /touchZoomRotate=\{true\}/);
+  assert.match(submitPreviewSource, /disableRotation\(\)/);
+  assert.match(submitPreviewSource, /dragRotate=\{false\}/);
+  assert.match(submitPreviewSource, /pitchWithRotate=\{false\}/);
+  assert.match(submitPreviewSource, /onLocationChange/);
+  assert.match(submitPreviewSource, /NEXT_PUBLIC_MAPBOX_TOKEN/);
+  assert.doesNotMatch(submitPreviewSource, /draggable/);
+  assert.doesNotMatch(submitPreviewSource, /Marker/);
 });

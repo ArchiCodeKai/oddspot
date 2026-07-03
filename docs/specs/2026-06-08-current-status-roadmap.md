@@ -43,7 +43,7 @@
 
 - `/submit` 需要登入。
 - 投稿會建立 `status: "pending"`，公開 `/api/spots` 排除 pending。
-- 投稿支援 Google Maps 貼上解析座標，且已改為主要位置入口：貼上即解析、顯示座標讀取結果與小型位置預覽；手動經緯度改為進階收合區。手機 Google Maps 分享短網址 `maps.app.goo.gl` 已透過 `/api/maps/resolve` 後端安全解析支援。
+- 投稿支援 Google Maps 貼上解析座標，且已改為主要位置入口：貼上即解析、顯示座標讀取結果；解析成功後才 lazy load 小型 Mapbox 預覽，pin 固定置中，使用者拖曳底圖後用地圖中心點微調並同步更新座標。預覽地圖支援桌機滑鼠滾輪縮放與手機 / 平板雙指縮放，縮放後會維持目前 zoom，範圍限制在 `13` 到 `16`；`16` 是初始大小與最大 zoom in，`13` 允許使用者往外看更大範圍；同時關閉旋轉、傾斜與雙擊縮放，避免表單內地圖互動過重。也可用欄位右側「復位」回到原始解析座標並恢復初始縮放。手動經緯度改為進階收合區。手機 Google Maps 分享短網址 `maps.app.goo.gl` 已透過 `/api/maps/resolve` 後端安全解析支援。
 - 投稿照片已有前端壓縮 + `/api/uploads/spots` + Vercel Blob URL 精簡版。
 - `/admin` 與 admin API 已有第一版 pending 審核。
 - 已補投稿防濫用 MVP：短時間 rate limit、每日投稿上限、每日照片上傳上限、duplicate check。

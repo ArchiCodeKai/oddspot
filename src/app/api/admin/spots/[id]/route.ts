@@ -74,15 +74,11 @@ export async function PATCH(
       );
     }
 
+    // 先記下要清的圖片，因為等下 DB 會把 images 清空
     const blobImages = getBlobImages(existing.images);
-    const deleteResults = await Promise.allSettled(
-      blobImages.map((image) => del(image))
-    );
-    const failedDeletes = deleteResults.filter((result) => result.status === "rejected").length;
-    if (failedDeletes > 0) {
-      console.error(`[PATCH /api/admin/spots/${id}] Blob cleanup failed: ${failedDeletes}`);
-    }
 
+    // 先更新權威記錄（DB）：若這步失敗，照片尚未刪除、景點維持原狀，
+    // admin 可安全重試，不會留下破圖或 DB / Blob 不一致。
     const spot = await prisma.spot.update({
       where: { id },
       data: {
@@ -92,6 +88,22 @@ export async function PATCH(
       },
       select: { id: true, name: true, status: true },
     });
+
+    // DB 已標記 rejected 後，Blob 清理採 best-effort；
+    // 即使部分失敗，也只是留下可由後續清理任務回收的孤兒，DB 不會謊報引用。
+    if (blobImages.length > 0) {
+      const deleteResults = await Promise.allSettled(
+        blobImages.map((image) => del(image))
+      );
+      const failedDeletes = deleteResults.filter(
+        (result) => result.status === "rejected"
+      ).length;
+      if (failedDeletes > 0) {
+        console.error(
+          `[PATCH /api/admin/spots/${id}] Blob 清理部分失敗：${failedDeletes}/${blobImages.length}（DB 已標記 rejected，殘留圖片待後續清理）`
+        );
+      }
+    }
 
     return NextResponse.json<ApiResponse<typeof spot>>({
       data: spot,

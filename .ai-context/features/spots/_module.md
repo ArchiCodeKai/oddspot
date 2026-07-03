@@ -18,7 +18,8 @@
 - `images` 欄位是 JSON string：`'["url1","url2"]'`，讀取需 `JSON.parse()`
 - `coverImage` = `JSON.parse(images)[0]`，無額外欄位
 - `rating` / `visitCount`：v1 UI 不顯示，欄位保留供 v2 使用
-- `status`：公開狀態為 `active` | `uncertain` | `disappeared`，審核狀態為 `pending` | `rejected`；公開 `GET /api/spots` 只允許公開白名單，不會回傳 `pending` / `rejected`
+- `status`：公開狀態為 `active` | `uncertain` | `disappeared`，審核狀態為 `pending` | `rejected`。公開白名單統一定義在 `src/lib/constants/status.ts` 的 `PUBLIC_SPOT_STATUSES`
+- 公開讀取路徑**全部**只回傳白名單狀態：列表 `GET /api/spots`、單筆 `GET /api/spots/[id]`、SSR 詳情頁 `/spots/[id]` 都會擋掉 `pending` / `rejected`。詳情端點對非公開或不存在景點一律回**相同的 404**，避免靠回應差異列舉出待審投稿
 
 ## 景點分類（SpotCategory）
 
@@ -35,6 +36,7 @@
 - Vercel Blob 需要 `BLOB_READ_WRITE_TOKEN`，此 env 只能在 server 使用，不可加 `NEXT_PUBLIC_`
 - `/api/uploads/spots` 已加 burst rate limit 與每日上傳上限；目前是 server memory MVP，未來高流量時可改 Upstash Redis 或 DB log
 - `POST /api/spots` 已加每人每日投稿上限與同名 / 近座標 duplicate check
+- Blob 孤兒清理：投稿照片是「先上傳 Blob、再建立 spot」兩步，`POST /api/spots` 失敗（重複 / 每日上限 / 驗證 / 網路）時，前端會呼叫 `DELETE /api/uploads/spots` 清掉剛上傳的圖。該 DELETE 端點**只允許刪除路徑 `spots/{自己的 userId}/` 開頭的 Blob**，避免變成可刪他人圖片的漏洞。徹底解（過期 pending 的孤兒）仍待週期性清理任務
 
 > 目前使用者表示先暫停照片送出功能的後續擴充；已完成的 Blob upload 仍保留在程式碼與 API 中，但下一步優先修 UX / 安全 / 流程收斂。
 
@@ -44,7 +46,11 @@
 - 投稿表單已把「貼上 Google Maps 連結或座標」放在表單最上方，作為主要位置輸入。
 - 使用者貼上後會即時解析並自動帶入 `lat` / `lng`，成功訊息格式為「已讀取座標：lat, lng」。
 - 手動經緯度欄位已收進「進階座標」，預設收合，保留給解析失敗或進階使用者。
-- 解析成功後會顯示小型位置預覽 pin，讓使用者確認座標已被讀取。
+- 解析成功後才會 lazy load 小型 Mapbox 位置預覽，不在 `/submit` 初始載入時下載地圖 SDK。
+- 小型 Mapbox 預覽會自動定位到解析座標；pin 固定在預覽框中心，使用者拖曳底圖後會用地圖中心點同步更新 `lat` / `lng`，並顯示「已微調座標」。
+- 預覽地圖支援桌機滑鼠滾輪縮放與手機 / 平板雙指縮放；縮放後會維持目前 zoom，不會因座標微調立刻回到預設大小。縮放範圍限制在 `13` 到 `16`：`16` 是初始大小與最大 zoom in，`13` 允許使用者往外看更大範圍；旋轉、傾斜與雙擊縮放維持關閉，避免投稿表單內的地圖互動過度搶焦點。
+- Google Maps 貼上欄位右側會在已有原始解析座標時顯示「復位」按鈕，可回到第一次解析出的原始座標，並把預覽地圖縮放恢復到初始 `16`。
+- Mapbox logo 保留以符合 attribution 要求，但在投稿預覽中降低透明度，hover / focus 時恢復清晰。
 - 目前支援 `lat,lng`、`@lat,lng`、`q=lat,lng`、`ll=lat,lng`、`!3dlat!4dlng`
 - 手機 Google Maps 分享的 `maps.app.goo.gl` 短網址已支援：前端會呼叫 `/api/maps/resolve`，由後端追蹤 Google Maps redirect 後解析座標。
 - `/api/maps/resolve` 需登入、有 rate limit，且只允許 Google Maps 白名單網域，避免 SSRF 風險。
@@ -80,7 +86,7 @@ src/app/api/admin/spots/[id]/route.ts
 - `GET /api/admin/spots`：只回傳 `status: "pending"` 的景點。
 - `PATCH /api/admin/spots/[id]`：
   - `approve`：把 spot 狀態改成 `active`，並清掉 `expiresAt`。
-  - `reject`：刪除 Vercel Blob 圖片、把 spot 改成 `rejected`，並清空 `images`，讓使用者仍可在「我的投稿狀態」看到結果。
+  - `reject`：**先**把 spot 改成 `rejected` 並清空 `images`（權威記錄），**再** best-effort 刪除 Vercel Blob 圖片，讓使用者仍可在「我的投稿狀態」看到結果。順序刻意如此：DB 更新失敗時照片尚未刪、可安全重試；Blob 刪除失敗只留下可回收的孤兒，DB 不會謊報引用（跨服務無法用單一 transaction 原子化）。
 - 權限透過 `isAdminSession(session)` 檢查。
 
 ## Production 驗證
