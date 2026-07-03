@@ -20,7 +20,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const TAIPEI_OFFSET_MS = 8 * 60 * 60 * 1000;
 
 const burstEntries = new Map<string, RateEntry>();
-const dailyEntries = new Map<string, RateEntry>();
 
 function cleanupExpired(entries: Map<string, RateEntry>, now: number) {
   for (const [key, entry] of entries) {
@@ -66,27 +65,18 @@ export function checkRateLimit(
   };
 }
 
-export function checkDailyMemoryLimit(
-  key: string,
+// 每日照片上限改用 DB 計數（跨 instance 正確，見 AD-7）
+// usedToday 為當日已成功上傳張數，由呼叫端以 prisma count 帶入
+export function evaluateDailyLimit(
+  usedToday: number,
   limit: number,
   now = Date.now(),
 ): RateLimitResult {
-  cleanupExpired(dailyEntries, now);
-
-  const current = dailyEntries.get(key);
-  const entry =
-    current && current.resetAt > now
-      ? current
-      : { count: 0, resetAt: getNextTaipeiDayStart(now) };
-
-  entry.count += 1;
-  dailyEntries.set(key, entry);
-
-  const allowed = entry.count <= limit;
+  const allowed = usedToday < limit;
   return {
     allowed,
-    remaining: Math.max(0, limit - entry.count),
-    resetAt: new Date(entry.resetAt),
+    remaining: Math.max(0, limit - usedToday - (allowed ? 1 : 0)),
+    resetAt: new Date(getNextTaipeiDayStart(now)),
   };
 }
 
