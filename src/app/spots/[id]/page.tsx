@@ -8,7 +8,7 @@ import { CategoryBadge } from "@/components/ui/CategoryBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CATEGORY_GLYPHS } from "@/lib/constants/categoryGlyphs";
 import type { SpotCategory } from "@/lib/constants/categories";
-import type { SpotStatus } from "@/lib/constants/status";
+import { PUBLIC_SPOT_STATUSES, type SpotStatus } from "@/lib/constants/status";
 
 export default async function SpotDetailPage({
   params,
@@ -18,7 +18,8 @@ export default async function SpotDetailPage({
   const { id } = await params;
 
   const spot = await prisma.spot.findUnique({ where: { id } });
-  if (!spot) notFound();
+  // pending / rejected 不對外，與「不存在」一律 notFound
+  if (!spot || !PUBLIC_SPOT_STATUSES.includes(spot.status as SpotStatus)) notFound();
   const tMeta = await getTranslations("spotMeta");
   const tDetail = await getTranslations("spotDetail");
 
