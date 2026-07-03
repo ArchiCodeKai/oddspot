@@ -3,13 +3,23 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const authButtonSource = readFileSync("src/components/auth/AuthButton.tsx", "utf8");
+const topRightClusterSource = readFileSync("src/components/map/TopRightCluster.tsx", "utf8");
 const routeSheetSource = readFileSync("src/components/map/RouteSheet.tsx", "utf8");
 
-test("auth dropdown routes users to saved spots and submission status pages", () => {
+test("top-right settings promotes account shortcuts to the first popover level", () => {
+  assert.match(topRightClusterSource, /AccountShortcutLinks/);
+  assert.match(topRightClusterSource, /<AccountShortcutLinks \/>[\s\S]*<LangToggle \/>[\s\S]*<ThemeToggle \/>[\s\S]*<AuthButton \/>/);
+
   assert.match(authButtonSource, /useRouter/);
   assert.match(authButtonSource, /router\.push\("\/saved"\)/);
   assert.match(authButtonSource, /router\.push\("\/submissions"\)/);
   assert.match(authButtonSource, /t\("submissions"\)/);
+  assert.match(authButtonSource, /export function AccountShortcutLinks/);
+  assert.match(authButtonSource, /function AccountShortcutItem/);
+  assert.match(authButtonSource, /export function AuthButton/);
+  assert.match(authButtonSource, /signOut/);
+  assert.doesNotMatch(authButtonSource, /router\.push\("\/saved"\)[\s\S]{0,120}setOpen\(false\)/);
+  assert.doesNotMatch(authButtonSource, /router\.push\("\/submissions"\)[\s\S]{0,120}setOpen\(false\)/);
 });
 
 test("saved page closes the saved flow with remove and add-to-trip actions", () => {

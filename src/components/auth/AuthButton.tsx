@@ -9,14 +9,10 @@ import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { useTranslations } from "next-intl";
 
 export function AuthButton() {
-  const router = useRouter();
   const { user } = useSession();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const t = useTranslations("auth");
-
-  const savedCount = useSavedStore((s) => s.savedSpotIds.length);
-  const tripCount = useRoutePlannerStore((s) => s.selectedSpots.length);
 
   useEffect(() => {
     if (!open) return;
@@ -87,17 +83,18 @@ export function AuthButton() {
     );
   }
 
-  // 已登入 → avatar + dropdown
+  // 已登入 → 身分列 + 直接登出，不再包第二層 dropdown
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 pl-2 pr-3 py-1.5 transition-all backdrop-blur-sm"
+    <div
+      className="flex w-full items-center gap-2"
+      style={{ minHeight: 44 }}
+    >
+      <div
+        className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-2 pr-2 backdrop-blur-sm"
         style={{
           border: "1px solid var(--line)",
           borderRadius: "2px",
-          background: open ? "rgb(var(--accent-rgb) / 0.06)" : "var(--panel-glass)",
-          cursor: "pointer",
+          background: "var(--panel-glass)",
           minHeight: 44,
           boxShadow: "var(--shadow-glow)",
         }}
@@ -123,114 +120,88 @@ export function AuthButton() {
         >
           {user.name || t("user")}
         </span>
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"
-          style={{
-            color: "var(--muted)",
-            transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s ease",
-          }}
-        >
-          <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+      </div>
+
+      <button
+        onClick={() => signOut()}
+        aria-label={t("logout")}
+        className="flex shrink-0 items-center justify-center transition-colors"
+        style={{
+          width: 44,
+          height: 44,
+          color: "var(--muted)",
+          border: "1px solid var(--line)",
+          borderRadius: "2px",
+          background: "var(--panel-glass)",
+          cursor: "pointer",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = "#f87171";
+          e.currentTarget.style.borderColor = "rgba(248,113,113,0.5)";
+          e.currentTarget.style.background = "rgba(239,68,68,0.05)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = "var(--muted)";
+          e.currentTarget.style.borderColor = "var(--line)";
+          e.currentTarget.style.background = "var(--panel-glass)";
+        }}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
         </svg>
       </button>
+    </div>
+  );
+}
 
-      {/* Dropdown */}
-      {open && (
-        <div
-          className="absolute right-0 mt-1.5 w-56 z-50 overflow-hidden"
-          style={{
-            background: "var(--panel-glass-strong)",
-            border: "1px solid var(--line)",
-            borderRadius: "2px",
-            boxShadow:
-              "0 16px 48px rgb(var(--background-rgb) / 0.24), 0 0 32px rgb(var(--accent-rgb) / 0.06)",
-            backdropFilter: "blur(12px)",
-          }}
-        >
-          {/* User header */}
-          <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--line)" }}>
-            {/* 名字用 Noto Sans TC */}
-            <p className="text-xs font-bold truncate font-content" style={{ color: "var(--foreground)", letterSpacing: "0.04em" }}>
-              {user.name || t("user")}
-            </p>
-            {user.email && (
-              <p className="text-[10px] mt-0.5 truncate" style={{ color: "var(--muted)" }}>
-                {user.email}
-              </p>
-            )}
-          </div>
+export function AccountShortcutLinks() {
+  const router = useRouter();
+  const { user } = useSession();
+  const t = useTranslations("auth");
+  const savedCount = useSavedStore((s) => s.savedSpotIds.length);
+  const tripCount = useRoutePlannerStore((s) => s.selectedSpots.length);
 
-          <DropdownItem
-            icon={
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-            }
-            label={t("saved")}
-            badge={savedCount}
-            onClick={() => {
-              router.push("/saved");
-              setOpen(false);
-            }}
-          />
+  if (!user) return null;
 
-          <DropdownItem
-            icon={
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            }
-            label={t("trip")}
-            badge={tripCount}
-            onClick={() => {
-              router.push("/map");
-              setOpen(false);
-            }}
-          />
-
-          <DropdownItem
-            icon={
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4h16v16H4z"/>
-                <path d="M8 8h8"/>
-                <path d="M8 12h8"/>
-                <path d="M8 16h5"/>
-              </svg>
-            }
-            label={t("submissions")}
-            onClick={() => {
-              router.push("/submissions");
-              setOpen(false);
-            }}
-          />
-
-          <div style={{ height: "1px", background: "var(--line)", margin: "4px 0" }} />
-
-          <button
-            onClick={() => { signOut(); setOpen(false); }}
-            className="w-full flex items-center gap-3 px-4 py-3 text-xs tracking-wider transition-colors"
-            style={{ color: "var(--muted)", cursor: "pointer", minHeight: 44 }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#f87171";
-              e.currentTarget.style.background = "rgba(239,68,68,0.04)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--muted)";
-              e.currentTarget.style.background = "transparent";
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-            {t("logout")}
-          </button>
-        </div>
-      )}
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <AccountShortcutItem
+        icon={
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        }
+        label={t("saved")}
+        badge={savedCount}
+        onClick={() => router.push("/saved")}
+      />
+      <AccountShortcutItem
+        icon={
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        }
+        label={t("trip")}
+        badge={tripCount}
+        onClick={() => router.push("/map")}
+      />
+      <AccountShortcutItem
+        icon={
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 4h16v16H4z"/>
+            <path d="M8 8h8"/>
+            <path d="M8 12h8"/>
+            <path d="M8 16h5"/>
+          </svg>
+        }
+        label={t("submissions")}
+        onClick={() => router.push("/submissions")}
+      />
     </div>
   );
 }
@@ -279,7 +250,7 @@ function LineIcon() {
   );
 }
 
-function DropdownItem({
+function AccountShortcutItem({
   icon, label, badge, onClick,
 }: {
   icon: React.ReactNode;
