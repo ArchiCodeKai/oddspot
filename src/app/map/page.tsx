@@ -3,9 +3,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import type { MapRef } from "react-map-gl/mapbox";
 import { useSpots } from "@/hooks/useSpots";
+import { useSession } from "@/contexts/SessionContext";
+import { useLoginPromptStore } from "@/store/useLoginPromptStore";
 import { useMapStore } from "@/store/useMapStore";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { MapView } from "@/components/map/MapView";
@@ -24,6 +27,9 @@ type ViewMode = "map" | "swipe";
 export default function MapPage() {
   const t = useTranslations("map");
   const tFilter = useTranslations("filter");
+  const router = useRouter();
+  const { user } = useSession();
+  const openLoginPrompt = useLoginPromptStore((s) => s.open);
   const queryClient = useQueryClient();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("map");
@@ -40,6 +46,7 @@ export default function MapPage() {
   const setQueryMode = useMapStore((s) => s.setQueryMode);
   const filters = useMapStore((s) => s.filters);
   const openRouteSheet = useRoutePlannerStore((s) => s.openSheet);
+  const tripCount = useRoutePlannerStore((s) => s.selectedSpots.length);
 
   // 取得使用者定位（純 UI side effect，不屬於 server state）
   useEffect(() => {
@@ -133,10 +140,22 @@ export default function MapPage() {
   }
 
   return (
-    <div className="w-full flex flex-col relative" style={{ height: "100dvh" }}>
+    <div className="w-full flex flex-col relative overflow-hidden" style={{ height: "100dvh" }}>
       <style>{`
         .map-top-controls {
           max-width: calc(100vw - 96px);
+        }
+        /* 頂列控制項統一 44px 高，跟右上 cluster 對齊成一條線 */
+        .map-filter-trigger,
+        .map-top-controls [role="radiogroup"],
+        .map-quick-entry {
+          min-height: 44px;
+        }
+        .map-quick-entry:hover,
+        .map-quick-entry:focus-visible {
+          color: var(--accent) !important;
+          border-color: rgb(var(--accent-rgb) / 0.6) !important;
+          box-shadow: 0 0 12px rgb(var(--accent-rgb) / 0.18) !important;
         }
         @media (min-width: 768px) and (max-width: 1279px) {
           .map-top-controls {
@@ -144,6 +163,14 @@ export default function MapPage() {
             left: 24px;
             gap: 10px;
             max-width: calc(100vw - 148px);
+          }
+          .map-top-right {
+            top: 24px !important;
+            right: 24px !important;
+          }
+          .map-quick-entry {
+            padding: 0 14px !important;
+            font-size: 11px !important;
           }
           .map-filter-trigger {
             min-height: 44px;
@@ -234,8 +261,76 @@ export default function MapPage() {
         <RadiusToggle mapRef={mapRef} userLocation={userLocation} />
       </div>
 
-      {/* 右上角收合 cluster：globe button + popover（含語言/主題/登入） */}
-      <TopRightCluster />
+      {/* 右上整排：快速入口（md+）+ cluster，同一 flex 容器避免互相蓋到 */}
+      <div className="map-top-right absolute top-4 right-4 z-50 flex items-start gap-2">
+        <div className="map-quick-entries hidden md:flex items-center gap-2">
+        <button
+          onClick={() => (user ? router.push("/saved") : openLoginPrompt())}
+          className="map-quick-entry flex items-center gap-1.5 px-3 py-2 transition-all backdrop-blur-md uppercase"
+          style={{
+            background: "var(--panel-glass)",
+            border: "1px solid var(--line)",
+            color: "var(--muted)",
+            borderRadius: 2,
+            boxShadow: "var(--shadow-glow)",
+            fontFamily: "var(--font-jetbrains-mono), monospace",
+            fontSize: 10,
+            letterSpacing: "0.18em",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z" />
+          </svg>
+          <span>{t("quickSaved")}</span>
+        </button>
+        <button
+          onClick={handleOpenRoutePlanner}
+          className="map-quick-entry flex items-center gap-1.5 px-3 py-2 transition-all backdrop-blur-md uppercase"
+          style={{
+            background: tripCount > 0 ? "rgb(var(--accent-rgb) / 0.18)" : "var(--panel-glass)",
+            border: `1px solid ${tripCount > 0 ? "rgb(var(--accent-rgb) / 0.6)" : "var(--line)"}`,
+            color: tripCount > 0 ? "var(--accent)" : "var(--muted)",
+            borderRadius: 2,
+            boxShadow: tripCount > 0 ? "0 0 12px rgb(var(--accent-rgb) / 0.18)" : "var(--shadow-glow)",
+            fontFamily: "var(--font-jetbrains-mono), monospace",
+            fontSize: 10,
+            letterSpacing: "0.18em",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="6" cy="6" r="2" />
+            <circle cx="18" cy="18" r="2" />
+            <path d="M6 8 Q 6 14 12 14 T 18 16" />
+          </svg>
+          <span>{t("quickTrip")}</span>
+          {tripCount > 0 && (
+            <span
+              style={{
+                minWidth: 18,
+                padding: "0 4px",
+                background: "rgb(var(--accent-rgb) / 0.3)",
+                border: "1px solid rgb(var(--accent-rgb) / 0.6)",
+                borderRadius: 2,
+                fontSize: 9,
+                lineHeight: "14px",
+                textAlign: "center",
+              }}
+            >
+              {tripCount}/5
+            </span>
+          )}
+        </button>
+        </div>
+
+        {/* cluster：訪客 = 登入按鈕 + globe；登入後 = 頭像選單 */}
+        <TopRightCluster />
+      </div>
 
       {/* 兩個 view 常駐 DOM（地圖不因切換而重載），用 motion 控制顯隱 */}
       <div className="flex-1 min-h-0 relative">

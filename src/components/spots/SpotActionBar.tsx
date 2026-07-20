@@ -1,8 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useSavedStore } from "@/store/useSavedStore";
 import { useSession } from "@/contexts/SessionContext";
 import { useLoginPromptStore } from "@/store/useLoginPromptStore";
+import { useActionToastStore } from "@/store/useActionToastStore";
 
 interface SpotActionBarProps {
   lat: number;
@@ -12,11 +14,13 @@ interface SpotActionBarProps {
 
 export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  const tToast = useTranslations("actionToast");
   const { user } = useSession();
   const openLoginPrompt = useLoginPromptStore((s) => s.open);
   const saved = useSavedStore((s) => s.savedSpotIds.includes(spotId));
   const addSave = useSavedStore((s) => s.addSave);
   const removeSave = useSavedStore((s) => s.removeSave);
+  const showActionToast = useActionToastStore((s) => s.show);
 
   const handleToggleSave = () => {
     // 未登入 → 彈出登入提示（與地圖 popup / 滑卡行為一致）
@@ -24,8 +28,12 @@ export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
       openLoginPrompt();
       return;
     }
-    if (saved) removeSave(spotId);
-    else addSave(spotId);
+    if (saved) {
+      removeSave(spotId);
+    } else {
+      addSave(spotId);
+      showActionToast(tToast("saved"), "/saved", tToast("viewSaved"));
+    }
   };
 
   return (

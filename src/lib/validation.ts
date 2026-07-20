@@ -118,8 +118,10 @@ export const syncSavedSchema = z.object({
 });
 
 // PATCH /api/admin/spots/[id] body
+// rejectReason 只在 reject 時使用；不填由後端存預設文案
 export const adminActionSchema = z.object({
   action: z.enum(["approve", "reject"]),
+  rejectReason: z.string().trim().max(200, "拒絕原因最多 200 字").optional(),
 });
 
 // 把 zod 錯誤組成簡明訊息，回給 client（不洩漏內部細節）

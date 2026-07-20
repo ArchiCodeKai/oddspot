@@ -30,6 +30,8 @@ interface SwipeCardProps {
   spot: SpotMapPoint;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
+  // 右滑起飛前的檢查（如行程滿 5）；回傳 false 卡片彈回原位、不觸發 onSwipeRight
+  beforeSwipeRight?: () => boolean;
   onCollectToTrip?: () => void;
   tripCount?: number;
   showTripFlash?: boolean;
@@ -41,6 +43,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
     spot,
     onSwipeLeft,
     onSwipeRight,
+    beforeSwipeRight,
     onCollectToTrip,
     tripCount = 0,
     showTripFlash = false,
@@ -100,6 +103,13 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(
     };
 
     const flyOut = (direction: "left" | "right") => {
+      // 起飛前先檢查（如行程滿 5）：不通過就彈回原位，
+      // 避免卡片飛出後 handler 拒收、畫面卡在半空
+      if (direction === "right" && beforeSwipeRight && !beforeSwipeRight()) {
+        setEdgeFeedback(null);
+        animate(x, 0, { type: "spring", stiffness: 220, damping: 22 });
+        return;
+      }
       const target = direction === "left" ? -600 : 600;
       const advance = () => {
         setEdgeFeedback(null);

@@ -9,10 +9,10 @@ import { TripPlanSheet } from "./TripPlanSheet";
 import { useSwipeStore } from "@/store/useSwipeStore";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { useSavedStore } from "@/store/useSavedStore";
+import { useActionToastStore } from "@/store/useActionToastStore";
 import type { SpotMapPoint } from "@/types/spots";
 
-const TOAST_DURATION = 2500;
-const HINT_DURATION = 2800;
+const HINT_DURATION = 3600;
 const HINT_STORAGE_KEY = "oddspot-swipe-hint-seen";
 
 interface SwipeViewProps {
@@ -29,18 +29,19 @@ export function SwipeView({
   onOpenRoutePlanner,
 }: SwipeViewProps) {
   const t = useTranslations("swipe");
+  const tToast = useTranslations("actionToast");
   const cardRef = useRef<SwipeCardHandle>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showTrip, setShowTrip] = useState(false);
   const [tripFlash, setTripFlash] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  // 首次手勢提示（sessionStorage 控制，每個 session 只看一次）
+  // 首次手勢提示（localStorage 控制，只出現一次；清掉後重現）
   const [showHint, setShowHint] = useState(false);
 
   const { addSkipped, undoSkip, skippedIds, lastSkippedId } = useSwipeStore();
   const selectedSpots = useRoutePlannerStore((s) => s.selectedSpots);
   const addRouteSpot = useRoutePlannerStore((s) => s.addSpot);
   const { addSave } = useSavedStore();
+  const showActionToast = useActionToastStore((s) => s.show);
 
   const visibleSpots = useMemo(
     () => spots.filter((s) => !skippedIds.includes(s.id)),
@@ -49,21 +50,16 @@ export function SwipeView({
   const currentSpot = visibleSpots[currentIndex] ?? null;
   const nextSpot = visibleSpots[currentIndex + 1] ?? null;
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), TOAST_DURATION);
-  }, []);
-
-  // 首次進入卡片頁時顯示手勢提示，2.8 秒後自動淡出
+  // 首次進入卡片頁時顯示三動作提示，數秒後自動淡出並記進 localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (isError || !currentSpot) return;
-    const seen = sessionStorage.getItem(HINT_STORAGE_KEY) === "1";
+    const seen = localStorage.getItem(HINT_STORAGE_KEY) === "1";
     if (seen) return;
     setShowHint(true);
     const t1 = setTimeout(() => {
       setShowHint(false);
-      sessionStorage.setItem(HINT_STORAGE_KEY, "1");
+      localStorage.setItem(HINT_STORAGE_KEY, "1");
     }, HINT_DURATION);
     return () => clearTimeout(t1);
     // 只在第一次有 currentSpot 時觸發；後續 currentSpot 變化不再 retrigger
@@ -79,22 +75,35 @@ export function SwipeView({
   const handleSaveOnly = useCallback(() => {
     if (!currentSpot) return;
     addSave(currentSpot.id);
+    showActionToast(tToast("saved"), "/saved", tToast("viewSaved"));
     setCurrentIndex((i) => i + 1);
-  }, [currentSpot, addSave]);
+  }, [currentSpot, addSave, showActionToast, tToast]);
+
+  // 右滑起飛前的檢查：行程滿 5（且非重複點）就擋下並提示，卡片彈回
+  const canAddCurrentToTrip = useCallback(() => {
+    if (!currentSpot) return false;
+    const alreadySelected = selectedSpots.some((spot) => spot.id === currentSpot.id);
+    if (!alreadySelected && selectedSpots.length >= 5) {
+      showActionToast(t("tripLimitReached"));
+      return false;
+    }
+    return true;
+  }, [currentSpot, selectedSpots, showActionToast, t]);
 
   const handleSaveAndAddToTrip = useCallback(() => {
     if (!currentSpot) return;
     const alreadySelected = selectedSpots.some((spot) => spot.id === currentSpot.id);
     if (!alreadySelected && selectedSpots.length >= 5) {
-      showToast(t("tripLimitReached"));
+      showActionToast(t("tripLimitReached"));
       return;
     }
     addRouteSpot(currentSpot);
     addSave(currentSpot.id);
+    showActionToast(tToast("savedWithTrip"), "/saved", tToast("viewSaved"));
     setTripFlash(true);
     setTimeout(() => setTripFlash(false), 500);
     setCurrentIndex((i) => i + 1);
-  }, [currentSpot, selectedSpots, addRouteSpot, addSave, showToast, t]);
+  }, [currentSpot, selectedSpots, addRouteSpot, addSave, showActionToast, t, tToast]);
 
   const handleUndo = useCallback(() => {
     const restoredId = undoSkip();
@@ -383,6 +392,7 @@ export function SwipeView({
                 spot={currentSpot}
                 onSwipeLeft={handleSkip}
                 onSwipeRight={handleSaveAndAddToTrip}
+                beforeSwipeRight={canAddCurrentToTrip}
                 onCollectToTrip={handleSaveOnly}
                 tripCount={selectedSpots.length}
                 showTripFlash={tripFlash}
@@ -421,12 +431,28 @@ export function SwipeView({
                       <HintArrow direction="up" />
                       <span className="text-[11px] uppercase">{t("gestureDetail")}</span>
                     </div>
-                    {/* 中：左右 */}
+                    {/* 中：左滑略過 / +只收藏 / 右滑收藏＋行程 */}
                     <div className="flex flex-col items-center gap-2">
                       <HintArrow direction="left" />
                       <span className="text-[11px] uppercase">{t("gestureSkip")}</span>
                     </div>
-                    <div /> {/* spacer */}
+                    <div className="flex flex-col items-center gap-2">
+                      <svg
+                        width="36"
+                        height="36"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="square"
+                        aria-hidden="true"
+                        style={{ filter: "drop-shadow(0 0 8px rgb(var(--accent-rgb) / 0.6))" }}
+                      >
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      <span className="text-[11px] uppercase">{t("gestureCollect")}</span>
+                    </div>
                     <div className="flex flex-col items-center gap-2">
                       <HintArrow direction="right" />
                       <span className="text-[11px] uppercase">{t("gestureSave")}</span>
@@ -458,25 +484,6 @@ export function SwipeView({
           </div>
         )}
       </div>
-
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
-          <div
-            className="px-5 py-3 text-sm text-center font-content"
-            style={{
-              borderRadius: "2px",
-              background: "var(--panel-glass-strong)",
-              backdropFilter: "blur(16px)",
-              border: "1px solid var(--line-strong)",
-              color: "var(--foreground)",
-              boxShadow: "var(--shadow-glow)",
-            }}
-          >
-            {toast}
-          </div>
-        </div>
-      )}
 
       <TripPlanSheet
         isOpen={showTrip}

@@ -80,5 +80,7 @@ https://your-domain.vercel.app/api/auth/callback/line
 ## 已新增登入後入口
 
 - 右上角設定 popover 第一層會顯示帳號捷徑：`/saved`、`/map` 今日行程、`/submissions`。
-- `AuthButton` 已登入狀態只顯示使用者身分列與直接登出按鈕，不再包第二層導覽 dropdown。
+- `AuthButton.tsx` 拆成組件群：`GuestLoginButton`（未登入時 cluster 旁的登入按鈕，含 OAuth
+  provider 下拉）、`UserAvatar` / `UserMenuIdentity`（頭像與身分列）、`LogoutMenuItem`、
+  `AccountShortcutLinks`。右上角未登入顯示登入按鈕 + globe；登入後頭像取代 globe 成為選單觸發器。
 - 投稿成功畫面增加「查看投稿狀態」入口。

@@ -42,6 +42,7 @@ export default function SubmitPage() {
   // 跟 next-auth 的回傳形態對齊（避免下游邏輯重寫）
   const session = user ? { user } : null;
   const tMeta = useTranslations("spotMeta");
+  const tSubmit = useTranslations("submitPage");
 
   const [form, setForm] = useState(emptySubmitForm);
   const [mapPaste, setMapPaste] = useState("");
@@ -300,9 +301,9 @@ export default function SubmitPage() {
         >
           archive://pending
         </div>
-        <h2 className="text-white text-lg font-medium">投稿成功！</h2>
+        <h2 className="text-white text-lg font-medium">{tSubmit("successTitle")}</h2>
         <p className="text-zinc-400 text-sm text-center">
-          你的景點已送出審核，通過後會出現在地圖上。
+          {tSubmit("successDescription")}
         </p>
         <div className="flex gap-3 mt-2">
           <button
@@ -312,19 +313,19 @@ export default function SubmitPage() {
             }}
             className="px-4 py-2 text-sm border border-zinc-700 text-zinc-300 rounded-xs"
           >
-            繼續投稿
+            {tSubmit("continueSubmit")}
           </button>
           <button
             onClick={() => router.push("/submissions")}
             className="px-4 py-2 text-sm border border-zinc-700 text-zinc-300 rounded-xs"
           >
-            查看投稿狀態
+            {tSubmit("viewSubmissions")}
           </button>
           <button
             onClick={() => router.push("/map")}
             className="px-4 py-2 text-sm bg-white text-zinc-900 rounded-xs font-medium"
           >
-            回到地圖
+            {tSubmit("backToMap")}
           </button>
         </div>
       </div>

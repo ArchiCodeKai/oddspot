@@ -6,6 +6,9 @@ import { cuidSchema, adminActionSchema, formatZodError } from "@/lib/validation"
 import { isAdminSession } from "@/lib/admin";
 import type { ApiResponse } from "@/types/api";
 
+// reject 未填原因時的預設文案
+const DEFAULT_REJECT_REASON = "未符合收錄標準";
+
 function getBlobImages(images: string): string[] {
   try {
     const parsed = JSON.parse(images || "[]");
@@ -51,7 +54,7 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    const { action } = parsed.data;
+    const { action, rejectReason } = parsed.data;
 
     if (action === "approve") {
       const spot = await prisma.spot.update({
@@ -83,6 +86,7 @@ export async function PATCH(
       where: { id },
       data: {
         status: "rejected",
+        rejectReason: rejectReason || DEFAULT_REJECT_REASON,
         images: JSON.stringify([]),
         expiresAt: null,
       },

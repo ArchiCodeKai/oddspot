@@ -12,6 +12,7 @@ import { useSavedStore } from "@/store/useSavedStore";
 import { useSession } from "@/contexts/SessionContext";
 import { useLoginPromptStore } from "@/store/useLoginPromptStore";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
+import { useActionToastStore } from "@/store/useActionToastStore";
 import type { SpotMapPoint } from "@/types/spots";
 import type { SpotCategory } from "@/lib/constants/categories";
 import type { SpotStatus } from "@/lib/constants/status";
@@ -41,7 +42,9 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
 export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps) {
   const tMeta = useTranslations("spotMeta");
   const tSwipe = useTranslations("swipe");
+  const tToast = useTranslations("actionToast");
   const router = useRouter();
+  const showActionToast = useActionToastStore((s) => s.show);
   const y = useMotionValue(0);
 
   const category = spot.category as SpotCategory;
@@ -69,8 +72,12 @@ export function SpotPopup({ spot, userLocation = null, onClose }: SpotPopupProps
       openLoginPrompt();
       return;
     }
-    if (isSaved) removeSave(spot.id);
-    else addSave(spot.id);
+    if (isSaved) {
+      removeSave(spot.id);
+    } else {
+      addSave(spot.id);
+      showActionToast(tToast("saved"), "/saved", tToast("viewSaved"));
+    }
   };
 
   const handleNavigate = () => {

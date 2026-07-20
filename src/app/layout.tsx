@@ -9,6 +9,7 @@ import { QueryProvider } from "@/components/providers/QueryProvider";
 import { PageTransition } from "@/components/providers/PageTransition";
 import { MagneticCursor } from "@/components/ui/MagneticCursor";
 import { MapClickEffect } from "@/components/map/MapClickEffect";
+import { ActionToast } from "@/components/ui/ActionToast";
 
 // 品牌字體：UI 標籤、英文、數字、系統文字
 const spaceMono = Space_Mono({
@@ -152,6 +153,8 @@ export default async function RootLayout({
               <PageTransition>
                 {children}
               </PageTransition>
+              {/* 全域動作提示：收藏 / 投稿完成後的結果入口 */}
+              <ActionToast />
             </ClientAuthProvider>
           </QueryProvider>
         </LocaleProvider>

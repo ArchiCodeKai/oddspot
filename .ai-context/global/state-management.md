@@ -59,6 +59,15 @@ const addSave = useSavedStore((s) => s.addSave);
 | `clear()` | 清空目前路線與 localStorage |
 | `optimize(origin)` | 呼叫 Mapbox Directions 並套用最佳化後順序 |
 
+### useActionToastStore（`src/store/useActionToastStore.ts`）
+寫入動作（收藏等）完成後的全域提示狀態，由 layout 掛載的 `ActionToast` 元件消費。
+訊息可附「去哪看結果」入口連結（如收藏成功 → `/saved`）；`nonce` 讓連續觸發重置自動消失計時。
+
+| 方法 | 說明 |
+|------|------|
+| `show(message, href?, linkLabel?)` | 顯示提示；有 href 時 toast 內出現可點連結 |
+| `clear()` | 清除提示（自動消失或點連結後） |
+
 ## React Query 使用模式
 
 ```typescript

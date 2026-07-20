@@ -48,6 +48,19 @@ test("admin reject cleans blob images and preserves rejected submission status",
   assert.doesNotMatch(adminSpotRouteSource, /prisma\.spot\.delete/);
 });
 
+test("admin reject stores a reason and public spot APIs never expose it", () => {
+  const validationSource = readFileSync("src/lib/validation.ts", "utf8");
+  const spotByIdRouteSource = readFileSync("src/app/api/spots/[id]/route.ts", "utf8");
+  // reject 可附原因，未填存預設文案；Zod 限 200 字
+  assert.match(validationSource, /rejectReason/);
+  assert.match(validationSource, /max\(200/);
+  assert.match(adminSpotRouteSource, /rejectReason/);
+  assert.match(adminSpotRouteSource, /DEFAULT_REJECT_REASON/);
+  // 公開 API 不回傳 rejectReason
+  assert.doesNotMatch(spotsRouteSource, /rejectReason/);
+  assert.doesNotMatch(spotByIdRouteSource, /rejectReason/);
+});
+
 test("admin-only production readiness and blob smoke routes exist", () => {
   const healthPath = "src/app/api/admin/health/route.ts";
   const blobSmokePath = "src/app/api/admin/blob-smoke/route.ts";

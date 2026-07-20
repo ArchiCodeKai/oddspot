@@ -154,10 +154,11 @@ export function SwipeActionBar({
           ...btnBase,
           width: 76,
           height: 76,
+          // 不可再疊 borderColor：btnBase 已用 border shorthand，
+          // 混用會觸發 React 的 style 屬性衝突警告（顏色本來就同 --line-strong）
           ...(showTripFlash
             ? {
                 background: "rgb(var(--accent-rgb) / 0.15)",
-                borderColor: "var(--line-strong)",
                 color: "var(--accent)",
                 boxShadow:
                   "0 16px 34px rgb(var(--background-rgb) / 0.62), inset 0 1px 0 rgb(var(--accent-rgb) / 0.3)",

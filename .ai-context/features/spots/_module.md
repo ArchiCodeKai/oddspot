@@ -86,7 +86,8 @@ src/app/api/admin/spots/[id]/route.ts
 - `GET /api/admin/spots`：只回傳 `status: "pending"` 的景點。
 - `PATCH /api/admin/spots/[id]`：
   - `approve`：把 spot 狀態改成 `active`，並清掉 `expiresAt`。
-  - `reject`：**先**把 spot 改成 `rejected` 並清空 `images`（權威記錄），**再** best-effort 刪除 Vercel Blob 圖片，讓使用者仍可在「我的投稿狀態」看到結果。順序刻意如此：DB 更新失敗時照片尚未刪、可安全重試；Blob 刪除失敗只留下可回收的孤兒，DB 不會謊報引用（跨服務無法用單一 transaction 原子化）。
+  - `reject`：**先**把 spot 改成 `rejected`、寫入 `rejectReason` 並清空 `images`（權威記錄），**再** best-effort 刪除 Vercel Blob 圖片，讓使用者仍可在「我的投稿狀態」看到結果。順序刻意如此：DB 更新失敗時照片尚未刪、可安全重試；Blob 刪除失敗只留下可回收的孤兒，DB 不會謊報引用（跨服務無法用單一 transaction 原子化）。
+  - reject 原因：admin 頁提供預設選項 + 自由文字（Zod 上限 200 字），未填存預設文案「未符合收錄標準」；`/submissions` 的 rejected 卡片顯示原因，公開 API 不回傳 `rejectReason`。
 - 權限透過 `isAdminSession(session)` 檢查。
 
 ## Production 驗證
@@ -108,11 +109,9 @@ src/app/api/admin/blob-smoke/route.ts
 
 - Production env / OAuth callback / Blob smoke test 已有 admin 檢查入口；正式 deploy 後仍要在 Vercel production 實際跑一次。
 - `/api/uploads/spots` 已限制 MIME type 與 600KB，但仍要補更明確的失敗 UI 與重試行為。
-- 防濫用目前是 MVP：投稿每日上限用 DB count，上傳每日上限用 server memory。若使用者變多，應改成 Redis / DB upload log。
-- 缺少 reject reason；目前只有 `rejected` 狀態，尚未提供細節原因。
+- 防濫用：投稿與上傳的每日上限都已改用 DB count（上傳走 `UploadLog` 表）；burst limit 仍是記憶體 best-effort，若出現實際濫用再升級 Upstash（AD-7）。
 
 ### P2 / 未來擴充
 
 - 照片牆 / 到訪驗證 / 檢舉機制。
 - 週期性清理未綁定 spot 的 Blob 檔。
-- 投稿審核保留 reject reason，而不是直接刪除所有紀錄。

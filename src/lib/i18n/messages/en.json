@@ -45,7 +45,9 @@
     "locating": "Locating",
     "locateMe": "Locate me",
     "permissionDenied": "permission denied · enable location in system settings",
-    "gpsError": "err_gps · signal lost"
+    "gpsError": "err_gps · signal lost",
+    "quickSaved": "Saved",
+    "quickTrip": "Trip"
   },
   "settings": {
     "open": "Open settings menu",
@@ -119,7 +121,15 @@
     "viewSpot": "View Spot",
     "pendingHint": "This spot is still under review. It will appear on the map after approval.",
     "rejectedHint": "This submission was rejected and its Blob images were cleaned up.",
+    "rejectReason": "Reason: {reason}",
     "closedHint": "This submission has been closed."
+  },
+  "submitPage": {
+    "successTitle": "Submitted!",
+    "successDescription": "Your spot is in review. It will appear on the map once approved.",
+    "continueSubmit": "Submit Another",
+    "viewSubmissions": "View Submission Status",
+    "backToMap": "Back to Map"
   },
   "routeSheet": {
     "title": "archive://route · Route Plan",
@@ -189,13 +199,19 @@
     "undo": "Undo",
     "undoLabel": "Restore last skipped spot",
     "gestureSkip": "Left · skip",
-    "gestureSave": "Right · add to trip",
+    "gestureSave": "Right · save + trip",
+    "gestureCollect": "+ · Save only",
     "gestureDetail": "Scroll · more info",
     "difficulty": {
       "easy": "Easy",
       "medium": "Medium",
       "hard": "Hard"
     }
+  },
+  "actionToast": {
+    "saved": "Saved",
+    "savedWithTrip": "Saved & added to trip",
+    "viewSaved": "View saved →"
   },
   "theme": {
     "toDark": "Switch to Dark Mode",
