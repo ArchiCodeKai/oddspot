@@ -57,6 +57,10 @@ export default function AdminPage() {
   const [blobStatus, setBlobStatus] = useState("");
   const [checkingHealth, setCheckingHealth] = useState(false);
   const [checkingBlob, setCheckingBlob] = useState(false);
+  // 過期 pending 清理：先查筆數、二次確認才執行
+  const [cleanupCount, setCleanupCount] = useState<number | null>(null);
+  const [cleanupStatus, setCleanupStatus] = useState("");
+  const [cleaning, setCleaning] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -134,6 +138,49 @@ export default function AdminPage() {
     }
   }
 
+  async function handleCleanupCheck() {
+    setCleaning(true);
+    setCleanupStatus("");
+    setCleanupCount(null);
+    try {
+      const res = await fetch("/api/admin/cleanup");
+      const payload = await res.json();
+      if (!payload.success) {
+        setCleanupStatus(payload.error ?? "查詢過期 pending 失敗");
+        return;
+      }
+      setCleanupCount(payload.data.count);
+      if (payload.data.count === 0) {
+        setCleanupStatus("沒有過期的 pending 投稿");
+      }
+    } catch {
+      setCleanupStatus("查詢過期 pending 失敗");
+    } finally {
+      setCleaning(false);
+    }
+  }
+
+  async function handleCleanupConfirm() {
+    setCleaning(true);
+    try {
+      const res = await fetch("/api/admin/cleanup", { method: "POST" });
+      const payload = await res.json();
+      if (!payload.success) {
+        setCleanupStatus(payload.error ?? "清理失敗");
+        return;
+      }
+      const { deleted, blobFailed } = payload.data;
+      setCleanupStatus(
+        `已清理 ${deleted} 筆過期 pending${blobFailed > 0 ? `（${blobFailed} 張圖片清理失敗，待後續回收）` : ""}`,
+      );
+    } catch {
+      setCleanupStatus("清理失敗");
+    } finally {
+      setCleanupCount(null);
+      setCleaning(false);
+    }
+  }
+
   async function handleBlobSmokeTest() {
     setCheckingBlob(true);
     setBlobStatus("");
@@ -198,11 +245,38 @@ export default function AdminPage() {
               >
                 {checkingBlob ? "測試中..." : "Blob smoke test"}
               </button>
+              {cleanupCount !== null && cleanupCount > 0 ? (
+                <span className="flex items-center gap-2">
+                  <button
+                    onClick={handleCleanupConfirm}
+                    disabled={cleaning}
+                    className="rounded-xs border border-yellow-700 px-3 py-2 text-xs text-yellow-500 disabled:opacity-50"
+                  >
+                    {cleaning ? "清理中..." : `確認清理 ${cleanupCount} 筆`}
+                  </button>
+                  <button
+                    onClick={() => setCleanupCount(null)}
+                    disabled={cleaning}
+                    className="px-2 py-2 text-xs text-zinc-500 disabled:opacity-50"
+                  >
+                    取消
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={handleCleanupCheck}
+                  disabled={cleaning}
+                  className="rounded-xs border border-zinc-700 px-3 py-2 text-xs text-zinc-300 disabled:opacity-50"
+                >
+                  {cleaning ? "查詢中..." : "清理過期 pending"}
+                </button>
+              )}
             </div>
-            {(healthStatus || blobStatus) && (
+            {(healthStatus || blobStatus || cleanupStatus) && (
               <div className="mt-3 space-y-1 text-xs text-zinc-500">
                 {healthStatus && <p>{healthStatus}</p>}
                 {blobStatus && <p>{blobStatus}</p>}
+                {cleanupStatus && <p>{cleanupStatus}</p>}
               </div>
             )}
           </div>

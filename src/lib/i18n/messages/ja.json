@@ -211,7 +211,9 @@
   "actionToast": {
     "saved": "保存しました",
     "savedWithTrip": "保存して行程に追加しました",
-    "viewSaved": "保存済みを見る →"
+    "viewSaved": "保存済みを見る →",
+    "addedToTrip": "今日の行程に追加しました",
+    "alreadyInTrip": "すでに今日の行程にあります"
   },
   "theme": {
     "toDark": "ダークモードへ",

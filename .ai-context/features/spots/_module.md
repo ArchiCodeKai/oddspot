@@ -89,6 +89,9 @@ src/app/api/admin/spots/[id]/route.ts
   - `reject`：**先**把 spot 改成 `rejected`、寫入 `rejectReason` 並清空 `images`（權威記錄），**再** best-effort 刪除 Vercel Blob 圖片，讓使用者仍可在「我的投稿狀態」看到結果。順序刻意如此：DB 更新失敗時照片尚未刪、可安全重試；Blob 刪除失敗只留下可回收的孤兒，DB 不會謊報引用（跨服務無法用單一 transaction 原子化）。
   - reject 原因：admin 頁提供預設選項 + 自由文字（Zod 上限 200 字），未填存預設文案「未符合收錄標準」；`/submissions` 的 rejected 卡片顯示原因，公開 API 不回傳 `rejectReason`。
 - 權限透過 `isAdminSession(session)` 檢查。
+- `GET/POST /api/admin/cleanup`：過期 pending 清理（`expiresAt < now` 且 pending）。
+  GET 回筆數供二次確認、POST 執行；先刪 DB 再 best-effort 清 Blob，比照 reject 順序。
+  手動觸發，不做 cron（AD-6）。
 
 ## Production 驗證
 

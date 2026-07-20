@@ -26,9 +26,9 @@
 | T3 | scripts 補齊與依賴清理 | 1 | ✅ 完成（2026-07-03） |
 | T4 | Reject reason 全鏈路 | 2 | ✅ 完成（2026-07-12）；migration 已對 Neon `migrate deploy` |
 | T5 | 資訊架構收斂（動作回饋與入口） | 2 | ✅ 完成（2026-07-18）；含兩輪測試回饋修正：滿 5 右滑彈回、大螢幕快速入口、收藏頁即時移除＋溶解動畫、頂列 44px 對齊、一頁式（root overflow-hidden）、定位鈕固定原位、landing 登入者直進 /map、右上角改登入鈕/頭像選單 |
-| T6 | 真機 QA 🧑 | 2 | ⬜ 未開始 |
-| T7 | 行為測試補強 | 3 | ⬜ 未開始 |
-| T8 | pending 過期清理（admin 手動） | 3 | ⬜ 未開始 |
+| T6 | 真機 QA 🧑 | 2 | 🔄 checklist 已備（`2026-07-20-device-qa-checklist.md`），待使用者四環境實測 |
+| T7 | 行為測試補強 | 3 | ✅ 完成（2026-07-20）；+23 行為測試（rateLimit / duplicate / mapsPaste / mapsResolve / useSavedStore 回滾），共 71 綠 |
+| T8 | pending 過期清理（admin 手動） | 3 | ✅ 完成（2026-07-20） |
 | T9 | 文件同步收斂 | 3 | ⬜ 未開始 |
 | T10 | Demo 素材（README case study + 腳本） | 3 | ⬜ 未開始 |
 
@@ -148,8 +148,10 @@
 - **範圍**：`rateLimit`（窗口內第 N+1 次被拒、過期重置）、`duplicate`（同名/近座標判定）、
   `googleMapsPaste` 與 `googleMapsResolve` 的 parser（各 URL 格式）、
   `useSavedStore` 的樂觀更新回滾（可用最小 mock fetch）。
-- **驗收**：新增 ≥15 個行為測試全綠；不改動被測模組的公開介面；既有契約測試保留。
-- **禁區**：不引入測試框架；不為了可測性重構元件。
+- **驗收**：新增 ≥15 個行為測試全綠（實際 +23：burst 窗口拒絕/過期重置/key 隔離、
+  duplicate 半徑邊界/最近者/正規化、paste parser 六種格式、resolver 白名單/轉址上限、
+  useSavedStore 樂觀更新回滾 × guest 不打後端）；未改動被測模組公開介面；既有契約測試保留。
+- **禁區**：不引入測試框架；不為了可測性重構元件。（已遵守）
 
 ### T8 — pending 過期清理（admin 手動）
 
@@ -157,10 +159,10 @@
   的 spot 及其 Blob 圖片。
 - **範圍檔案**：`src/app/admin/page.tsx`、新增 `src/app/api/admin/cleanup/route.ts`（admin 保護）。
 - **驗收**：
-  - [ ] 按鈕顯示將清理的筆數，二次確認後執行
-  - [ ] Blob 圖片以 `Promise.allSettled` best-effort 清理（比照 reject 現行模式）
-  - [ ] 契約測試：cleanup route 有 `isAdminSession` 檢查
-- **禁區**：不做 cron / Vercel scheduled functions（AD-6 的清理策略）。
+  - [x] 按鈕顯示將清理的筆數（GET 查數），二次確認後執行（POST）
+  - [x] Blob 圖片以 `Promise.allSettled` best-effort 清理（先刪 DB 再清圖，比照 reject 模式）
+  - [x] 契約測試：cleanup route 有 `isAdminSession` 檢查（securityContracts）
+- **禁區**：不做 cron / Vercel scheduled functions（AD-6 的清理策略）。（已遵守）
 
 ### T9 — 文件同步收斂
 

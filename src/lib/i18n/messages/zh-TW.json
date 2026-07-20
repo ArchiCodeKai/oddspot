@@ -211,7 +211,9 @@
   "actionToast": {
     "saved": "已收藏",
     "savedWithTrip": "已收藏並加入行程",
-    "viewSaved": "查看收藏 →"
+    "viewSaved": "查看收藏 →",
+    "addedToTrip": "已加入今日行程",
+    "alreadyInTrip": "已在今日行程中"
   },
   "theme": {
     "toDark": "切換為深色模式",
