@@ -6,13 +6,21 @@ import { useTranslations } from "next-intl";
 import { useSession } from "@/contexts/SessionContext";
 import { LangToggle } from "@/components/ui/LangToggle";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { AccountShortcutLinks, AuthButton } from "@/components/auth/AuthButton";
+import {
+  AccountShortcutLinks,
+  GuestLoginButton,
+  LogoutMenuItem,
+  UserAvatar,
+  UserMenuIdentity,
+} from "@/components/auth/AuthButton";
 
-// 右上角收合 cluster：globe button + 向下彈出 popover。
-// 常用帳號入口直接放第一層；AuthButton 只處理登入 / 登出。
+// 右上角 cluster：
+// - 未登入：[登入按鈕] + [globe → 語言/主題 popover]
+// - 已登入：[頭像 → 身分列/帳號捷徑/語言/主題/登出 popover]（globe 由頭像取代）
 
 export function TopRightCluster() {
   const t = useTranslations("settings");
+  const tAuth = useTranslations("auth");
   const { user } = useSession();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -39,20 +47,14 @@ export function TopRightCluster() {
     return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
+  // 定位交給父層容器（map page 的 .map-top-right），這裡只負責排列
   return (
-    <div ref={ref} className="top-right-cluster absolute top-4 right-4 z-50">
+    <div ref={ref} className="top-right-cluster relative flex items-start gap-2">
       <style>{`
         .top-right-popover {
           --panel-solid: color-mix(in srgb, var(--panel) 94%, var(--background) 6%);
           background: var(--panel-glass-strong);
           backdrop-filter: blur(20px);
-        }
-        .top-cluster-auth > div,
-        .top-cluster-auth > div > button {
-          width: 100%;
-        }
-        .top-cluster-auth > div > button {
-          justify-content: center;
         }
         @media (max-width: 767px) {
           .top-right-popover {
@@ -66,99 +68,118 @@ export function TopRightCluster() {
           }
         }
       `}</style>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label={t("open")}
-        aria-expanded={open}
-        style={{
-          width: 44,
-          height: 44,
-          background: "var(--panel-glass)",
-          border: "1px solid var(--line-strong)",
-          borderRadius: 2,
-          backdropFilter: "blur(18px)",
-          boxShadow: "var(--shadow-glow)",
-          color: open ? "var(--accent)" : "var(--muted)",
-          cursor: "pointer",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 2,
-          transition: "color 0.2s, border-color 0.2s",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = "var(--accent)";
-          e.currentTarget.style.borderColor = "var(--accent)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = open ? "var(--accent)" : "var(--muted)";
-          e.currentTarget.style.borderColor = "var(--line-strong)";
-        }}
-      >
-        <WireframeGlobe />
-        {/* 開合指示三角 */}
-        <svg
-          width="6"
-          height="4"
-          viewBox="0 0 6 4"
-          fill="currentColor"
-          style={{
-            opacity: 0.55,
-            transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s ease",
-          }}
-          aria-hidden="true"
-        >
-          <path d="M0 0 L3 4 L6 0 Z" />
-        </svg>
-      </button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="top-right-popover"
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 320, damping: 30 }}
-            style={{
-              position: "absolute",
-              top: 52,
-              right: 0,
-              width: 232,
-              border: "1px solid var(--line)",
-              borderRadius: 2,
-              boxShadow: "0 16px 48px rgb(var(--background-rgb) / 0.4)",
-              transformOrigin: "top right",
-              // 未登入時 AuthButton 仍需要展開 OAuth provider 選單。
-              overflow: "visible",
-            }}
-          >
-            {user && (
-              <>
-                <PopoverItem delay={0.04}>
-                  <AccountShortcutLinks />
-                </PopoverItem>
-                <PopoverDivider />
-              </>
-            )}
-            <PopoverItem delay={user ? 0.08 : 0.04} label={t("language")}>
-              <LangToggle />
-            </PopoverItem>
-            <PopoverDivider />
-            <PopoverItem delay={user ? 0.12 : 0.08} label={t("theme")}>
-              <ThemeToggle />
-            </PopoverItem>
-            <PopoverDivider />
-            <PopoverItem delay={user ? 0.16 : 0.12}>
-              <div className="top-cluster-auth" style={{ width: "100%" }}>
-                <AuthButton />
-              </div>
-            </PopoverItem>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 未登入：登入按鈕放 cluster 旁，第一眼就看得到 */}
+      {!user && <GuestLoginButton />}
+
+      <div className="relative">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          aria-label={user ? (user.name || tAuth("user")) : t("open")}
+          aria-expanded={open}
+          style={{
+            width: 44,
+            height: 44,
+            background: "var(--panel-glass)",
+            border: `1px solid ${open ? "var(--accent)" : "var(--line-strong)"}`,
+            borderRadius: 2,
+            backdropFilter: "blur(18px)",
+            boxShadow: "var(--shadow-glow)",
+            color: open ? "var(--accent)" : "var(--muted)",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 2,
+            padding: 0,
+            transition: "color 0.2s, border-color 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "var(--accent)";
+            e.currentTarget.style.borderColor = "var(--accent)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = open ? "var(--accent)" : "var(--muted)";
+            e.currentTarget.style.borderColor = open ? "var(--accent)" : "var(--line-strong)";
+          }}
+        >
+          {user ? (
+            // 已登入：頭像取代 globe
+            <UserAvatar size={36} />
+          ) : (
+            <>
+              <WireframeGlobe />
+              {/* 開合指示三角 */}
+              <svg
+                width="6"
+                height="4"
+                viewBox="0 0 6 4"
+                fill="currentColor"
+                style={{
+                  opacity: 0.55,
+                  transform: open ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.2s ease",
+                }}
+                aria-hidden="true"
+              >
+                <path d="M0 0 L3 4 L6 0 Z" />
+              </svg>
+            </>
+          )}
+        </button>
+
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              className="top-right-popover"
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 320, damping: 30 }}
+              style={{
+                position: "absolute",
+                top: 52,
+                right: 0,
+                width: 232,
+                border: "1px solid var(--line)",
+                borderRadius: 2,
+                boxShadow: "0 16px 48px rgb(var(--background-rgb) / 0.4)",
+                transformOrigin: "top right",
+                overflow: "hidden",
+              }}
+            >
+              {user && (
+                <>
+                  <PopoverItem delay={0.04}>
+                    <UserMenuIdentity />
+                  </PopoverItem>
+                  <PopoverDivider />
+                  <PopoverItem delay={0.08}>
+                    <AccountShortcutLinks />
+                  </PopoverItem>
+                  <PopoverDivider />
+                </>
+              )}
+              <PopoverItem delay={user ? 0.12 : 0.04} label={t("language")}>
+                <LangToggle />
+              </PopoverItem>
+              <PopoverDivider />
+              <PopoverItem delay={user ? 0.16 : 0.08} label={t("theme")}>
+                <ThemeToggle />
+              </PopoverItem>
+              {user && (
+                <>
+                  <PopoverDivider />
+                  <PopoverItem delay={0.2}>
+                    <LogoutMenuItem />
+                  </PopoverItem>
+                </>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

@@ -45,7 +45,9 @@
     "locating": "定位中",
     "locateMe": "定位到我",
     "permissionDenied": "permission denied · 開啟系統設定 > 定位",
-    "gpsError": "err_gps · 訊號失蹤"
+    "gpsError": "err_gps · 訊號失蹤",
+    "quickSaved": "已收藏",
+    "quickTrip": "今日行程"
   },
   "settings": {
     "open": "開啟設定選單",
@@ -119,7 +121,15 @@
     "viewSpot": "查看景點",
     "pendingHint": "正在審核中，通過後會出現在地圖。",
     "rejectedHint": "此投稿已被拒絕，照片已從 Blob 清理。",
+    "rejectReason": "拒絕原因：{reason}",
     "closedHint": "此投稿已結案。"
+  },
+  "submitPage": {
+    "successTitle": "投稿成功！",
+    "successDescription": "你的景點已送出審核，通過後會出現在地圖上。",
+    "continueSubmit": "繼續投稿",
+    "viewSubmissions": "查看投稿狀態",
+    "backToMap": "回到地圖"
   },
   "routeSheet": {
     "title": "archive://route · 歸檔行程",
@@ -189,13 +199,19 @@
     "undo": "還原",
     "undoLabel": "把剛剛跳過的找回來",
     "gestureSkip": "左滑 · 跳過",
-    "gestureSave": "右滑 · 加入行程",
+    "gestureSave": "右滑 · 收藏＋行程",
+    "gestureCollect": "+ · 只收藏",
     "gestureDetail": "滾動 · 更多資料",
     "difficulty": {
       "easy": "容易",
       "medium": "普通",
       "hard": "困難"
     }
+  },
+  "actionToast": {
+    "saved": "已收藏",
+    "savedWithTrip": "已收藏並加入行程",
+    "viewSaved": "查看收藏 →"
   },
   "theme": {
     "toDark": "切換為深色模式",

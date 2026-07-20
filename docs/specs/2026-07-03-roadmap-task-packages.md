@@ -22,10 +22,10 @@
 |----|------|-------|------|
 | W0 | WIP 收斂 commit | 0 | ✅ 完成（PR #38，2026-07-03 merge） |
 | T1 | Production 部署驗證 🧑 | 1 | ✅ 已部署（2026-07-03）；驗收清單四項若未逐一走過建議補跑 |
-| T2 | 照片每日上限改 DB 計數 | 1 | ✅ 程式完成（2026-07-03）；migration 檔已建，待使用者對 Neon 執行 `prisma migrate deploy` |
-| T3 | scripts 補齊與依賴清理 | 1 | ⬜ 未開始 |
-| T4 | Reject reason 全鏈路 | 2 | ⬜ 未開始 |
-| T5 | 資訊架構收斂（動作回饋與入口） | 2 | ⬜ 未開始 |
+| T2 | 照片每日上限改 DB 計數 | 1 | ✅ 完成（2026-07-03）；migration 已對 Neon `migrate deploy`、已 push |
+| T3 | scripts 補齊與依賴清理 | 1 | ✅ 完成（2026-07-03） |
+| T4 | Reject reason 全鏈路 | 2 | ✅ 完成（2026-07-12）；migration 已對 Neon `migrate deploy` |
+| T5 | 資訊架構收斂（動作回饋與入口） | 2 | ✅ 完成（2026-07-18）；含兩輪測試回饋修正：滿 5 右滑彈回、大螢幕快速入口、收藏頁即時移除＋溶解動畫、頂列 44px 對齊、一頁式（root overflow-hidden）、定位鈕固定原位、landing 登入者直進 /map、右上角改登入鈕/頭像選單 |
 | T6 | 真機 QA 🧑 | 2 | ⬜ 未開始 |
 | T7 | 行為測試補強 | 3 | ⬜ 未開始 |
 | T8 | pending 過期清理（admin 手動） | 3 | ⬜ 未開始 |
@@ -74,8 +74,8 @@
   - [x] 每日上限計數存於 DB（新增 `UploadLog` 表；上傳成功寫一筆，檢查時 count 當日 Asia/Taipei）
   - [x] burst limit（記憶體）保留不動（`checkRateLimit` 未改）
   - [x] securityContracts 測試更新並通過；新增行為測試 `tests/services/rateLimit.test.mjs` 驗證「第 16 張被拒」
-  - [x] migration 檔已產生（`prisma/migrations/20260703000000_add_upload_log/`，手寫比照 Prisma 格式；
-        因 `DATABASE_URL` 指向遠端 Neon，未自動 apply，**待使用者跑 `prisma migrate deploy`**）
+  - [x] migration 檔已產生（`prisma/migrations/20260703000000_add_upload_log/`，手寫比照 Prisma 格式）；
+        已對 Neon 執行 `prisma migrate deploy`，`UploadLog` 表建立完成
 - **禁區**：不引入 Redis/Upstash；不動投稿（`/api/spots`）的限流邏輯。（皆已遵守）
 
 ### T3 — scripts 補齊與依賴清理
@@ -85,10 +85,11 @@
 - **內容**：加 `"test": "node --test tests/**/*.test.mjs"`；補 prisma seed 設定；
   移除 `@prisma/adapter-better-sqlite3`、`better-sqlite3`、`@types/better-sqlite3`。
 - **驗收**：
-  - [ ] `npm test` 43+ 全綠；`npm run build` 零錯誤
-  - [ ] `npm ls better-sqlite3` 查無此套件
-  - [ ] `src/lib/db.ts` 無殘留 sqlite 分支
-- **禁區**：不升級任何其他依賴版本（尤其 next-auth，見 AD-4）。
+  - [x] `npm test` 全綠（46/46）；`npm run build` 零錯誤
+  - [x] `npm ls better-sqlite3` 查無此套件（三個 sqlite 套件皆移除，含 lockfile）
+  - [x] `src/lib/db.ts` 無殘留 sqlite 分支（本來就是純 `PrismaPg`，無需改動）
+  - [x] seed 設定確認：`prisma.config.ts` 已配 `seed: "npx tsx prisma/seed.ts"`（Prisma 7 做法，無需新增）
+- **禁區**：不升級任何其他依賴版本（尤其 next-auth，見 AD-4）。（已遵守，只移除、未升級）
 
 ## Phase 2：UX 迴圈閉合（部署後 1–2 週）
 
@@ -100,12 +101,13 @@
   `src/app/admin/page.tsx`（reject 時填原因，可選預設選項 + 自由文字）、
   `src/app/submissions/page.tsx`（顯示原因）。
 - **驗收**：
-  - [ ] admin reject 可附原因（不填則存預設文案）
-  - [ ] `/submissions` 的 rejected 卡片顯示原因
-  - [ ] 原因欄位有 Zod 驗證（長度上限 200）
-  - [ ] 公開 API（`/api/spots*`）**不**回傳 rejectReason
-  - [ ] migration 檔產生；契約測試補「admin route 含 rejectReason 處理」
-- **禁區**：不做通知系統（email/push）；不動審核以外的 admin 功能。
+  - [x] admin reject 可附原因（預設選項 4 個 + 自由文字；不填存預設文案「未符合收錄標準」）
+  - [x] `/submissions` 的 rejected 卡片顯示原因（label 走 i18n，三語補齊）
+  - [x] 原因欄位有 Zod 驗證（`adminActionSchema.rejectReason`，上限 200）
+  - [x] 公開 API（`/api/spots*`）不回傳 rejectReason（契約測試以 doesNotMatch 鎖住）
+  - [x] migration 檔產生（`20260712000000_add_spot_reject_reason`）且已對 Neon `migrate deploy`；
+        契約測試補「admin route 含 rejectReason 處理」
+- **禁區**：不做通知系統（email/push）；不動審核以外的 admin 功能。（皆已遵守）
 
 ### T5 — 資訊架構收斂（動作回饋與入口）
 
@@ -119,11 +121,17 @@
 - **範圍檔案**：`src/components/map/SpotPopup.tsx`、`src/components/swipe/`、
   `src/components/spots/SpotActionBar.tsx`、`src/app/submit/page.tsx`、相關 i18n messages。
 - **驗收**：
-  - [ ] 三處收藏動作提示行為一致且可點擊跳轉
-  - [ ] 滑卡提示只出現一次，清 localStorage 後重現
-  - [ ] 文案走 i18n messages，不寫死在 JSX
-  - [ ] 視覺符合技術規格書第四節硬規則（CSS 變數、2px 圓角）
-- **禁區**：不重構現有元件結構；不加新頁面；不動 useSavedStore 的同步邏輯。
+  - [x] 三處收藏動作提示行為一致且可點擊跳轉（共用 `useActionToastStore` + layout 掛載的
+        `ActionToast`；地圖 popup / 滑卡 / 詳情頁三處都走同一機制，toast 內連結跳 `/saved`）
+  - [x] 滑卡提示只出現一次，清 localStorage 後重現（`oddspot-swipe-hint-seen`，原 sessionStorage
+        改 localStorage；提示補上「+ · 只收藏」，右滑文案改「收藏＋行程」）
+  - [x] 文案走 i18n messages（新增 `actionToast` / `submitPage` 命名空間 + `swipe.gestureCollect`，
+        三語補齊；投稿成功頁原寫死文案一併改走 i18n）
+  - [x] 視覺符合硬規則（全 CSS 變數、2px 圓角）；RouteSheet 滿 5 提示由 `--muted`×0.4 改
+        `--foreground`×0.75，四 theme 可讀
+  - 註：投稿成功頁的 `/submissions` 入口原本已存在，本包補 i18n 化
+- **禁區**：不重構現有元件結構；不加新頁面；不動 useSavedStore 的同步邏輯。（皆已遵守，
+  新增 store/元件為 additive，未動既有結構與同步邏輯）
 
 ### T6 — 真機 QA 🧑
 

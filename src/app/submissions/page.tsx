@@ -31,6 +31,7 @@ export default async function SubmissionsPage() {
       nameEn: true,
       status: true,
       address: true,
+      rejectReason: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -118,13 +119,27 @@ export default async function SubmissionsPage() {
                       {t("viewSpot")} →
                     </Link>
                   ) : (
-                    <p className="mt-3 text-xs" style={{ color: "var(--muted)" }}>
-                      {status === "pending"
-                        ? t("pendingHint")
-                        : status === "rejected"
-                          ? t("rejectedHint")
-                          : t("closedHint")}
-                    </p>
+                    <>
+                      <p className="mt-3 text-xs" style={{ color: "var(--muted)" }}>
+                        {status === "pending"
+                          ? t("pendingHint")
+                          : status === "rejected"
+                            ? t("rejectedHint")
+                            : t("closedHint")}
+                      </p>
+                      {status === "rejected" && spot.rejectReason && (
+                        <p
+                          className="mt-2 px-2 py-1.5 text-xs"
+                          style={{
+                            color: "var(--foreground)",
+                            borderLeft: "2px solid var(--line-strong)",
+                            background: "var(--panel-glass)",
+                          }}
+                        >
+                          {t("rejectReason", { reason: spot.rejectReason })}
+                        </p>
+                      )}
+                    </>
                   )}
                 </article>
               );

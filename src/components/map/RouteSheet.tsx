@@ -55,7 +55,7 @@ const MONO_LABEL: React.CSSProperties = {
 function getRouteSheetHeight(spotCount: number, hasOrigin: boolean): string {
   const routeRowCount = spotCount + (hasOrigin ? 1 : 0);
   const contentHeight = Math.max(360, 286 + routeRowCount * 58);
-  return `min(86vh, ${contentHeight}px)`;
+  return `min(86dvh, ${contentHeight}px)`;
 }
 
 export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
@@ -158,7 +158,7 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
             borderTopLeftRadius: 2,
             borderTopRightRadius: 2,
             height: routeSheetHeight,
-            maxHeight: "86vh",
+            maxHeight: "86dvh",
             boxShadow: "0 -16px 48px rgb(var(--background-rgb) / 0.5)",
           }}
         >
@@ -451,12 +451,14 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                 background: "transparent",
                 border: "1px dashed var(--line-strong)",
                 borderRadius: 2,
-                color: "var(--muted)",
+                // 滿點時提高文字對比（--muted × 0.4 在四個 theme 都太淡），
+                // disabled 感交給虛線框 + not-allowed 游標
+                color: atLimit ? "var(--foreground)" : "var(--muted)",
                 ...MONO_LABEL,
                 fontSize: 10,
                 letterSpacing: "0.18em",
                 cursor: atLimit ? "not-allowed" : "pointer",
-                opacity: atLimit ? 0.4 : 1,
+                opacity: atLimit ? 0.75 : 1,
               }}
             >
               {atLimit

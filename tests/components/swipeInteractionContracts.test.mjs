@@ -152,7 +152,8 @@ test("check action adds to saved and trip while plus action only saves", () => {
 test("top right settings popover uses an opaque high layer on mobile", () => {
   assert.match(topRightClusterSource, /top-right-cluster/);
   assert.match(topRightClusterSource, /top-right-popover/);
-  assert.match(topRightClusterSource, /z-50/);
+  // 高層級由 map page 的 .map-top-right 容器提供（cluster 定位交給父層）
+  assert.match(mapPageSource, /map-top-right absolute top-4 right-4 z-50/);
   assert.match(topRightClusterSource, /--panel-solid/);
   assert.match(topRightClusterSource, /@media \(max-width: 767px\)/);
   assert.match(topRightClusterSource, /background: var\(--panel-solid\)/);

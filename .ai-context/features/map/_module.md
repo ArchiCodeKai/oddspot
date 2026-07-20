@@ -40,16 +40,21 @@ src/store/
   useRoutePlannerStore.ts  ← 新增：路線規劃狀態
 ```
 
-## 右上角設定 Cluster
+## 右上角區（.map-top-right：快速入口 + Cluster）
 
-`src/components/map/TopRightCluster.tsx` 是 `/map` 右上角的帳號捷徑 / 語言 / 主題 / 登入收合選單。
+`src/app/map/page.tsx` 的 `.map-top-right`（absolute top-4 right-4 z-50）是一個 flex 容器，
+內含 md+ 才顯示的快速入口（已收藏 / 今日行程）與 `TopRightCluster`；同容器排列避免互相蓋到。
 
-- 外層固定使用高層級 `z-50`，必須蓋過 swipe 工具列、卡片、地圖控制列。
-- 桌機可維持 `var(--panel-glass-strong)` 玻璃面板；手機版改用 `--panel-solid` 實底，避免展開時看到後面的行程列、filter 或卡片內容透出。
-- 手機版 popover 關閉 backdrop blur，改靠實底與 shadow 建立層級；這是為了可讀性，不是為了視覺特效。
-- 已登入時第一層直接顯示 `AccountShortcutLinks`：已收藏、今日行程、我的投稿；避免使用者還要展開頭像第二層才找到主要頁面。
-- 語言、主題、登入 / 登出仍沿用 `LangToggle`、`ThemeToggle`、`AuthButton`，不要在 cluster 內重寫狀態邏輯。
-- `AuthButton` 已登入狀態只負責身分顯示與登出；登入狀態下不再提供 nested dropdown。
+- 快速入口：已收藏 → `/saved`（訪客點擊改開登入提示）；今日行程 → `openRouteSheet()`，
+  有選點時亮 accent 並顯示 `n/5`。手機（<md）隱藏，入口改由頭像選單內的捷徑提供。
+- 頂列所有控制項（filter trigger、radiogroup、quick entry、cluster 按鈕）統一 `min-height: 44px`，
+  桌機 top 16px、平板 top 24px，維持一條水平線。
+- `TopRightCluster` 定位交給父層，本體只負責排列：
+  - 訪客：`GuestLoginButton`（OAuth 下拉）+ globe（popover 只有語言 / 主題）。
+  - 已登入：頭像取代 globe；popover 順序 = 身分列 → 帳號捷徑 → 語言 → 主題 → 登出。
+  - 帳號捷徑中「已收藏 / 今日行程」以 `md:hidden` 只給手機（桌機頂列已有入口）；
+    「我的投稿」桌機手機都在（唯一入口）。
+- 桌機 `var(--panel-glass-strong)` 玻璃面板；手機改 `--panel-solid` 實底、關 backdrop blur（可讀性）。
 
 ## 左上角地圖控制列
 
@@ -136,7 +141,9 @@ NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ...   ← 必填，使用者自行於 mapbox.com 
 視覺與定位：
   RouteSheet 高度依選點數往上長高，上限 86vh；5 點時不讓清單區出現內部 scrollbar
   footer 按鈕使用 repeat(..., minmax(0, 1fr)) 維持等寬，避免 zoom 或字體縮放造成寬度漂移
-  LocateMeButton 展開時使用同一組選點數高度公式貼近 RouteSheet 頂部，避免高螢幕時飄太遠
+  LocateMeButton 固定在右下（bottom 88），RouteSheet 展開時直接被蓋住、不做讓位
+  （讓位會把按鈕推到右上 cluster 下方）；地圖頁 root 有 overflow-hidden，
+  隱藏視圖的 y 位移不會撐出頁面捲動（一頁式）
 
 開始導航：
   RouteSheet「START / 開始導航」

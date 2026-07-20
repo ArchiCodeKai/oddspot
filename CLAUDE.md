@@ -19,8 +19,7 @@
 ## 目前狀態（2026-07-03）
 
 - MVP v1 六大功能（地圖、滑卡、行程路線、收藏同步、投稿審核、認證）程式層面完成。
-- `npm run build` 零錯誤；測試 43/43 綠（`npm test`，若 script 尚未建立則用
-  `node --test tests/**/*.test.mjs`）。
+- `npm run build` 零錯誤；測試 46/46 綠（`npm test`）。
 - **最大缺口是「上線」不是「功能」**：production 部署驗證、真機 QA、WIP commit 收斂。
 - 功能狀態細節見 `docs/specs/2026-06-08-current-status-roadmap.md`（快照）；
   下一步一律以 2026-07-03 roadmap 為準。

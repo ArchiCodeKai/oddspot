@@ -8,8 +8,13 @@ import { useSavedStore } from "@/store/useSavedStore";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { useTranslations } from "next-intl";
 
-export function AuthButton() {
-  const { user } = useSession();
+// 右上角登入相關元件群：
+// - GuestLoginButton：未登入時 cluster 旁的登入按鈕（展開 OAuth provider 選單）
+// - UserMenuIdentity：頭像選單頂部的身分列
+// - AccountShortcutLinks：帳號捷徑（已收藏/今日行程只在手機顯示，桌機頂列已有入口）
+// - LogoutMenuItem：選單底部的登出列
+
+export function GuestLoginButton() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const t = useTranslations("auth");
@@ -25,134 +30,137 @@ export function AuthButton() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // 未登入 → 登入按鈕
-  if (!user) {
-    return (
-      <div className="relative" ref={dropdownRef}>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-2 px-4 py-2 text-xs tracking-widest uppercase transition-all"
-          style={{
-            color: "var(--accent)",
-            border: "1px solid var(--line-strong)",
-            borderRadius: "2px",
-            background: "rgb(var(--accent-rgb) / 0.04)",
-            boxShadow: "var(--shadow-glow)",
-            cursor: "pointer",
-            minHeight: 44,
-            backdropFilter: "blur(10px)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "rgb(var(--accent-rgb) / 0.6)";
-            e.currentTarget.style.boxShadow = "0 0 18px rgb(var(--accent-rgb) / 0.18)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "var(--line-strong)";
-            e.currentTarget.style.boxShadow = "var(--shadow-glow)";
-          }}
-        >
-          {t("login")}
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"
-            style={{
-              color: "var(--muted)",
-              transform: open ? "rotate(180deg)" : "rotate(0deg)",
-              transition: "transform 0.2s ease",
-            }}
-          >
-            <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-
-        {open && (
-          <div
-            className="absolute right-0 mt-1.5 w-52 z-50 overflow-hidden"
-            style={{
-              background: "var(--panel-glass-strong)",
-              border: "1px solid var(--line)",
-              borderRadius: "2px",
-              boxShadow:
-                "0 16px 48px rgb(var(--background-rgb) / 0.24), 0 0 32px rgb(var(--accent-rgb) / 0.06)",
-              backdropFilter: "blur(12px)",
-            }}
-          >
-            <SignInItem provider="google" label={t("loginWithGoogle")} icon={<GoogleIcon />} />
-            <SignInItem provider="line" label={t("loginWithLine")} icon={<LineIcon />} />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // 已登入 → 身分列 + 直接登出，不再包第二層 dropdown
   return (
-    <div
-      className="flex w-full items-center gap-2"
-      style={{ minHeight: 44 }}
-    >
-      <div
-        className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-2 pr-2 backdrop-blur-sm"
-        style={{
-          border: "1px solid var(--line)",
-          borderRadius: "2px",
-          background: "var(--panel-glass)",
-          minHeight: 44,
-          boxShadow: "var(--shadow-glow)",
-        }}
-      >
-        {user.image ? (
-          <img
-            src={user.image}
-            alt={user.name || t("user")}
-            className="w-6 h-6 rounded-sm object-cover"
-          />
-        ) : (
-          <div
-            className="w-6 h-6 rounded-sm flex items-center justify-center text-[10px] font-bold"
-            style={{ background: "rgb(var(--accent-rgb) / 0.15)", color: "var(--accent)" }}
-          >
-            {user.name?.[0]?.toUpperCase() || "?"}
-          </div>
-        )}
-        {/* 使用者名稱：Noto Sans TC 讓中文名字好看 */}
-        <span
-          className="text-xs tracking-wider max-w-[80px] truncate font-content"
-          style={{ color: "var(--foreground)", letterSpacing: "0.04em" }}
-        >
-          {user.name || t("user")}
-        </span>
-      </div>
-
+    <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => signOut()}
-        aria-label={t("logout")}
-        className="flex shrink-0 items-center justify-center transition-colors"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 px-4 text-xs tracking-widest uppercase transition-all"
         style={{
-          width: 44,
-          height: 44,
-          color: "var(--muted)",
-          border: "1px solid var(--line)",
+          color: "var(--accent)",
+          border: "1px solid var(--line-strong)",
           borderRadius: "2px",
-          background: "var(--panel-glass)",
+          background: "rgb(var(--accent-rgb) / 0.04)",
+          boxShadow: "var(--shadow-glow)",
           cursor: "pointer",
+          height: 44,
+          backdropFilter: "blur(10px)",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.color = "#f87171";
-          e.currentTarget.style.borderColor = "rgba(248,113,113,0.5)";
-          e.currentTarget.style.background = "rgba(239,68,68,0.05)";
+          e.currentTarget.style.borderColor = "rgb(var(--accent-rgb) / 0.6)";
+          e.currentTarget.style.boxShadow = "0 0 18px rgb(var(--accent-rgb) / 0.18)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.color = "var(--muted)";
-          e.currentTarget.style.borderColor = "var(--line)";
-          e.currentTarget.style.background = "var(--panel-glass)";
+          e.currentTarget.style.borderColor = "var(--line-strong)";
+          e.currentTarget.style.boxShadow = "var(--shadow-glow)";
         }}
       >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-          <polyline points="16 17 21 12 16 7"/>
-          <line x1="21" y1="12" x2="9" y2="12"/>
+        {t("login")}
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"
+          style={{
+            color: "var(--muted)",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.2s ease",
+          }}
+        >
+          <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
+
+      {open && (
+        <div
+          className="absolute right-0 mt-1.5 w-52 z-50 overflow-hidden"
+          style={{
+            background: "var(--panel-glass-strong)",
+            border: "1px solid var(--line)",
+            borderRadius: "2px",
+            boxShadow:
+              "0 16px 48px rgb(var(--background-rgb) / 0.24), 0 0 32px rgb(var(--accent-rgb) / 0.06)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          <SignInItem provider="google" label={t("loginWithGoogle")} icon={<GoogleIcon />} />
+          <SignInItem provider="line" label={t("loginWithLine")} icon={<LineIcon />} />
+        </div>
+      )}
     </div>
+  );
+}
+
+// 頭像選單頂部的身分列（純顯示）
+export function UserMenuIdentity() {
+  const { user } = useSession();
+  const t = useTranslations("auth");
+
+  if (!user) return null;
+
+  return (
+    <div className="flex w-full min-w-0 items-center gap-2.5 px-1 py-1">
+      <UserAvatar size={28} />
+      <span
+        className="min-w-0 flex-1 truncate text-xs font-content"
+        style={{ color: "var(--foreground)", letterSpacing: "0.04em" }}
+      >
+        {user.name || t("user")}
+      </span>
+    </div>
+  );
+}
+
+// 44px 方形頭像（cluster trigger 用）或選單內小頭像
+export function UserAvatar({ size = 28 }: { size?: number }) {
+  const { user } = useSession();
+  const t = useTranslations("auth");
+
+  if (!user) return null;
+
+  return user.image ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={user.image}
+      alt={user.name || t("user")}
+      style={{ width: size, height: size, borderRadius: 2, objectFit: "cover" }}
+    />
+  ) : (
+    <div
+      className="flex items-center justify-center font-bold"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 2,
+        fontSize: Math.max(10, Math.round(size * 0.4)),
+        background: "rgb(var(--accent-rgb) / 0.15)",
+        color: "var(--accent)",
+      }}
+    >
+      {user.name?.[0]?.toUpperCase() || "?"}
+    </div>
+  );
+}
+
+export function LogoutMenuItem() {
+  const t = useTranslations("auth");
+
+  return (
+    <button
+      onClick={() => signOut()}
+      className="w-full flex items-center gap-2.5 px-4 py-3 text-xs tracking-wider transition-colors"
+      style={{ color: "var(--muted)", cursor: "pointer", minHeight: 44 }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.color = "#f87171";
+        e.currentTarget.style.background = "rgba(239,68,68,0.05)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = "var(--muted)";
+        e.currentTarget.style.background = "transparent";
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      {t("logout")}
+    </button>
   );
 }
 
@@ -162,34 +170,41 @@ export function AccountShortcutLinks() {
   const t = useTranslations("auth");
   const savedCount = useSavedStore((s) => s.savedSpotIds.length);
   const tripCount = useRoutePlannerStore((s) => s.selectedSpots.length);
+  const openRouteSheet = useRoutePlannerStore((s) => s.openSheet);
 
   if (!user) return null;
 
   return (
     <div className="flex w-full flex-col gap-1">
-      <AccountShortcutItem
-        icon={
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-          </svg>
-        }
-        label={t("saved")}
-        badge={savedCount}
-        onClick={() => router.push("/saved")}
-      />
-      <AccountShortcutItem
-        icon={
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-        }
-        label={t("trip")}
-        badge={tripCount}
-        onClick={() => router.push("/map")}
-      />
+      {/* 已收藏 / 今日行程：桌機頂列已有入口，只在手機顯示避免重複 */}
+      <div className="md:hidden">
+        <AccountShortcutItem
+          icon={
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          }
+          label={t("saved")}
+          badge={savedCount}
+          onClick={() => router.push("/saved")}
+        />
+        <AccountShortcutItem
+          icon={
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          }
+          label={t("trip")}
+          badge={tripCount}
+          onClick={() => {
+            router.push("/map");
+            openRouteSheet();
+          }}
+        />
+      </div>
       <AccountShortcutItem
         icon={
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

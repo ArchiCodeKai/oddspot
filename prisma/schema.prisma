@@ -82,6 +82,8 @@ model Spot {
   category        String
   status          String    @default("active")
   difficulty      String    @default("easy")
+  // 拒絕原因：admin reject 時填寫，只給投稿者本人看（公開 API 不回傳）
+  rejectReason    String?
   images          String    // JSON string: ["url1", "url2"]
   rating          Float     @default(0)
   visitCount      Int       @default(0)

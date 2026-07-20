@@ -34,6 +34,13 @@ src/store/
 
 **關鍵設計**：
 - 左右滑**隨時可用**，不被卡片內滾動鎖住
+- 首次進入顯示一次性三動作提示（左滑略過 / + 只收藏 / 右滑收藏＋行程），
+  localStorage key `oddspot-swipe-hint-seen` 控制，清掉後重現
+- 收藏動作（+ 或右滑）完成後透過 `useActionToastStore` 顯示帶 `/saved` 入口的 toast，
+  與地圖 popup、詳情頁 SpotActionBar 行為一致；行程滿 5 的提示也走同一 toast
+- 右滑起飛**前**先過 `beforeSwipeRight`（SwipeView 的 `canAddCurrentToTrip`）：
+  行程滿 5 時卡片彈回原位並跳提示，不會飛出後卡在半空（flyOut 完才呼叫 handler，
+  所以檢查必須在起飛前做）
 - SwipeCard 使用單一 pointer swipe engine：滑鼠、手指、觸控筆都直接寫入 `x` motion value；Framer Motion 不再處理 drag 判斷，只負責 `x` 驅動的旋轉、edge hint 與 flyOut 動畫。pointer 事件綁在 `.acid-card-scroll` capture 階段，讓內滾容器自己先判斷手勢方向；水平位移超過 12px 且大於垂直位移時開始 swipe，並暫時鎖住內部 `overflowY`，避免手機和平板上被 scrollbar 中途取消。若先判定為垂直手勢，會釋放 pointer capture，保持上下捲動詳情。放手後用同一個 100px 閾值 flyOut，避免 nested scroll 吃掉拖曳或多套系統互相拉扯
 - 撤回只用按鈕，不用手勢（避免跟內滾衝突）
 

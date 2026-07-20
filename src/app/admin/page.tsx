@@ -25,6 +25,14 @@ interface PendingSpot {
   createdAt: string;
 }
 
+// 拒絕原因預設選項，點選後可再編輯
+const REJECT_REASON_PRESETS = [
+  "重複景點",
+  "資訊不足，無法定位",
+  "照片與描述不符",
+  "不符合收錄方向",
+];
+
 interface AdminHealthPayload {
   readiness: {
     missing: string[];
@@ -43,6 +51,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [healthStatus, setHealthStatus] = useState("");
   const [blobStatus, setBlobStatus] = useState("");
   const [checkingHealth, setCheckingHealth] = useState(false);
@@ -79,17 +89,21 @@ export default function AdminPage() {
     };
   }, [user, router]);
 
-  async function handleAction(id: string, action: "approve" | "reject") {
+  async function handleAction(id: string, action: "approve" | "reject", reason?: string) {
     setProcessing(id);
     try {
       const res = await fetch(`/api/admin/spots/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify(
+          action === "reject" && reason ? { action, rejectReason: reason } : { action },
+        ),
       });
       const data = await res.json();
       if (data.success) {
         setSpots((prev) => prev.filter((s) => s.id !== id));
+        setRejectingId(null);
+        setRejectReason("");
       }
     } catch (err) {
       console.error("操作失敗", err);
@@ -259,22 +273,73 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => handleAction(spot.id, "approve")}
-                  disabled={processing === spot.id}
-                  className="flex-1 py-2 text-sm bg-white text-zinc-900 rounded-xs font-medium disabled:opacity-50"
-                >
-                  {processing === spot.id ? "處理中..." : "通過"}
-                </button>
-                <button
-                  onClick={() => handleAction(spot.id, "reject")}
-                  disabled={processing === spot.id}
-                  className="flex-1 py-2 text-sm border border-zinc-700 text-zinc-400 rounded-xs disabled:opacity-50"
-                >
-                  拒絕並清圖
-                </button>
-              </div>
+              {rejectingId === spot.id ? (
+                <div className="mt-3 rounded-xs border border-zinc-800 bg-zinc-950 p-3">
+                  <p className="text-xs text-zinc-500">拒絕原因（會顯示給投稿者）</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {REJECT_REASON_PRESETS.map((preset) => (
+                      <button
+                        key={preset}
+                        onClick={() => setRejectReason(preset)}
+                        className={`rounded-xs border px-2 py-1 text-xs ${
+                          rejectReason === preset
+                            ? "border-zinc-400 text-zinc-200"
+                            : "border-zinc-700 text-zinc-500"
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    maxLength={200}
+                    placeholder="或自行輸入，留空則存預設文案"
+                    className="mt-2 w-full rounded-xs border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-300 placeholder:text-zinc-600"
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      onClick={() => handleAction(spot.id, "reject", rejectReason.trim())}
+                      disabled={processing === spot.id}
+                      className="flex-1 py-1.5 text-xs border border-zinc-600 text-zinc-300 rounded-xs disabled:opacity-50"
+                    >
+                      {processing === spot.id ? "處理中..." : "確認拒絕並清圖"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setRejectingId(null);
+                        setRejectReason("");
+                      }}
+                      disabled={processing === spot.id}
+                      className="px-3 py-1.5 text-xs text-zinc-500 disabled:opacity-50"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => handleAction(spot.id, "approve")}
+                    disabled={processing === spot.id}
+                    className="flex-1 py-2 text-sm bg-white text-zinc-900 rounded-xs font-medium disabled:opacity-50"
+                  >
+                    {processing === spot.id ? "處理中..." : "通過"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setRejectingId(spot.id);
+                      setRejectReason("");
+                    }}
+                    disabled={processing === spot.id}
+                    className="flex-1 py-2 text-sm border border-zinc-700 text-zinc-400 rounded-xs disabled:opacity-50"
+                  >
+                    拒絕並清圖
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}

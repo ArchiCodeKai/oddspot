@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import type { MapRef } from "react-map-gl/mapbox";
-import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 
 interface LocateMeButtonProps {
   mapRef: React.RefObject<MapRef | null>;
@@ -11,24 +10,15 @@ interface LocateMeButtonProps {
 
 type Status = "idle" | "locating" | "ok" | "denied" | "error";
 
-function getRouteSheetHeight(spotCount: number): string {
-  const routeRowCount = spotCount + 1;
-  const contentHeight = Math.max(360, 286 + routeRowCount * 58);
-  return `min(86vh, ${contentHeight}px)`;
-}
-
 export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
   const t = useTranslations("map");
   const [status, setStatus] = useState<Status>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const hideTimerRef = useRef<number | null>(null);
-  // 當路線 sheet 展開時往上讓位（spec 3f）
-  const sheetOpen = useRoutePlannerStore((s) => s.isOpen);
-  const selectedSpotCount = useRoutePlannerStore((s) => s.selectedSpots.length);
-  const sheetHeight = getRouteSheetHeight(selectedSpotCount);
-  const sheetGap = "clamp(8px, 1.2vh, 14px)";
-  const buttonBottom = sheetOpen ? `calc(${sheetHeight} + ${sheetGap})` : 88;
-  const hintBottom = sheetOpen ? `calc(${sheetHeight} + ${sheetGap} + 8px)` : 96;
+  // 固定原位：RouteSheet 展開時直接被蓋住即可，不做讓位
+  //（讓位會把按鈕推到右上 cluster 下方，視覺更亂）
+  const buttonBottom = 88;
+  const hintBottom = 96;
 
   // 顯示提示後 1.5s 自動消失
   useEffect(() => {
@@ -85,8 +75,7 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
           zIndex: 5,
           color: "var(--accent)",
           opacity: status === "locating" ? 0.6 : 1,
-          // bottom duration 對齊 RouteSheet spring（stiffness 320 / damping 34，感知約 0.5s）
-          transition: "opacity 0.15s, bottom 0.5s var(--ease-out, ease-out)",
+          transition: "opacity 0.15s",
         }}
       >
         {/* 十字準星 */}
@@ -128,7 +117,6 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
             whiteSpace: "nowrap",
             zIndex: 5,
             pointerEvents: "none",
-            transition: "bottom 0.5s var(--ease-out, ease-out)",
           }}
         >
           {status === "ok" && coords && (

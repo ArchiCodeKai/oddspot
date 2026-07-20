@@ -45,7 +45,9 @@
     "locating": "位置情報取得中",
     "locateMe": "現在地へ移動",
     "permissionDenied": "permission denied · システム設定で位置情報を許可",
-    "gpsError": "err_gps · 信号ロスト"
+    "gpsError": "err_gps · 信号ロスト",
+    "quickSaved": "保存済み",
+    "quickTrip": "今日の行程"
   },
   "settings": {
     "open": "設定メニューを開く",
@@ -119,7 +121,15 @@
     "viewSpot": "スポットを見る",
     "pendingHint": "審査中です。承認後にマップへ表示されます。",
     "rejectedHint": "この投稿は却下され、Blob 画像は削除されました。",
+    "rejectReason": "却下理由：{reason}",
     "closedHint": "この投稿は終了しています。"
+  },
+  "submitPage": {
+    "successTitle": "投稿完了！",
+    "successDescription": "スポットは審査に送られました。承認後にマップへ表示されます。",
+    "continueSubmit": "続けて投稿",
+    "viewSubmissions": "投稿状況を見る",
+    "backToMap": "マップへ戻る"
   },
   "routeSheet": {
     "title": "archive://route · ルート計画",
@@ -189,13 +199,19 @@
     "undo": "戻す",
     "undoLabel": "さっきスキップしたのを戻す",
     "gestureSkip": "左 · スキップ",
-    "gestureSave": "右 · ルートに追加",
+    "gestureSave": "右 · 保存＋行程",
+    "gestureCollect": "+ · 保存のみ",
     "gestureDetail": "スクロール · 詳細",
     "difficulty": {
       "easy": "簡単",
       "medium": "普通",
       "hard": "難しい"
     }
+  },
+  "actionToast": {
+    "saved": "保存しました",
+    "savedWithTrip": "保存して行程に追加しました",
+    "viewSaved": "保存済みを見る →"
   },
   "theme": {
     "toDark": "ダークモードへ",
