@@ -6,11 +6,13 @@ import type { MapRef } from "react-map-gl/mapbox";
 
 interface LocateMeButtonProps {
   mapRef: React.RefObject<MapRef | null>;
+  // 開始定位時通知外層（用來收掉會擋住地圖中心的 popup）
+  onLocateStart?: () => void;
 }
 
 type Status = "idle" | "locating" | "ok" | "denied" | "error";
 
-export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
+export function LocateMeButton({ mapRef, onLocateStart }: LocateMeButtonProps) {
   const t = useTranslations("map");
   const [status, setStatus] = useState<Status>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -33,6 +35,7 @@ export function LocateMeButton({ mapRef }: LocateMeButtonProps) {
   }, [status]);
 
   const handleLocate = () => {
+    onLocateStart?.();
     if (!navigator.geolocation) {
       setStatus("error");
       return;

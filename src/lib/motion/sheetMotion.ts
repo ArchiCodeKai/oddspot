@@ -36,13 +36,18 @@ export const SHEET_MOTION = {
   },
 } as const;
 
+// 減少動態效果版本：只淡入淡出，不做位移。
+// y 必須明確寫成 0——兩組 variants 的鍵要對稱，否則 shouldReduceMotion 在掛載後才
+// 由 null 轉 true 時，sheet 會保留前一組留下的 y:"100%" 而整個停在畫面外。
 export const REDUCED_SHEET_MOTION = {
-  initial: { opacity: 0 },
+  initial: { y: 0, opacity: 0 },
   animate: {
+    y: 0,
     opacity: 1,
     transition: { duration: 0.12 },
   },
   exit: {
+    y: 0,
     opacity: 0,
     transition: { duration: 0.1 },
   },
