@@ -23,6 +23,14 @@
 
 ---
 
+## 0. Production 就緒檢查（桌機做一次即可，含 T1 補跑項）
+
+- [ ] `/admin` → 「檢查 env / DB」：DB OK、缺 0 個 env
+- [ ] `/admin` → 「Blob smoke test」：顯示 upload/delete OK
+- [ ] Google 完成一次真實登入
+- [ ] LINE 完成一次真實登入
+- [ ] 無痕視窗（未登入）可完整走過：地圖 → 滑卡 → 收藏 → 行程 → 外部導航
+
 ## 1. 入口與 Landing
 
 - [ ] 訪客開 `/`：landing 正常顯示，3D 不掉幀到難以使用；「Start Scanning」進 `/map`
@@ -94,6 +102,15 @@
 
 - [ ] 訪客收藏 2 個點 → 登入 → 收藏合併保留
 - [ ] 裝置 A 收藏 → 裝置 B 登入同帳號重整 → 看得到
+
+## 10. 順手拍 README 截圖（存 `docs/assets/readme/`）
+
+測到對應畫面時順手截，拍完把 README 頂部註解掉的截圖表格解開即可。
+
+- [ ] `map.png` — 桌機地圖：pin + popup + 頂列（建議 blueprint 或 midnight theme）
+- [ ] `swipe.png` — 手機滑卡：卡片 + 手勢提示或拖曳中的 edge hint
+- [ ] `route.png` — RouteSheet 展開：5 點行程 + 最佳化後路線畫在地圖上
+- [ ] （可選）`saved.png` / `submit.png` / `admin.png` / `landing.gif`（<5MB）
 
 ---
 

@@ -1,7 +1,9 @@
 # Moon Point Cloud Redesign
 
+> ❄️ **凍結（AD-10）**：landing 3D 全區進入維護模式，本規格未實作部分不再排程。只修 bug，不加功能、不重構。
+
 **日期：** 2026-04-28  
-**狀態：** 已核准，待實作  
+**狀態：** ❄️ 凍結（原：已核准，待實作）  
 **影響檔案：**
 - `src/components/landing/globe/buildMoonPoints.ts`（新增）
 - `src/components/landing/globe/Moon.tsx`（修改球體層）

@@ -1,5 +1,7 @@
 # Moon → Eye Morph 設計規格
 
+> ❄️ **凍結（AD-10）**：landing 3D 全區進入維護模式，本規格未實作部分不再排程。只修 bug，不加功能、不重構。
+
 **日期**：2026-05-02
 **範圍**：桌機 `Moon.tsx` 點雲月球、手機 `MobileMoonShader` mesh 月球
 **目標**：使用者拖曳月球時，月球漸變成「Cthulhu 不可名狀」風格的眼球；放手後 spring 回月球

@@ -29,8 +29,8 @@
 | T6 | 真機 QA 🧑 | 2 | 🔄 checklist 已備（`2026-07-20-device-qa-checklist.md`），待使用者四環境實測 |
 | T7 | 行為測試補強 | 3 | ✅ 完成（2026-07-20）；+23 行為測試（rateLimit / duplicate / mapsPaste / mapsResolve / useSavedStore 回滾），共 71 綠 |
 | T8 | pending 過期清理（admin 手動） | 3 | ✅ 完成（2026-07-20） |
-| T9 | 文件同步收斂 | 3 | ⬜ 未開始 |
-| T10 | Demo 素材（README case study + 腳本） | 3 | ⬜ 未開始 |
+| T9 | 文件同步收斂 | 3 | ✅ 完成（2026-07-20） |
+| T10 | Demo 素材（README case study + 腳本） | 3 | ✅ 完成（2026-07-20）；截圖佔位待真機 QA 補圖 |
 
 ---
 
@@ -175,6 +175,8 @@
   4. 三份 landing spec（04-27、04-28、05-02）開頭加註「❄️ 凍結（AD-10）」。
   5. iOS 外部導航 fallback 在各文件的狀態統一為「已實作、待真機驗證」。
 - **驗收**：上述五處修改完成；沒有新增任何「計畫中」內容（文件只反映現狀）。
+  （第 1 點 visual-design 的停用註記先前已存在並指向 v2，本次確認即可；
+  其餘四處於 2026-07-20 完成，design-direction-v2 實作狀態表同步更新至現況。）
 
 ### T10 — Demo 素材
 
@@ -183,6 +185,8 @@
   Acid 視覺系統）、demo 動線腳本（地圖 → 滑卡 → 行程 → 導航 → 投稿 → 審核）、
   截圖或 GIF 佔位清單（由使用者補真機截圖）。
 - **驗收**：README 讓沒看過專案的工程師 5 分鐘內理解系統全貌；demo 腳本可照唸。
+  （README 改寫為繁中 case study：mermaid 架構圖 + 四個決策故事 + 工程品質 + 截圖佔位清單；
+  demo 腳本在 `docs/demo-script.md`，含時間軸、操作指令與常見追問備答。）
 
 ---
 
