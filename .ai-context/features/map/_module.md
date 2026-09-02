@@ -56,6 +56,25 @@ src/store/
     「我的投稿」桌機手機都在（唯一入口）。
 - 桌機 `var(--panel-glass-strong)` 玻璃面板；手機改 `--panel-solid` 實底、關 backdrop blur（可讀性）。
 
+## 視窗查詢節流（bbox 量化 + debounce）
+
+`src/lib/map/viewportQuery.ts`。React Query 以「查詢條件」為快取鍵，直接丟 Mapbox
+`getBounds()` 的原始浮點數會讓每次 `moveend` 都產生新鍵，快取永遠不命中
+（`useSpots` 的 `staleTime: 5min` 在 viewport 模式等同失效）。
+
+- `quantizeBbox`：對齊小數第 3 位網格（≈111m），且 **min 用 floor、max 用 ceil 只向外擴**，
+  保證查詢範圍完整覆蓋視窗，不會漏掉邊緣景點。相近視窗 → 相同鍵 → 命中快取。
+- `VIEWPORT_QUERY_DEBOUNCE_MS = 300`：連續拖曳/慣性尾巴只送最後一次；
+  `MapView` 用 ref 存 timer，unmount 時清除。
+- 模擬 8 個手勢（含慣性與區域重訪）：網路請求 15 → 5，省 67%。
+- 畫面無感：`useSpots` 有 `placeholderData: keepPreviousData`，重查期間舊圖釘保留、不閃白。
+
+## SpotPopup 自動收合
+
+`MapView` 以 render 期間重置的方式（非 effect）在下列情況清掉 `selectedSpot`：
+半徑切換、篩選條件變更、按下定位鈕（`onLocateStart`）。
+這三個動作都會重新查詢並把地圖飛回中心，popup 固定在下方會擋住新的中心點結果。
+
 ## 左上角地圖控制列
 
 `src/app/map/page.tsx` 的 `.map-top-controls` 包住 filter trigger 與 `RadiusToggle`。
@@ -141,6 +160,15 @@ NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ...   ← 必填，使用者自行於 mapbox.com 
 視覺與定位：
   RouteSheet 高度依選點數往上長高，上限 86vh；5 點時不讓清單區出現內部 scrollbar
   footer 按鈕使用 repeat(..., minmax(0, 1fr)) 維持等寬，避免 zoom 或字體縮放造成寬度漂移
+  RouteSheet 高度由內容決定：`height:auto` + `minHeight:min(360px,86dvh)` +
+  `maxHeight:86dvh`，**不可**改回用選點數估算的公式——footer 會因為規劃完成後才出現的
+  「開始導航」按鈕長高，靜態估算必定少算而把底部操作擠出畫面。
+  內部只有中段 route list 可捲：`flex-auto min-h-0` + `overflowY:auto` +
+  `overscroll-behavior:contain`（必須是 `flex-auto`／basis:auto；`flex-1`／basis:0
+  在 auto 高度容器下會塌陷成 0）。header 與 footer 皆 `flex-shrink-0`，
+  footer 另加 `env(safe-area-inset-bottom)`。
+  已實測 638×671／700×360（橫向手機）／320×568：sheet 皆壓在 86dvh 上限、
+  中段自動縮小並捲動、清空・路徑規劃・最佳化・START 全部可見。
   LocateMeButton 固定在右下（bottom 88），RouteSheet 展開時直接被蓋住、不做讓位
   （讓位會把按鈕推到右上 cluster 下方）；地圖頁 root 有 overflow-hidden，
   隱藏視圖的 y 位移不會撐出頁面捲動（一頁式）

@@ -46,6 +46,7 @@ return NextResponse.json<ApiResponse<null>>(
 | `/api/saved/sync` | POST | Guest saves 同步 | ✅ 完成 |
 | `/api/admin/spots` | GET | 取得 pending 投稿 | ✅ 第一版完成 |
 | `/api/admin/spots/[id]` | PATCH | approve / reject 投稿 | ✅ 第一版完成 |
+| `/api/admin/cleanup` | GET / POST | 過期 pending 查數 / 清理（admin） | ✅ 完成 |
 
 ## /api/spots 參數規格
 

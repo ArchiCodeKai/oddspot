@@ -174,8 +174,8 @@
     "addToRoute": "加入路線",
     "removeFromRoute": "從路線移除",
     "routeAdded": "已加入",
-    "route": "ROUTE",
-    "go": "GO",
+    "route": "加入路線",
+    "go": "出發",
     "viewDetail": "查看完整詳情 →",
     "addToTrip": "加入今日行程",
     "navigateGoogle": "導航前往 Google Maps",
@@ -211,7 +211,9 @@
   "actionToast": {
     "saved": "已收藏",
     "savedWithTrip": "已收藏並加入行程",
-    "viewSaved": "查看收藏 →"
+    "viewSaved": "查看收藏 →",
+    "addedToTrip": "已加入今日行程",
+    "alreadyInTrip": "已在今日行程中"
   },
   "theme": {
     "toDark": "切換為深色模式",

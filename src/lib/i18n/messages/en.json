@@ -174,7 +174,7 @@
     "addToRoute": "Add to Route",
     "removeFromRoute": "Remove from Route",
     "routeAdded": "Added",
-    "route": "Route",
+    "route": "Add to Route",
     "go": "Go",
     "filter": "Filter",
     "leftArrow": "Swipe Left",
@@ -211,7 +211,9 @@
   "actionToast": {
     "saved": "Saved",
     "savedWithTrip": "Saved & added to trip",
-    "viewSaved": "View saved →"
+    "viewSaved": "View saved →",
+    "addedToTrip": "Added to today's trip",
+    "alreadyInTrip": "Already in today's trip"
   },
   "theme": {
     "toDark": "Switch to Dark Mode",

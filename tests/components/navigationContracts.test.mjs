@@ -77,3 +77,20 @@ test("route sheet keeps the five-point limit and saved picker empty states visib
   assert.match(routeSheetSource, /limitReached/);
   assert.match(routeSheetSource, /noSavedInArea/);
 });
+
+test("route sheet keeps footer actions reachable at every viewport size", () => {
+  // 高度由內容決定 + 上下限；不可回到用選點數估算的魔術公式
+  // （footer 會因為規劃後才出現的「開始導航」按鈕長高，估算一定少算）
+  assert.match(routeSheetSource, /height: "auto"/);
+  assert.match(routeSheetSource, /ROUTE_SHEET_MAX_HEIGHT = "86dvh"/);
+  assert.doesNotMatch(routeSheetSource, /getRouteSheetHeight/);
+
+  // 中段是唯一可捲區：flex-auto（basis:auto）而非 flex-1（basis:0，auto 高度下會塌陷）
+  assert.match(routeSheetSource, /className="px-4 py-3 flex-auto min-h-0"/);
+  assert.match(routeSheetSource, /overflowY: "auto"/);
+  assert.match(routeSheetSource, /overscrollBehavior: "contain"/);
+
+  // footer 固定不縮，且保留 iOS home indicator 安全區
+  assert.match(routeSheetSource, /className="px-4 pt-3 flex-shrink-0"/);
+  assert.match(routeSheetSource, /env\(safe-area-inset-bottom\)/);
+});

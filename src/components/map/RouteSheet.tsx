@@ -52,11 +52,12 @@ const MONO_LABEL: React.CSSProperties = {
   textTransform: "uppercase",
 };
 
-function getRouteSheetHeight(spotCount: number, hasOrigin: boolean): string {
-  const routeRowCount = spotCount + (hasOrigin ? 1 : 0);
-  const contentHeight = Math.max(360, 286 + routeRowCount * 58);
-  return `min(86dvh, ${contentHeight}px)`;
-}
+// sheet 高度由內容決定，只設上下限：
+// 上限 86dvh（超過就由中段 list 捲動）、下限避免空狀態太扁。
+// 不用選點數估算——footer 會因為「開始導航」按鈕在規劃後才出現而長高，
+// 任何靜態估算都會少算，導致底部操作被擠出畫面。
+const ROUTE_SHEET_MIN_HEIGHT = "min(360px, 86dvh)";
+const ROUTE_SHEET_MAX_HEIGHT = "86dvh";
 
 export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
   const t = useTranslations("routeSheet");
@@ -96,10 +97,6 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
   const canOptimize = userLocation
     ? selectedSpots.length >= 1
     : selectedSpots.length >= 2;
-  const routeSheetHeight = getRouteSheetHeight(
-    selectedSpots.length,
-    Boolean(userLocation)
-  );
 
   const handleOptimize = () => {
     void optimize(userLocation);
@@ -157,8 +154,9 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
             borderTop: "1px solid var(--line-strong)",
             borderTopLeftRadius: 2,
             borderTopRightRadius: 2,
-            height: routeSheetHeight,
-            maxHeight: "86dvh",
+            height: "auto",
+            minHeight: ROUTE_SHEET_MIN_HEIGHT,
+            maxHeight: ROUTE_SHEET_MAX_HEIGHT,
             boxShadow: "0 -16px 48px rgb(var(--background-rgb) / 0.5)",
           }}
         >
@@ -230,10 +228,17 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
             </button>
           </div>
 
-          {/* route list */}
+          {/* route list — 唯一可捲動區，讓 footer 永遠釘在底部不被擠出畫面。
+              用 flex-auto（basis:auto）而非 flex-1（basis:0）：sheet 是 auto 高度，
+              basis:0 會讓這段塌陷成 0；auto 才會撐開內容、碰到 max-height 再收縮捲動。 */}
           <div
-            className="px-4 py-3 flex-shrink-0"
-            style={{ overflow: "visible" }}
+            className="px-4 py-3 flex-auto min-h-0"
+            style={{
+              overflowY: "auto",
+              overflowX: "hidden",
+              // 不把捲動傳遞給底下的地圖/頁面（維持一頁式）
+              overscrollBehavior: "contain",
+            }}
           >
             {/* user location 起點固定列 */}
             {userLocation && (
@@ -550,10 +555,13 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
             </div>
           )}
 
-          {/* footer */}
+          {/* footer — 固定不縮，並保留 iOS home indicator 的安全區 */}
           <div
-            className="px-4 py-3 flex-shrink-0"
-            style={{ borderTop: "1px solid var(--line-strong)" }}
+            className="px-4 pt-3 flex-shrink-0"
+            style={{
+              borderTop: "1px solid var(--line-strong)",
+              paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+            }}
           >
             {/* summary line */}
             <div

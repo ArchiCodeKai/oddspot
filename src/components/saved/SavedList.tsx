@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { CategoryBadge } from "@/components/ui/CategoryBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getCategoryLabel } from "@/lib/i18n/spotMeta";
+import { useActionToastStore } from "@/store/useActionToastStore";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { useSavedStore } from "@/store/useSavedStore";
 import type { SpotMapPoint } from "@/types/spots";
@@ -26,12 +27,30 @@ interface SavedListProps {
 export function SavedList({ spots }: SavedListProps) {
   const t = useTranslations("savedPage");
   const tMeta = useTranslations("spotMeta");
+  const tSwipe = useTranslations("swipe");
+  const tToast = useTranslations("actionToast");
   const addSpot = useRoutePlannerStore((s) => s.addSpot);
+  const selectedSpots = useRoutePlannerStore((s) => s.selectedSpots);
   const removeSave = useSavedStore((s) => s.removeSave);
+  const showActionToast = useActionToastStore((s) => s.show);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
   const [dissolvingIds, setDissolvingIds] = useState<string[]>([]);
 
   const visibleSpots = spots.filter((spot) => !removedIds.includes(spot.id));
+
+  // 加入行程要有回饋：滿 5 / 已在行程都提示，不做無聲失敗
+  const handleAddToTrip = (spot: SpotMapPoint) => {
+    if (selectedSpots.some((selected) => selected.id === spot.id)) {
+      showActionToast(tToast("alreadyInTrip"));
+      return;
+    }
+    if (selectedSpots.length >= 5) {
+      showActionToast(tSwipe("tripLimitReached"));
+      return;
+    }
+    addSpot(spot);
+    showActionToast(tToast("addedToTrip"));
+  };
 
   const startRemove = (id: string) => {
     setDissolvingIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
@@ -197,7 +216,7 @@ export function SavedList({ spots }: SavedListProps) {
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => addSpot(spot)}
+                        onClick={() => handleAddToTrip(spot)}
                         className="px-3 py-2 text-xs tracking-[0.16em]"
                         style={{
                           border: "1px solid var(--accent)",

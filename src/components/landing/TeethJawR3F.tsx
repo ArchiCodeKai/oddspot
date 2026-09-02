@@ -14,10 +14,14 @@ const MOON_BITE_RANGE_PX = 260;
 // Cooldown depends on what the moon is doing:
 //   "orbiting" — auto flyby, jaw wants more snaps  → 1.0s
 //   "returning" — moon springing back to orbit     → 1.4s
-//   "grabbed" — user is dragging it, less spammy   → 2.5s
+//   "grabbed" — user is dragging it — 1.2s so drag interaction still feels
+//   responsive (2.5s read as "randomly ignores the moon" during play)
 const MOON_BITE_COOLDOWN_ORBITING = 1.0;
 const MOON_BITE_COOLDOWN_RETURN   = 1.4;
-const MOON_BITE_COOLDOWN_GRABBED  = 2.5;
+const MOON_BITE_COOLDOWN_GRABBED  = 1.2;
+// Below this distance the moon visually covers the mouth — a normalised
+// direction is pure noise there, so the bite strikes straight ahead instead.
+const MOON_BITE_DEADZONE_PX = 40;
 // Soft-tracking range (head turns toward the moon when within this radius).
 // Bumped 750 → 1400 because the LangPortal sits at top:7%/right:4%, so the
 // moon is almost always > 750px away. With 1400 the head reacts to most
@@ -25,6 +29,22 @@ const MOON_BITE_COOLDOWN_GRABBED  = 2.5;
 const MOON_TRACK_RANGE_PX = 1400;
 // How fast the head lerps toward target rotation per frame.
 const HEAD_TRACK_LERP = 0.22;
+// Proportional tracking saturation ranges (px). Pixel offsets map linearly to
+// head rotation and clamp at these distances — same pattern as the mouse-look
+// handler. Replaces the old normalized-direction mapping, which lost the
+// offset magnitude: a 2px offset near the mouth produced the same full tilt
+// as 300px, so crossing the mouth line flipped the head instantly.
+const MOON_TRACK_SAT_X_PX = 500;  // horizontal offset → yaw
+// Vertical saturation is much tighter: the jaw sits near the top of the
+// viewport, so "moon overhead" is at most ~250px of offset — saturate fast
+// so an overhead moon reads as a committed up-tilt, not a polite nod.
+const MOON_TRACK_SAT_Y_PX = 160;  // vertical offset → pitch
+// Asymmetric pitch clamp (radians). The model faces +Z, so NEGATIVE
+// rotation.x pitches the face UP. The jaw camera looks DOWN at the model by
+// ~0.36 rad, so an up-tilt must clear that before it visually reads as
+// "looking up" — hence the generous up limit vs the modest down limit.
+const HEAD_PITCH_UP_LIMIT   = 1.15;
+const HEAD_PITCH_DOWN_LIMIT = 0.55;
 // Head tilt during bite — barely perceptible (≈2°). Just enough to register
 // "facing the prey" without rotating the whole head assembly.
 const BITE_HEAD_TILT = 0.04;
@@ -315,10 +335,9 @@ function RealJaw({
   // Scratch for clamshell hinge position correction
   const tmpRotatedHinge = useRef(new THREE.Vector3());
   const tmpEulerScratch = useRef(new THREE.Euler());
-  // Mouth-outer world position projected to viewport pixels — recomputed each
-  // frame so head-tracking always uses the actual visible mouth as anchor,
-  // not the canvas container centre. This is the lock that makes the line
-  // [moon centre · mouth outer · mouth inner] stay collinear when tracking.
+  // Mouth-outer REST-POSE position projected to viewport pixels each frame.
+  // Deliberately excludes head rotation — the anchor must stay fixed or the
+  // sensor follows the actuator (see feedback-loop note in useFrame below).
   const mouthWorldRef = useRef(new THREE.Vector3());
   const { camera: jawCamera } = useThree();
 
@@ -629,8 +648,10 @@ function RealJaw({
         lungeRight =  dirX * a.lungeXY  * strikeAmount;
         lungeUp    = -dirY * a.lungeXY  * strikeAmount;
         lungeFwd   =        a.lungeFwd  * strikeAmount;
-        biteRotY   =  dirX * BITE_HEAD_TILT       * strikeAmount;
-        biteRotX   = -dirY * BITE_HEAD_TILT * 0.8 * strikeAmount;
+        biteRotY   = dirX * BITE_HEAD_TILT       * strikeAmount;
+        // dirY is screen-space (down = +): moon above → dirY < 0 → negative
+        // rotation.x = strike tilts UP toward it (pitch sign, see tracking).
+        biteRotX   = dirY * BITE_HEAD_TILT * 0.8 * strikeAmount;
         lerpSpeed = 0.55;
       } else {
         moonBiteRef.current.live = false;
@@ -696,16 +717,17 @@ function RealJaw({
     lower.position.copy(tmpLowerTarget.current);
 
     // ── Compute the mouth-outer screen pixel position ─────────────
-    // Conceptually: the line [moon centre · mouth-outer · mouth-inner] should
-    // stay collinear when the jaw is "looking at" the moon. Mouth-inner is
-    // the perspective vanishing point inside the throat; mouth-outer is the
-    // visible lip plane. Both lie on the head's forward axis. So orienting
-    // mouth-outer toward the moon guarantees the whole line is collinear.
+    // Anchor for head-tracking + bite trigger. IMPORTANT: uses the REST-POSE
+    // transform (root.position only, NO head rotation). Projecting through
+    // the rotated root.matrix tied the sensor to the actuator — head turns →
+    // mouth pixel moves → dx/dy flip sign → head turns back — an oscillating
+    // feedback loop that locked the head at weird angles whenever the moon
+    // sat near the mouth.
     //
-    // We do this by projecting beamOrigin (= mouth-outer in rootRef-local
-    // coords) through the jaw camera each frame, then converting NDC →
-    // viewport pixels using the canvas DOM rect.  After this transform the
-    // mouth's pixel position can be compared 1:1 to ms.moonScreenX/Y.
+    // beamOrigin (= mouth-outer in rootRef-local coords) + root.position is
+    // projected through the jaw camera, then NDC → viewport pixels using the
+    // cached DOM rect. After this transform the mouth's pixel position can be
+    // compared 1:1 to ms.moonScreenX/Y.
     let mouthScreenX = Number.NaN;
     let mouthScreenY = Number.NaN;
     // 改動前：每幀 dom.getBoundingClientRect() → 強制 layout flush
@@ -715,10 +737,9 @@ function RealJaw({
     const rect = domRectRef.current;
     if (rect && domContainerRef.current) {
       const mouthWorld = mouthWorldRef.current;
-      // root.matrix may be stale this frame (rotation/position were just
-      // mutated above); updateMatrix() recomposes from the latest local TRS.
-      root.updateMatrix();
-      mouthWorld.copy(jawSetup.beamOrigin).applyMatrix4(root.matrix);
+      // Rest-pose transform: translation only, rotation deliberately omitted
+      // (root carries no scale of its own — scaling lives on the inner group).
+      mouthWorld.copy(jawSetup.beamOrigin).add(root.position);
       mouthWorld.project(jawCamera); // → NDC ∈ [-1, 1]
       mouthScreenX = rect.left + (mouthWorld.x * 0.5 + 0.5) * rect.width;
       mouthScreenY = rect.top  + (-mouthWorld.y * 0.5 + 0.5) * rect.height;
@@ -740,14 +761,22 @@ function RealJaw({
       const proximityLin = Math.max(0, 1 - dist / MOON_TRACK_RANGE_PX);
       const proximity    = Math.sqrt(proximityLin); // gentler falloff than linear
       if (proximity > 0) {
-        const inv = 1 / Math.max(dist, 1);
-        const dxN = dx * inv;
-        const dyN = dy * inv;
-        // Sign mapping (verified vs existing mouse-look):
-        //   dx > 0  (moon to the right of mouth)         → +rotation.y (yaw right)
-        //   dy < 0  (moon above mouth in viewport)       → +rotation.x (tilt up)
-        moonLookY =  dxN * 0.85 * proximity;
-        moonLookX = -dyN * 0.65 * proximity;
+        // Proportional mapping (offset / range, clamped) — the head rotation
+        // scales with the actual pixel offset and saturates gracefully at the
+        // range edge, so a moon dragged past the tilt limit just holds max
+        // angle instead of flipping.
+        // Sign mapping for a +Z-facing model (verified against device
+        // recording 2026-07-31):
+        //   dx > 0  (moon right of mouth)  → +rotation.y (yaw right)
+        //   dy < 0  (moon above mouth)     → −rotation.x (pitch UP)
+        // Screen-Y grows downward and pitch-up is NEGATIVE rotation.x, so
+        // raw satY already carries the correct sign. The previous "-satY"
+        // mapping was inverted — an overhead moon pushed the head DOWN,
+        // which read as "locked" because the down clamp is shallow.
+        const satX = THREE.MathUtils.clamp(dx / MOON_TRACK_SAT_X_PX, -1, 1);
+        const satY = THREE.MathUtils.clamp(dy / MOON_TRACK_SAT_Y_PX, -1, 1);
+        moonLookY = satX * 0.85 * proximity;
+        moonLookX = satY * 1.10 * proximity;
       }
 
       // Bite trigger — distance is now mouth-outer to moon centre, which is
@@ -763,7 +792,9 @@ function RealJaw({
           ms.moonState === "returning" ? MOON_BITE_COOLDOWN_RETURN    :
                                          MOON_BITE_COOLDOWN_ORBITING;
         if (t - moonBiteRef.current.lastTriggered > cooldown) {
-          const inv = 1 / Math.max(dist, 1);
+          // Dead-zone: moon covering the mouth → direction is noise, bite
+          // straight ahead (dir 0,0 keeps the forward lunge only).
+          const inv = dist < MOON_BITE_DEADZONE_PX ? 0 : 1 / Math.max(dist, 1);
           moonBiteRef.current = {
             start: t,
             live: true,
@@ -785,7 +816,11 @@ function RealJaw({
     const baseY = mt.active ? mt.rotY * 0.40 : idleY;
     const baseX = mt.active ? mt.rotX * 0.40 : idleX;
     const targetY = THREE.MathUtils.clamp(baseY + moonLookY + biteRotY, -0.85, 0.85);
-    const targetX = THREE.MathUtils.clamp(baseX + moonLookX + biteRotX, -0.55, 0.55);
+    const targetX = THREE.MathUtils.clamp(
+      baseX + moonLookX + biteRotX,
+      -HEAD_PITCH_UP_LIMIT,   // negative x = pitch up (moon overhead)
+      HEAD_PITCH_DOWN_LIMIT,
+    );
     root.rotation.y = THREE.MathUtils.lerp(root.rotation.y, targetY, HEAD_TRACK_LERP);
     root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, targetX, HEAD_TRACK_LERP);
 
@@ -1027,8 +1062,10 @@ export function TeethJawR3F({
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < RANGE) {
         mouseTargetRef.current = {
-          rotY:   (dx / RANGE) * MAX_ROT_Y,
-          rotX:  -(dy / RANGE) * MAX_ROT_X,
+          rotY: (dx / RANGE) * MAX_ROT_Y,
+          // Screen-Y down = +rotation.x (pitch down); cursor above the jaw
+          // gives dy < 0 → negative rotation.x = look up.
+          rotX: (dy / RANGE) * MAX_ROT_X,
           active: true,
         };
       } else {

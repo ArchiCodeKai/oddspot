@@ -43,7 +43,7 @@
 - Production env / OAuth callback / Blob token / DB migration 驗證。
 - 投稿與圖片上傳加上 rate limit 或每日上限。
 - Admin reject 時補 Blob cleanup，避免孤兒圖片佔空間。
-- RouteSheet 小 UX：滿 5 點時顯示 disabled「已達 5 點上限」、Saved picker 空狀態、iOS Google Maps fallback。
+- RouteSheet 小 UX：滿 5 點時顯示 disabled「已達 5 點上限」、Saved picker 空狀態、iOS Google Maps fallback（皆已實作；iOS fallback 待真機驗證）。
 - 手機 / 平板 / 桌機真機 QA：滑卡手勢、filter sheet、RouteSheet 收合、外部導航。
 
 ### P1：讓使用者不迷路

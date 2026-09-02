@@ -61,6 +61,24 @@ test("admin reject stores a reason and public spot APIs never expose it", () => 
   assert.doesNotMatch(spotByIdRouteSource, /rejectReason/);
 });
 
+test("admin cleanup route is protected and follows the reject blob pattern", () => {
+  const cleanupPath = "src/app/api/admin/cleanup/route.ts";
+  assert.equal(existsSync(cleanupPath), true);
+
+  const cleanupSource = readFileSync(cleanupPath, "utf8");
+  const adminPageSource = readFileSync("src/app/admin/page.tsx", "utf8");
+  assert.match(cleanupSource, /isAdminSession/);
+  // 只清 expiresAt < now 且 pending 的投稿
+  assert.match(cleanupSource, /status:\s*"pending"/);
+  assert.match(cleanupSource, /expiresAt:\s*\{\s*lt:/);
+  // 先刪 DB、Blob best-effort（比照 reject）
+  assert.match(cleanupSource, /deleteMany/);
+  assert.match(cleanupSource, /Promise\.allSettled/);
+  // admin 頁有入口且二次確認
+  assert.match(adminPageSource, /\/api\/admin\/cleanup/);
+  assert.match(adminPageSource, /確認清理/);
+});
+
 test("admin-only production readiness and blob smoke routes exist", () => {
   const healthPath = "src/app/api/admin/health/route.ts";
   const blobSmokePath = "src/app/api/admin/blob-smoke/route.ts";

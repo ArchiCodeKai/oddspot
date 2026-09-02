@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Map, AttributionControl, type MapRef, type ViewStateChangeEvent } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { SpotMarker } from "./SpotMarker";
@@ -14,6 +14,7 @@ import { RouteSheet } from "./RouteSheet";
 import { ExternalNavSheet } from "./ExternalNavSheet";
 import { useAppStore } from "@/store/useAppStore";
 import { useMapStore, type Bbox } from "@/store/useMapStore";
+import { VIEWPORT_QUERY_DEBOUNCE_MS, quantizeBbox } from "@/lib/map/viewportQuery";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import { loadMapStyle } from "@/lib/mapbox/style-loader";
 import type { SpotMapPoint } from "@/types/spots";
@@ -45,8 +46,19 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
   // dual-mode query state（用 setViewportBbox / setQueryMode 寫回 store）
   const queryMode = useMapStore((s) => s.queryMode);
   const radius = useMapStore((s) => s.radius);
+  const filters = useMapStore((s) => s.filters);
   const setViewportBbox = useMapStore((s) => s.setViewportBbox);
   const setQueryMode = useMapStore((s) => s.setQueryMode);
+
+  // 半徑或篩選條件變更 → 收掉 popup。
+  // 這兩個動作都會重新查詢並把地圖飛回中心，popup 卡在下方會擋住新的中心點結果。
+  // 用 render 期間重置的模式（React 官方做法），避免 effect 內 setState 多跑一次 render。
+  const queryKey = `${radius}|${JSON.stringify(filters)}`;
+  const [lastQueryKey, setLastQueryKey] = useState(queryKey);
+  if (queryKey !== lastQueryKey) {
+    setLastQueryKey(queryKey);
+    setSelectedSpot(null);
+  }
 
   // 路線相關 state（route 為 null 時 RoutePolyline 自己會 return null，不用外層 gate）
   const routeSelectedSpots = useRoutePlannerStore((s) => s.selectedSpots);
@@ -75,20 +87,33 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
   }, []);
 
   // 任何 moveend（含程式呼叫 flyTo / easeTo）都更新 bbox — 確保 viewport mode 下
-  // 程式移動後仍有最新 bbox 可查詢
+  // 程式移動後仍有最新 bbox 可查詢。
+  // bbox 先對齊網格再寫入（相近視窗→相同查詢條件→命中快取），並 debounce 連續拖曳。
+  const bboxTimerRef = useRef<number | null>(null);
   const handleMoveEnd = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
     const bounds = map.getBounds();
     if (!bounds) return;
-    const bbox: Bbox = {
+    const bbox: Bbox = quantizeBbox({
       minLng: bounds.getWest(),
       minLat: bounds.getSouth(),
       maxLng: bounds.getEast(),
       maxLat: bounds.getNorth(),
-    };
-    setViewportBbox(bbox);
+    });
+    if (bboxTimerRef.current !== null) window.clearTimeout(bboxTimerRef.current);
+    bboxTimerRef.current = window.setTimeout(() => {
+      bboxTimerRef.current = null;
+      setViewportBbox(bbox);
+    }, VIEWPORT_QUERY_DEBOUNCE_MS);
   }, [mapRef, setViewportBbox]);
+
+  // unmount 時清掉還沒送出的 debounce timer
+  useEffect(() => {
+    return () => {
+      if (bboxTimerRef.current !== null) window.clearTimeout(bboxTimerRef.current);
+    };
+  }, []);
 
   // 只有使用者真實互動（drag / zoom）才切換 queryMode 到 viewport
   // flyTo / easeTo 不會觸發這兩個 event，所以 LocateMe / RadiusToggle 飛地圖時 mode 不會被誤改
@@ -226,7 +251,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
               ))}
           </Map>
           <ScaleBar mapRef={mapRef} />
-          <LocateMeButton mapRef={mapRef} />
+          <LocateMeButton mapRef={mapRef} onLocateStart={handleMapClick} />
         </>
       )}
 

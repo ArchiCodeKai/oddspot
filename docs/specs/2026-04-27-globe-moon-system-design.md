@@ -1,5 +1,7 @@
 # Landing Globe + Moon System — Design Spec
 
+> ❄️ **凍結（AD-10）**：landing 3D 全區進入維護模式，本規格未實作部分不再排程。只修 bug，不加功能、不重構。
+
 **Date**: 2026-04-27
 **Author**: Brainstorming session
 **Status**: Approved, ready for implementation
