@@ -54,7 +54,15 @@ Scatter these at **irregular rotations (-8° to +8°)**, never aligned to a grid
 - Fake error tags (`ERR_NO_LEGEND · archive 1998-08-13`)
 - 4-point or 8-point stars
 - Numbered labels (`HARD FORM / 001`, `INPUT:0`, `GLOBAL NULL`)
-- "DEAL WITH IT" / "IT WORKS" / "MAKE IT RAW" black-bordered stamps
+- Black-bordered stamps — **but only with system content** (`UNVERIFIED`, `未驗證`, `歸檔中`, archive numbers)
+
+**裝飾物資格規則（2026-09-03 稽核後新增）**：貼紙必須是「系統裡撿到的東西」——讀數、
+標籤、警告、條碼、示意圖、校準記號。**禁止**：網路梗文字（DEAL WITH IT 已移除）、
+通用星芒 / 閃光、手繪表情或卡通物件。判斷法：如果它看起來是「為了可愛而畫的」，就不是酸性，
+是廉價貼圖。
+
+**一頁一個 mascot**：同一畫面只能有一個眼睛實例。Landing 的眼睛是月球（shader 瞳孔/虹膜），
+所以 2D `EyeMark` 不上 landing；它留給 app 內 chrome 與 onboarding。
 
 ### 2c. Film grain + CRT scanlines
 Always on, low opacity. Already in `themes.css` via `body::before` + `body::after`. Don't remove.

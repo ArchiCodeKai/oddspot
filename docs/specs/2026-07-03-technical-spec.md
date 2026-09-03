@@ -87,6 +87,9 @@
   不實作剩餘的 landing spec（globe-moon、moon point cloud、eye morph 三份 spec 標記凍結）。
 - **理由**：~6,000 行高複雜度 Three.js 程式碼已穩定運作且被 dynamic import 隔離；
   其求職價值已透過 Vault 技術筆記收割；重構風險高、報酬趨近零。
+- **2026-09-03 修訂（減法例外）**：使用者發起 landing 視覺稽核後，開放一次性「減法整理」：
+  只允許刪除（貼紙、死碼、孤兒模型）、降級（手機不掛 3D 牙齒）與 RWD 修補，
+  **不新增 3D 物件、不重構場景**。牙齒下顎維持為 landing signature。整理完成後重新凍結。
 
 ## 二、資料模型
 
