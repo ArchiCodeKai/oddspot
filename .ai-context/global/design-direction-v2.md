@@ -191,6 +191,10 @@ These rules carry over unchanged — don't regress them:
 | Acid stickers / 貼紙 | ✅ 已實作 | `src/components/landing/AcidStickers.tsx` |
 | Landing mobile globe | ❄️ 已實作並凍結（AD-10） | `GlobeSceneMobile.tsx`；landing 3D 全區維護模式，只修 bug 不再迭代 |
 | 全域動作回饋 toast | ✅ 已實作 | `ActionToast.tsx` + `useActionToastStore`；收藏/行程動作帶結果入口 |
+| Landing 減法整理（2026-09-03 稽核） | ✅ 已實作 | 貼紙只留系統物件（商標／錯誤標籤／`ArchiveCardS` 歸檔卡）；`CategoryLegend` 分類圖例取代 2D 眼睛；手機不掛 3D 牙齒、首次有 <768px 斷點；死碼與 4 個孤兒 GLB（~15MB）移除 |
+| 重力網格（§2a wireframe geometry） | ✅ 已實作 | `GravityGrid.tsx`：2D SVG 網格朝地球高斯塌陷、半徑內貼大氣邊緣不穿球；重力中心由 GlobeScene 投影常數（z=4／fov 50／x=1.4）算出；CSS mask 左側 34→56% 漸淡讓位文字 × 橢圓暈影不佔滿版面；0.6px 線、`var(--fg)` 16%；9s 呼吸、reduced-motion 停；桌機/平板 idle 才顯示 |
+| 主 CTA 地形按鈕 | ✅ 已實作 | `TerrainScanButton.tsx`：440×132（手機 100 高）2D canvas 線框山巒，無人機視角持續前飛；48×56 高度格、ridged value noise 三八度、每次 mount 換 seed；遠→近背景色填充做遮擋；文字置中靠上、800 字重、內層 bg 描邊 + 外層 accent 霓虹；hover/focus 油門 2.2→4.8 排/秒；reduced-motion 靜態一幀、分頁隱藏暫停 |
+| START SCANNING 地形按鈕 | ✅ 已實作 | `TerrainScanButton.tsx`：主 CTA 放大為 360×96（手機 76 高），按鈕本體是 2D canvas 無人機視角向前飛的線框山巒；30×30 高度格、value noise 兩八度成峰、每次 mount 換 seed 山形隨機；painter's 背景色填充做近山擋遠山；hover/focus 油門 1.4→3.2 排/秒；reduced-motion 靜態一幀、分頁隱藏暫停；文字用 `--bg` 描邊避免線切字；顏色讀 `--accent`／`--bg` 並隨主題更新。標題區 bottom 18%→22% 上移；<760px 高視窗隱藏分類圖例避免相撞 |
 
 ## Files in this skill
 

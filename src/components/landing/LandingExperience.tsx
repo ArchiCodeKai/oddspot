@@ -7,11 +7,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { BrandTag } from "@/components/ui/BrandTag";
-import { AcidButton } from "@/components/ui/AcidButton";
 import { useAppStore } from "@/store/useAppStore";
 import { useLocaleStore } from "@/store/useLocaleStore";
 import { useGlobeTier } from "@/hooks/useViewportTier";
-import { BarcodeS, ErrorTagS, WordmarkS } from "./AcidStickers";
+import { ArchiveCardS, ErrorTagS, WordmarkS } from "./AcidStickers";
+import { CategoryLegend } from "./CategoryLegend";
+import { GravityGrid } from "./GravityGrid";
+import { TerrainScanButton } from "./TerrainScanButton";
 import { TerrainDeco } from "./TerrainDeco";
 import { Marquee } from "./Marquee";
 import { LangPortalToggle } from "./LangPortalToggle";
@@ -219,14 +221,38 @@ export function LandingExperience() {
       {/* 手機版覆蓋層規則：底部 20% 只留 標題/CTA + 跑馬燈 + 狀態列，
           裝飾貼紙、地形、右上經緯度全部讓位，語言切換縮小 */}
       <style>{`
+        /* 標題區與語言切換的位置是 inline style，媒體查詢必須 !important 才蓋得過 */
         @media (max-width: 767px) {
           .landing-terrain,
           .hud-coord,
+          .landing-grid,
           .landing-sticker-desktop { display: none; }
-          .landing-headline { bottom: max(96px, 14%); left: 5%; right: 5%; }
-          .landing-lang-portal { top: 5%; right: 4%; }
+          .landing-headline { bottom: max(96px, 14%) !important; left: 5% !important; right: 5% !important; }
+          .landing-lang-portal { top: 5% !important; right: 4% !important; }
+        }
+        /* 矮視窗：分類圖例會撞到上移後的標題區，讓位 */
+        @media (max-height: 760px) {
+          .landing-legend { display: none; }
         }
       `}</style>
+
+      {/* 重力網格 — 只在 idle、桌機/平板。
+          DOM 位置刻意放在 canvas 之前、不設 z-index：地球畫在網格上面，看起來像壓著它。 */}
+      <AnimatePresence>
+        {isIdle && !exiting && !useLightGlobe && (
+          <motion.div
+            key="gravity-grid"
+            className="landing-grid"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.2, delay: 0.15 }}
+            style={{ position: "absolute", inset: 0 }}
+          >
+            <GravityGrid />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Globe canvas — 全螢幕
           mobile / reduced-motion        → GlobeSceneMobile（海岸線版）
@@ -386,20 +412,26 @@ export function LandingExperience() {
               <TerrainDeco />
             </motion.div>
 
-            {/* Acid stickers — 只留「系統物件」：商標、錯誤標籤、條碼。
+            {/* Acid stickers — 只留「系統物件」：商標、錯誤標籤、歸檔卡。
                 星芒與 DEAL WITH IT 梗圖章已移除（通用貼紙 / 英文梗，不是系統物件）；
-                2D 眼睛 mascot 已移除（月球本身就是這頁唯一的眼睛）。
-                手機版只留商標，其餘貼紙讓位給標題與 CTA。 */}
+                2D 眼睛 mascot 已移除（月球本身就是這頁唯一的眼睛），
+                原位置改放分類圖例（app 自己的 8 個線框圖示 = 即將進入那張地圖的圖例）。
+                手機版只留商標，其餘讓位給標題與 CTA。 */}
             <WordmarkS style={{ top: "8%", left: "4%" }} rotate={-3} delay={0.1} />
+            <CategoryLegend
+              className="landing-sticker-desktop landing-legend"
+              style={{ top: "27%", left: "6%", zIndex: 6 }}
+              delay={0.35}
+            />
             <ErrorTagS
               className="landing-sticker-desktop"
               style={{ bottom: "14%", left: "3%" }}
               delay={0.5}
             />
-            <BarcodeS
+            <ArchiveCardS
               className="landing-sticker-desktop"
               style={{ bottom: "14%", right: "6%" }}
-              rotate={5}
+              rotate={4}
               delay={0.6}
             />
 
@@ -450,7 +482,8 @@ export function LandingExperience() {
               className="landing-headline"
               style={{
                 position: "absolute",
-                bottom: "18%",
+                // 18% → 22%：整塊上移，加上按鈕變高，標題約再往上 90px
+                bottom: "22%",
                 left: "6%",
                 right: "6%",
                 maxWidth: 640,
@@ -508,19 +541,8 @@ export function LandingExperience() {
                   pointerEvents: "auto",
                 }}
               >
-                <AcidButton
-                  onClick={enterMap}
-                  variant="accent"
-                  size="lg"
-                  icon={
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  }
-                >
-                  {t("cta")}
-                </AcidButton>
+                {/* 主按鈕：無人機視角向前飛的線框山巒（2D canvas，山形每次隨機） */}
+                <TerrainScanButton onClick={enterMap}>{t("cta")}</TerrainScanButton>
                 <BrandTag>{t("ctaMeta")}</BrandTag>
               </div>
             </motion.div>

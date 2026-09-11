@@ -107,6 +107,101 @@ const stickerLabelStyle: CSSProperties = {
   marginTop: 4,
 };
 
+// S2 · Archive specimen card — 取代梗圖章：同樣的邊框份量，但內容是一筆「記錄」，
+// 直接預告產品裡的景點卡。系統聲音為主，唯一的中文是狀態詞。
+const cardRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "34px 1fr",
+  columnGap: 8,
+  fontFamily: "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
+  fontSize: 9,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+  lineHeight: 1.75,
+  whiteSpace: "nowrap",
+};
+
+export function ArchiveCardS({ style, className, rotate = 4, delay = 0.6 }: StickerProps) {
+  return (
+    <motion.div
+      className={className}
+      style={{ position: "absolute", color: "var(--fg)", ...style }}
+      {...stickerMotion(rotate, delay, "right")}
+    >
+      <div
+        style={{
+          width: 196,
+          padding: "10px 12px 9px",
+          border: "1px solid var(--line-strong)",
+          borderRadius: 2,
+          background: "var(--panel-glass)",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
+        }}
+      >
+        <div style={{ ...stickerLabelStyle, marginTop: 0, fontSize: 7, letterSpacing: "0.24em" }}>
+          archive
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
+            fontSize: 15,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            lineHeight: 1.2,
+            marginTop: 2,
+            marginBottom: 7,
+          }}
+        >
+          NO. 0237
+        </div>
+        <div style={{ height: 1, background: "var(--line)", marginBottom: 6 }} />
+        <div style={cardRowStyle}>
+          <span style={{ color: "var(--muted)" }}>cat</span>
+          <span>GO / giant-object</span>
+        </div>
+        <div style={cardRowStyle}>
+          <span style={{ color: "var(--muted)" }}>stat</span>
+          <span>
+            <span
+              style={{
+                fontFamily: "var(--font-noto-sans-tc), 'Noto Sans TC', sans-serif",
+                textTransform: "none",
+                letterSpacing: "0.06em",
+                color: "var(--accent)",
+              }}
+            >
+              未驗證
+            </span>
+            {" · unverified"}
+          </span>
+        </div>
+        <div style={cardRowStyle}>
+          <span style={{ color: "var(--muted)" }}>seen</span>
+          <span>1998-08-13</span>
+        </div>
+        {/* 條碼 + 假座標，跟 BarcodeS 同一套語言 */}
+        <svg width="172" height="30" viewBox="0 0 172 30" aria-hidden="true" style={{ marginTop: 7, display: "block" }}>
+          <g fill="currentColor">
+            {[
+              [0, 2], [4, 1], [7, 3], [12, 1], [15, 2], [19, 1], [22, 4], [28, 1],
+              [31, 2], [35, 3], [40, 1], [43, 2], [47, 1], [50, 3], [55, 2], [59, 1], [62, 2], [66, 4],
+              [72, 1], [75, 3], [80, 1], [83, 2], [87, 4], [93, 1], [96, 2], [100, 1],
+            ].map(([x, w]) => <rect key={x} x={x} y="0" width={w} height="20" />)}
+          </g>
+          <text
+            x="0" y="29"
+            fontFamily="var(--font-jetbrains-mono), monospace"
+            fontSize="7" fill="currentColor" letterSpacing="1.2"
+          >
+            N25°03&apos;13.2&quot; · E121°33&apos;55.4&quot;
+          </text>
+        </svg>
+      </div>
+    </motion.div>
+  );
+}
+
 // S8 · Brand wordmark — OddSpot（EN H1 規格：VT323 + accent glow 35%）
 export function WordmarkS({ style, className, rotate = -3, delay = 0.05 }: StickerProps) {
   return (
