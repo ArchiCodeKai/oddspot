@@ -326,10 +326,10 @@ export function SwipeView({
         {isError ? (
           <div className="text-center">
             <p className="text-base font-content" style={{ color: "var(--muted)" }}>
-              無法載入景點
+              {t("loadFailed")}
             </p>
             <p className="text-sm mt-1 font-content" style={{ color: "var(--muted)", opacity: 0.6 }}>
-              請檢查網路連線後重試
+              {t("loadFailedHint")}
             </p>
             {onRetry && (
               <button
@@ -342,7 +342,7 @@ export function SwipeView({
                   cursor: "pointer",
                 }}
               >
-                重試
+                {t("retry")}
               </button>
             )}
           </div>

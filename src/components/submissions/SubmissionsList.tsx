@@ -1,0 +1,147 @@
+"use client";
+
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { SpotStatus } from "@/lib/constants/status";
+
+// 投稿列表的顯示層（client）。
+// 標籤與日期格式在瀏覽器端依語系決定；server 端的 getTranslations 固定 zh-TW（AD-8）。
+export interface SubmissionItem {
+  id: string;
+  name: string;
+  nameEn: string | null;
+  status: string;
+  address: string | null;
+  rejectReason: string | null;
+  createdAt: string;
+}
+
+interface SubmissionsListProps {
+  submissions: SubmissionItem[];
+}
+
+export function SubmissionsList({ submissions }: SubmissionsListProps) {
+  const t = useTranslations("submissionsPage");
+  const locale = useLocale();
+
+  const formatDate = (iso: string) =>
+    new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(iso));
+
+  return (
+    <main
+      className="min-h-screen px-4 py-5"
+      style={{ background: "var(--background)", color: "var(--foreground)" }}
+    >
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="mb-5 flex items-center gap-3">
+          <Link
+            href="/map"
+            className="text-xs tracking-[0.18em]"
+            style={{ color: "var(--muted)" }}
+          >
+            ← {t("back")}
+          </Link>
+          <Link
+            href="/submit"
+            className="ml-auto text-xs tracking-[0.18em]"
+            style={{ color: "var(--accent)" }}
+          >
+            + {t("newSubmission")}
+          </Link>
+        </div>
+
+        <h1 className="font-content text-2xl font-bold">{t("title")}</h1>
+        <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
+          {t("description")}
+        </p>
+
+        {submissions.length === 0 ? (
+          <div
+            className="mt-8 p-5 text-sm"
+            style={{
+              border: "1px dashed var(--line-strong)",
+              color: "var(--muted)",
+              borderRadius: 2,
+            }}
+          >
+            {t("empty")}
+          </div>
+        ) : (
+          <div className="mt-6 grid gap-3">
+            {submissions.map((spot) => {
+              const status = spot.status as SpotStatus;
+              return (
+                <article
+                  key={spot.id}
+                  className="p-4"
+                  style={{
+                    background: "var(--panel-glass)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 2,
+                  }}
+                >
+                  <div className="flex flex-wrap items-start gap-2">
+                    <StatusBadge status={status} />
+                    <span
+                      className="ml-auto text-[10px] tracking-[0.16em]"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      {formatDate(spot.createdAt)}
+                    </span>
+                  </div>
+                  <h2 className="mt-3 font-content text-base font-bold">{spot.name}</h2>
+                  {spot.nameEn && (
+                    <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+                      {spot.nameEn}
+                    </p>
+                  )}
+                  {spot.address && (
+                    <p className="mt-2 text-xs" style={{ color: "var(--muted)" }}>
+                      {spot.address}
+                    </p>
+                  )}
+                  {status === "active" ? (
+                    <Link
+                      href={`/spots/${spot.id}`}
+                      className="mt-3 inline-block text-xs tracking-[0.16em]"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      {t("viewSpot")} →
+                    </Link>
+                  ) : (
+                    <>
+                      <p className="mt-3 text-xs" style={{ color: "var(--muted)" }}>
+                        {status === "pending"
+                          ? t("pendingHint")
+                          : status === "rejected"
+                            ? t("rejectedHint")
+                            : t("closedHint")}
+                      </p>
+                      {status === "rejected" && spot.rejectReason && (
+                        <p
+                          className="mt-2 px-2 py-1.5 text-xs"
+                          style={{
+                            color: "var(--foreground)",
+                            borderLeft: "2px solid var(--line-strong)",
+                            background: "var(--panel-glass)",
+                          }}
+                        >
+                          {t("rejectReason", { reason: spot.rejectReason })}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

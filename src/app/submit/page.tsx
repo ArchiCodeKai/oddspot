@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/contexts/SessionContext";
 import { getCategoryOptions, getDifficultyLabel } from "@/lib/i18n/spotMeta";
-import { compressSubmitImage, MAX_SUBMIT_PHOTOS } from "@/lib/submit/imageCompression";
+import { compressSubmitImage, ImageCompressionError, MAX_SUBMIT_PHOTOS } from "@/lib/submit/imageCompression";
 import { isGoogleMapsShortUrl, parseGoogleMapsInput } from "@/lib/submit/googleMapsPaste";
 
 const emptySubmitForm = {
@@ -28,6 +28,12 @@ type SubmitCoords = {
   lng: number;
 };
 
+// 貼上狀態：ok 決定顏色（成功 accent、其他 muted），不靠字串開頭判斷
+type MapPasteStatus = {
+  text: string;
+  ok: boolean;
+};
+
 const SubmitLocationMapPreview = dynamic(
   () => import("@/components/submit/SubmitLocationMapPreview").then((mod) => mod.SubmitLocationMapPreview),
   {
@@ -46,7 +52,7 @@ export default function SubmitPage() {
 
   const [form, setForm] = useState(emptySubmitForm);
   const [mapPaste, setMapPaste] = useState("");
-  const [mapPasteStatus, setMapPasteStatus] = useState("");
+  const [mapPasteStatus, setMapPasteStatus] = useState<MapPasteStatus | null>(null);
   const [sourceCoords, setSourceCoords] = useState<SubmitCoords | null>(null);
   const [locationPreviewResetKey, setLocationPreviewResetKey] = useState(0);
   const [compressedPhotoDataUrls, setCompressedPhotoDataUrls] = useState<string[]>([]);
@@ -63,12 +69,12 @@ export default function SubmitPage() {
   if (!session) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-zinc-950 px-6">
-        <p className="text-zinc-300 text-center">投稿景點需要先登入</p>
+        <p className="text-zinc-300 text-center">{tSubmit("loginRequired")}</p>
         <button
           onClick={() => router.push("/map")}
           className="text-sm text-zinc-500 underline"
         >
-          回到地圖
+          {tSubmit("backToMap")}
         </button>
       </div>
     );
@@ -90,7 +96,7 @@ export default function SubmitPage() {
     }));
     setSourceCoords(nextCoords);
     setLocationPreviewResetKey((current) => current + 1);
-    setMapPasteStatus(`已讀取座標：${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+    setMapPasteStatus({ text: tSubmit("statusParsed", { lat: lat.toFixed(6), lng: lng.toFixed(6) }), ok: true });
   }
 
   function handleLocationPreviewChange(coords: { lat: number; lng: number }) {
@@ -99,7 +105,7 @@ export default function SubmitPage() {
       lat: String(coords.lat),
       lng: String(coords.lng),
     }));
-    setMapPasteStatus(`已微調座標：${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`);
+    setMapPasteStatus({ text: tSubmit("statusAdjusted", { lat: coords.lat.toFixed(6), lng: coords.lng.toFixed(6) }), ok: true });
   }
 
   function handleResetLocationPreview() {
@@ -111,11 +117,11 @@ export default function SubmitPage() {
       lng: String(sourceCoords.lng),
     }));
     setLocationPreviewResetKey((current) => current + 1);
-    setMapPasteStatus(`已回到原始座標：${sourceCoords.lat.toFixed(6)}, ${sourceCoords.lng.toFixed(6)}`);
+    setMapPasteStatus({ text: tSubmit("statusReset", { lat: sourceCoords.lat.toFixed(6), lng: sourceCoords.lng.toFixed(6) }), ok: true });
   }
 
   async function resolveGoogleMapsShortLink(value: string) {
-    setMapPasteStatus("正在解析 Google Maps 手機分享連結...");
+    setMapPasteStatus({ text: tSubmit("statusResolving"), ok: false });
     try {
       const res = await fetch("/api/maps/resolve", {
         method: "POST",
@@ -125,20 +131,20 @@ export default function SubmitPage() {
       const payload = await res.json();
 
       if (!payload.success || !payload.data) {
-        setMapPasteStatus(payload.error ?? "尚未讀到座標，請改貼座標或完整 Google Maps 網址。");
+        setMapPasteStatus({ text: payload.error ?? tSubmit("statusNoCoordsFull"), ok: false });
         return;
       }
 
       applyParsedCoordinates(payload.data.lat, payload.data.lng);
     } catch {
-      setMapPasteStatus("Google Maps 短網址解析失敗，請改貼座標或完整 Google Maps 網址。");
+      setMapPasteStatus({ text: tSubmit("statusResolveFailed"), ok: false });
     }
   }
 
   async function handleMapPasteChange(value: string) {
     setMapPaste(value);
     if (!value.trim()) {
-      setMapPasteStatus("");
+      setMapPasteStatus(null);
       setSourceCoords(null);
       return;
     }
@@ -154,7 +160,7 @@ export default function SubmitPage() {
       return;
     }
 
-    setMapPasteStatus("尚未讀到座標，請改貼座標或 Google Maps 網址。");
+    setMapPasteStatus({ text: tSubmit("statusNoCoords"), ok: false });
   }
 
   async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -163,29 +169,33 @@ export default function SubmitPage() {
     if (files.length === 0) return;
 
     setError("");
-    setPhotoStatus("壓縮中...");
+    setPhotoStatus(tSubmit("photoCompressing"));
 
     try {
       const compressed = await Promise.all(files.map((file) => compressSubmitImage(file)));
       setCompressedPhotoDataUrls(compressed);
-      setPhotoStatus(`已壓縮 ${compressed.length} 張照片，送出時會上傳到雲端並送審。`);
+      setPhotoStatus(tSubmit("photoCompressed", { count: compressed.length }));
     } catch (photoError) {
       setCompressedPhotoDataUrls([]);
       setPhotoStatus("");
-      setError(photoError instanceof Error ? photoError.message : "照片處理失敗，請重新選擇");
+      setError(
+        photoError instanceof ImageCompressionError
+          ? tSubmit(`imageErrors.${photoError.code}`)
+          : tSubmit("errPhoto")
+      );
     }
   }
 
   function handleRemovePhoto(index: number) {
     const nextPhotos = compressedPhotoDataUrls.filter((_, photoIndex) => photoIndex !== index);
     setCompressedPhotoDataUrls(nextPhotos);
-    setPhotoStatus(nextPhotos.length > 0 ? `已壓縮 ${nextPhotos.length} 張照片，送出時會上傳到雲端並送審。` : "");
+    setPhotoStatus(nextPhotos.length > 0 ? tSubmit("photoCompressed", { count: nextPhotos.length }) : "");
   }
 
   function resetForm() {
     setForm(emptySubmitForm);
     setMapPaste("");
-    setMapPasteStatus("");
+    setMapPasteStatus(null);
     setSourceCoords(null);
     setLocationPreviewResetKey(0);
     setCompressedPhotoDataUrls([]);
@@ -204,7 +214,7 @@ export default function SubmitPage() {
     const payload = await res.json();
 
     if (!payload.success || !payload.data?.url) {
-      throw new Error(payload.error ?? "照片上傳失敗");
+      throw new Error(payload.error ?? tSubmit("errUpload"));
     }
 
     return payload.data.url as string;
@@ -234,7 +244,7 @@ export default function SubmitPage() {
     const lng = parseFloat(form.lng);
 
     if (!form.name || !form.category || isNaN(lat) || isNaN(lng)) {
-      setError("名稱、分類、位置座標為必填");
+      setError(tSubmit("errRequired"));
       setSubmitting(false);
       return;
     }
@@ -249,7 +259,7 @@ export default function SubmitPage() {
             uploadedUrls[index] = await uploadSubmitPhoto(dataUrl, index);
           })
         );
-        setPhotoStatus("照片已上傳，正在送出審核。");
+        setPhotoStatus(tSubmit("photoUploaded"));
       }
 
       const res = await fetch("/api/spots", {
@@ -274,7 +284,7 @@ export default function SubmitPage() {
       if (!data.success) {
         // 投稿被後端拒絕（重複 / 每日上限 / 驗證等）→ 清掉已上傳的孤兒圖
         await cleanupUploadedPhotos(uploadedUrls);
-        setError(data.error ?? "投稿失敗");
+        setError(data.error ?? tSubmit("errSubmit"));
         return;
       }
 
@@ -282,7 +292,7 @@ export default function SubmitPage() {
     } catch {
       // 照片上傳中途失敗或網路錯誤 → 清掉已成功上傳的孤兒圖
       await cleanupUploadedPhotos(uploadedUrls);
-      setError("網路錯誤，請稍後再試");
+      setError(tSubmit("errNetwork"));
     } finally {
       setSubmitting(false);
     }
@@ -347,33 +357,33 @@ export default function SubmitPage() {
           >
             ←
           </button>
-          <h1 className="text-lg font-medium">投稿奇特景點</h1>
+          <h1 className="text-lg font-medium">{tSubmit("title")}</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <label className="text-sm text-zinc-300">貼上 Google Maps 連結或座標 *</label>
+            <label className="text-sm text-zinc-300">{tSubmit("pasteLabel")}</label>
             <div className="relative">
               <input
                 value={mapPaste}
                 onChange={(e) => handleMapPasteChange(e.target.value)}
-                placeholder="貼上 Google Maps 連結或座標"
+                placeholder={tSubmit("pastePlaceholder")}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-3 pr-16 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
               />
               {canResetLocation && (
                 <button
                   type="button"
                   onClick={handleResetLocationPreview}
-                  aria-label="回到原始座標"
+                  aria-label={tSubmit("resetCoords")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[5px] border border-zinc-700 bg-zinc-950/90 px-2 py-1 text-[11px] text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
                 >
-                  復位
+                  {tSubmit("resetShort")}
                 </button>
               )}
             </div>
             {mapPasteStatus && (
-              <p className="text-xs" style={{ color: mapPasteStatus.startsWith("已") ? "var(--accent)" : "var(--muted)" }}>
-                {mapPasteStatus}
+              <p className="text-xs" style={{ color: mapPasteStatus.ok ? "var(--accent)" : "var(--muted)" }}>
+                {mapPasteStatus.text}
               </p>
             )}
             {hasLocationPreview && (
@@ -387,30 +397,30 @@ export default function SubmitPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">景點名稱 *</label>
+            <label className="text-sm text-zinc-400">{tSubmit("nameLabel")}</label>
             <input
               name="name"
               value={form.name}
               onChange={handleChange}
-              placeholder="例：萬華地下神秘廟宇"
+              placeholder={tSubmit("namePlaceholder")}
               className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
               required
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">英文名稱（選填）</label>
+            <label className="text-sm text-zinc-400">{tSubmit("nameEnLabel")}</label>
             <input
               name="nameEn"
               value={form.nameEn}
               onChange={handleChange}
-              placeholder="e.g. Wanhua Underground Temple"
+              placeholder={tSubmit("nameEnPlaceholder")}
               className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">分類 *</label>
+            <label className="text-sm text-zinc-400">{tSubmit("categoryLabel")}</label>
             <select
               name="category"
               value={form.category}
@@ -418,7 +428,7 @@ export default function SubmitPage() {
               className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-600"
               required
             >
-              <option value="">選擇分類</option>
+              <option value="">{tSubmit("categoryPlaceholder")}</option>
               {categoryOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -429,7 +439,7 @@ export default function SubmitPage() {
 
           <details className="group rounded-xs border border-zinc-800 bg-zinc-950/40">
             <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-sm text-zinc-400">
-              <span>進階座標</span>
+              <span>{tSubmit("advancedCoords")}</span>
               <span className="text-xs text-zinc-600 transition-transform group-open:rotate-180">⌄</span>
             </summary>
             <div className="border-t border-zinc-800 px-3 py-3">
@@ -438,36 +448,36 @@ export default function SubmitPage() {
                   name="lat"
                   value={form.lat}
                   onChange={handleChange}
-                  placeholder="緯度（例：25.0478）"
+                  placeholder={tSubmit("latPlaceholder")}
                   className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
                 />
                 <input
                   name="lng"
                   value={form.lng}
                   onChange={handleChange}
-                  placeholder="經度（例：121.5319）"
+                  placeholder={tSubmit("lngPlaceholder")}
                   className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
                 />
               </div>
               <p className="mt-2 text-xs text-zinc-600">
-                如果 Google Maps 連結無法讀取，可以手動貼上緯度與經度。
+                {tSubmit("coordsHint")}
               </p>
             </div>
           </details>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">地址（選填）</label>
+            <label className="text-sm text-zinc-400">{tSubmit("addressLabel")}</label>
             <input
               name="address"
               value={form.address}
               onChange={handleChange}
-              placeholder="例：台北市萬華區某某路123號"
+              placeholder={tSubmit("addressPlaceholder")}
               className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">到達難度</label>
+            <label className="text-sm text-zinc-400">{tSubmit("difficultyLabel")}</label>
             <select
               name="difficulty"
               value={form.difficulty}
@@ -483,42 +493,42 @@ export default function SubmitPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">景點描述（選填）</label>
+            <label className="text-sm text-zinc-400">{tSubmit("descriptionLabel")}</label>
             <textarea
               name="description"
               value={form.description}
               onChange={handleChange}
-              placeholder="描述這個地方有什麼特別的..."
+              placeholder={tSubmit("descriptionPlaceholder")}
               rows={3}
               className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 resize-none"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">傳說或故事（選填）</label>
+            <label className="text-sm text-zinc-400">{tSubmit("legendLabel")}</label>
             <textarea
               name="legend"
               value={form.legend}
               onChange={handleChange}
-              placeholder="這個地方有什麼奇怪的故事或傳說嗎？"
+              placeholder={tSubmit("legendPlaceholder")}
               rows={2}
               className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 resize-none"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-400">建議造訪時間（選填）</label>
+            <label className="text-sm text-zinc-400">{tSubmit("timeLabel")}</label>
             <input
               name="recommendedTime"
               value={form.recommendedTime}
               onChange={handleChange}
-              placeholder="例：深夜、日落時分、平日下午"
+              placeholder={tSubmit("timePlaceholder")}
               className="bg-zinc-900 border border-zinc-800 rounded-xs px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-sm text-zinc-400">照片（選填，最多 3 張）</label>
+            <label className="text-sm text-zinc-400">{tSubmit("photosLabel", { max: MAX_SUBMIT_PHOTOS })}</label>
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -527,7 +537,7 @@ export default function SubmitPage() {
               className="bg-zinc-900 border border-dashed border-zinc-700 rounded-xs px-3 py-3 text-sm text-zinc-300 file:mr-3 file:border-0 file:bg-white file:px-3 file:py-2 file:text-xs file:font-bold file:text-zinc-900 file:rounded-xs"
             />
             <p className="text-xs text-zinc-600">
-              系統會先壓縮照片，再上傳到雲端儲存並送審。
+              {tSubmit("photosHint")}
             </p>
             {photoStatus && (
               <p className="text-xs" style={{ color: "var(--accent)" }}>
@@ -543,13 +553,13 @@ export default function SubmitPage() {
                   >
                     <img
                       src={src}
-                      alt={`投稿照片預覽 ${index + 1}`}
+                      alt={tSubmit("photoPreviewAlt", { index: index + 1 })}
                       className="h-full w-full object-cover"
                     />
                     <button
                       type="button"
                       onClick={() => handleRemovePhoto(index)}
-                      aria-label={`移除第 ${index + 1} 張照片`}
+                      aria-label={tSubmit("photoRemove", { index: index + 1 })}
                       className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center border border-zinc-700 bg-zinc-950/80 text-xs text-zinc-300 rounded-xs"
                     >
                       ×
@@ -569,7 +579,7 @@ export default function SubmitPage() {
             disabled={submitting}
             className="w-full py-3 bg-white text-zinc-900 rounded-xs font-medium text-sm disabled:opacity-50 mt-1"
           >
-            {submitting ? "送出中..." : "送出審核"}
+            {submitting ? tSubmit("submitting") : tSubmit("submit")}
           </button>
         </form>
       </div>
@@ -578,10 +588,11 @@ export default function SubmitPage() {
 }
 
 function LocationPreviewSkeleton() {
+  const t = useTranslations("submitPage");
   return (
     <div
       className="relative overflow-hidden rounded-xs border border-zinc-800 bg-zinc-950 px-3 py-3"
-      aria-label="位置預覽載入中"
+      aria-label={t("previewLoading")}
     >
       <div className="absolute inset-0 opacity-70">
         <div className="h-full w-full bg-[linear-gradient(90deg,rgba(113,113,122,0.18)_1px,transparent_1px),linear-gradient(0deg,rgba(113,113,122,0.18)_1px,transparent_1px)] bg-[size:28px_28px]" />
@@ -607,7 +618,7 @@ function LocationPreviewSkeleton() {
         </div>
       </div>
       <div className="relative flex items-center justify-between gap-3 border-t border-zinc-800 pt-2 text-[11px] text-zinc-500">
-        <span>載入地圖預覽</span>
+        <span>{t("previewLoadingLabel")}</span>
         <span className="text-right font-mono text-zinc-400">Mapbox</span>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Map, type MapRef, type ViewStateChangeEvent } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useAppStore } from "@/store/useAppStore";
@@ -17,6 +18,7 @@ const previewMinZoom = 13;
 const previewZoom = 16;
 
 export function SubmitLocationMapPreview({ lat, lng, resetKey, onLocationChange }: SubmitLocationMapPreviewProps) {
+  const t = useTranslations("submitPage");
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
   const theme = useAppStore((s) => s.theme);
   const mapStyle = useMemo(() => loadMapStyle(theme), [theme]);
@@ -54,7 +56,7 @@ export function SubmitLocationMapPreview({ lat, lng, resetKey, onLocationChange 
   if (!token) {
     return (
       <div className="rounded-xs border border-zinc-800 bg-zinc-950 px-3 py-3 text-xs text-zinc-500">
-        缺少 Mapbox token，位置已讀取但暫時無法顯示地圖預覽。
+        {t("previewNoToken")}
       </div>
     );
   }
@@ -62,7 +64,7 @@ export function SubmitLocationMapPreview({ lat, lng, resetKey, onLocationChange 
   return (
     <div
       className="submit-map-preview relative overflow-hidden rounded-xs border border-zinc-800 bg-zinc-950"
-      aria-label={`可拖曳地圖位置預覽 ${lat.toFixed(6)}, ${lng.toFixed(6)}`}
+      aria-label={t("previewAria", { lat: lat.toFixed(6), lng: lng.toFixed(6) })}
     >
       <style>
         {`
@@ -114,7 +116,7 @@ export function SubmitLocationMapPreview({ lat, lng, resetKey, onLocationChange 
         </div>
       </div>
       <div className="flex items-center justify-between gap-3 border-t border-zinc-800 px-3 py-2 text-[11px] text-zinc-500">
-        <span>拖曳或縮放地圖微調位置</span>
+        <span>{t("previewHint")}</span>
         <span className="text-right font-mono text-zinc-400">
           {lat.toFixed(6)}, {lng.toFixed(6)}
         </span>

@@ -2,6 +2,24 @@ export const MAX_SUBMIT_PHOTOS = 3;
 export const MAX_SUBMIT_PHOTO_BYTES = 8 * 1024 * 1024;
 export const MAX_SUBMIT_IMAGE_DATA_URL_LENGTH = 500_000;
 
+// 錯誤用代碼丟出，顯示文字由投稿頁依語系翻譯（submitPage.imageErrors.*）
+export type ImageCompressionErrorCode =
+  | "readFailed"
+  | "unsupportedType"
+  | "tooLarge"
+  | "compressUnavailable"
+  | "stillTooLarge";
+
+export class ImageCompressionError extends Error {
+  code: ImageCompressionErrorCode;
+
+  constructor(code: ImageCompressionErrorCode) {
+    super(code);
+    this.name = "ImageCompressionError";
+    this.code = code;
+  }
+}
+
 const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_DIMENSION = 1280;
 const MIN_JPEG_QUALITY = 0.5;
@@ -17,7 +35,7 @@ function readImage(file: File): Promise<HTMLImageElement> {
     };
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error("圖片讀取失敗，請換一張照片"));
+      reject(new ImageCompressionError("readFailed"));
     };
     image.src = objectUrl;
   });
@@ -33,10 +51,10 @@ function getScaledSize(width: number, height: number) {
 
 export async function compressSubmitImage(file: File): Promise<string> {
   if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
-    throw new Error("只支援 JPG、PNG 或 WebP 圖片");
+    throw new ImageCompressionError("unsupportedType");
   }
   if (file.size > MAX_SUBMIT_PHOTO_BYTES) {
-    throw new Error("單張照片不能超過 8MB");
+    throw new ImageCompressionError("tooLarge");
   }
 
   const image = await readImage(file);
@@ -47,7 +65,7 @@ export async function compressSubmitImage(file: File): Promise<string> {
 
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error("瀏覽器無法壓縮這張圖片");
+    throw new ImageCompressionError("compressUnavailable");
   }
 
   context.fillStyle = "#111111";
@@ -62,7 +80,7 @@ export async function compressSubmitImage(file: File): Promise<string> {
   }
 
   if (dataUrl.length > MAX_SUBMIT_IMAGE_DATA_URL_LENGTH) {
-    throw new Error("照片壓縮後仍太大，請選擇尺寸較小的圖片");
+    throw new ImageCompressionError("stillTooLarge");
   }
 
   return dataUrl;

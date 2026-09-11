@@ -47,7 +47,15 @@
     "permissionDenied": "permission denied · 開啟系統設定 > 定位",
     "gpsError": "err_gps · 訊號失蹤",
     "quickSaved": "已收藏",
-    "quickTrip": "今日行程"
+    "quickTrip": "今日行程",
+    "emptyViewport": "視野盡頭也沒有什麼 · 試試拖動地圖",
+    "backToRadius": "回到附近 {radius}km",
+    "emptyRadius": "ERR_NO_WEIRD_FOUND · 半徑 {radius}km 內暫無登記有案之怪地",
+    "expandRadius": "擴大搜尋範圍",
+    "maxRadius": "已是最大搜尋範圍",
+    "tokenMissing": "NEXT_PUBLIC_MAPBOX_TOKEN 未設定",
+    "loadFailed": "無法載入景點",
+    "retry": "重試"
   },
   "settings": {
     "open": "開啟設定選單",
@@ -129,7 +137,65 @@
     "successDescription": "你的景點已送出審核，通過後會出現在地圖上。",
     "continueSubmit": "繼續投稿",
     "viewSubmissions": "查看投稿狀態",
-    "backToMap": "回到地圖"
+    "backToMap": "回到地圖",
+    "loginRequired": "投稿景點需要先登入",
+    "title": "投稿奇特景點",
+    "pasteLabel": "貼上 Google Maps 連結或座標 *",
+    "pastePlaceholder": "貼上 Google Maps 連結或座標",
+    "resetCoords": "回到原始座標",
+    "resetShort": "復位",
+    "statusParsed": "已讀取座標：{lat}, {lng}",
+    "statusAdjusted": "已微調座標：{lat}, {lng}",
+    "statusReset": "已回到原始座標：{lat}, {lng}",
+    "statusResolving": "正在解析 Google Maps 手機分享連結...",
+    "statusNoCoords": "尚未讀到座標，請改貼座標或 Google Maps 網址。",
+    "statusNoCoordsFull": "尚未讀到座標，請改貼座標或完整 Google Maps 網址。",
+    "statusResolveFailed": "Google Maps 短網址解析失敗，請改貼座標或完整 Google Maps 網址。",
+    "nameLabel": "景點名稱 *",
+    "namePlaceholder": "例：萬華地下神秘廟宇",
+    "nameEnLabel": "英文名稱（選填）",
+    "nameEnPlaceholder": "e.g. Wanhua Underground Temple",
+    "categoryLabel": "分類 *",
+    "categoryPlaceholder": "選擇分類",
+    "advancedCoords": "進階座標",
+    "latPlaceholder": "緯度（例：25.0478）",
+    "lngPlaceholder": "經度（例：121.5319）",
+    "coordsHint": "如果 Google Maps 連結無法讀取，可以手動貼上緯度與經度。",
+    "addressLabel": "地址（選填）",
+    "addressPlaceholder": "例：台北市萬華區某某路123號",
+    "difficultyLabel": "到達難度",
+    "descriptionLabel": "景點描述（選填）",
+    "descriptionPlaceholder": "描述這個地方有什麼特別的...",
+    "legendLabel": "傳說或故事（選填）",
+    "legendPlaceholder": "這個地方有什麼奇怪的故事或傳說嗎？",
+    "timeLabel": "建議造訪時間（選填）",
+    "timePlaceholder": "例：深夜、日落時分、平日下午",
+    "photosLabel": "照片（選填，最多 {max} 張）",
+    "photosHint": "系統會先壓縮照片，再上傳到雲端儲存並送審。",
+    "photoCompressing": "壓縮中...",
+    "photoCompressed": "已壓縮 {count} 張照片，送出時會上傳到雲端並送審。",
+    "photoUploaded": "照片已上傳，正在送出審核。",
+    "photoPreviewAlt": "投稿照片預覽 {index}",
+    "photoRemove": "移除第 {index} 張照片",
+    "submit": "送出審核",
+    "submitting": "送出中...",
+    "errRequired": "名稱、分類、位置座標為必填",
+    "errPhoto": "照片處理失敗，請重新選擇",
+    "errUpload": "照片上傳失敗",
+    "errSubmit": "投稿失敗",
+    "errNetwork": "網路錯誤，請稍後再試",
+    "previewLoading": "位置預覽載入中",
+    "previewLoadingLabel": "載入地圖預覽",
+    "previewNoToken": "缺少 Mapbox token，位置已讀取但暫時無法顯示地圖預覽。",
+    "previewAria": "可拖曳地圖位置預覽 {lat}, {lng}",
+    "previewHint": "拖曳或縮放地圖微調位置",
+    "imageErrors": {
+      "readFailed": "圖片讀取失敗，請換一張照片",
+      "unsupportedType": "只支援 JPG、PNG 或 WebP 圖片",
+      "tooLarge": "單張照片不能超過 8MB",
+      "compressUnavailable": "瀏覽器無法壓縮這張圖片",
+      "stillTooLarge": "照片壓縮後仍太大，請選擇尺寸較小的圖片"
+    }
   },
   "routeSheet": {
     "title": "archive://route · 歸檔行程",
@@ -153,13 +219,32 @@
     "planInOrder": "路徑規劃",
     "optimize": "最佳化",
     "optimizing": "規劃中",
-    "start": "start / 開始導航"
+    "start": "start / 開始導航",
+    "errors": {
+      "needTwoPoints": "至少需要兩個點才能規劃路線",
+      "tooManyPoints": "超過 Mapbox 點數上限",
+      "tokenMissing": "NEXT_PUBLIC_MAPBOX_TOKEN 未設定",
+      "apiFailed": "Directions API 失敗",
+      "noRoute": "找不到可行路線",
+      "planFailed": "路線規劃失敗"
+    }
+  },
+  "externalNav": {
+    "title": "archive://nav · 開始導航",
+    "noApp": "err_no_app · 此平台無可用導航",
+    "cancel": "取消",
+    "myLocation": "我的位置",
+    "otherMapsApp": "其他地圖 app",
+    "googleMapsNewTab": "Google Maps（新分頁）"
   },
   "spotDetail": {
     "back": "返回地圖",
     "legend": "傳說",
     "recommendedTime": "推薦時段",
-    "addressPrefix": "📍"
+    "addressPrefix": "📍",
+    "save": "收藏",
+    "saved": "已收藏",
+    "navigate": "導航前往"
   },
   "tabs": {
     "map": "地圖",
@@ -202,6 +287,9 @@
     "gestureSave": "右滑 · 收藏＋行程",
     "gestureCollect": "+ · 只收藏",
     "gestureDetail": "滾動 · 更多資料",
+    "loadFailed": "無法載入景點",
+    "loadFailedHint": "請檢查網路連線後重試",
+    "retry": "重試",
     "difficulty": {
       "easy": "容易",
       "medium": "普通",
@@ -217,7 +305,8 @@
   },
   "theme": {
     "toDark": "切換為深色模式",
-    "toLight": "切換為淺色模式"
+    "toLight": "切換為淺色模式",
+    "cycle": "切換主題（目前：{theme}）"
   },
   "lang": {
     "toggle": "Switch to English",

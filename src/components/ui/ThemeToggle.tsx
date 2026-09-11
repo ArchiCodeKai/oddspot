@@ -1,15 +1,17 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useAppStore } from "@/store/useAppStore";
 
 export function ThemeToggle() {
   const { theme, cycleTheme } = useAppStore();
+  const t = useTranslations("theme");
 
   return (
     // 44×44 最小 touch target（WCAG 2.5.5）
     <button
       onClick={cycleTheme}
-      aria-label={`切換主題（目前：${theme}）`}
+      aria-label={t("cycle", { theme })}
       style={{
         width: 44,
         height: 44,
