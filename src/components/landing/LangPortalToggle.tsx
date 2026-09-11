@@ -168,7 +168,9 @@ function SmokeTrail({ chars, font, active, version }: SmokeTrailProps) {
 // ─────────────────────────────────────────────────────
 // 主元件
 // ─────────────────────────────────────────────────────
-export function LangPortalToggle({ size = 128 }: { size?: number }) {
+// lite：手機 / light tier 不掛 3D 牙齒（省 876KB GLB 與第二個 WebGL context），
+// 改以 1px 線框圓當按鈕本體，字符煙霧與 LANG 標籤照舊
+export function LangPortalToggle({ size = 128, lite = false }: { size?: number; lite?: boolean }) {
   const { locale, setLocale } = useLocaleStore();
   const [hover,  setHover]  = useState(false);
   const [focus,  setFocus]  = useState(false);
@@ -232,12 +234,35 @@ export function LangPortalToggle({ size = 128 }: { size?: number }) {
     >
       {/* 3D 上下顎牙齒 — hovered (mouse only) drives CSS drop-shadow silhouette glow;
           active (hover || focus) drives bite speed; beamTrigger fires light beam on click */}
-      <TeethJawR3F
-        active={active}
-        hovered={hover}
-        beamTrigger={beamTrigger}
-        clickJawTrigger={clickJawTrigger}
-      />
+      {lite ? (
+        // 手機版替身：線框圓 + 中心點，沿用 wireframe 0.5–1px 無填色規則
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 100 100"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            color: active ? "var(--accent)" : "var(--muted)",
+            transition: "color 250ms",
+          }}
+        >
+          <circle cx="50" cy="50" r="46" />
+          <circle cx="50" cy="50" r="30" strokeDasharray="4 6" />
+          <circle cx="50" cy="50" r="2.5" fill="currentColor" stroke="none" />
+        </svg>
+      ) : (
+        <TeethJawR3F
+          active={active}
+          hovered={hover}
+          beamTrigger={beamTrigger}
+          clickJawTrigger={clickJawTrigger}
+        />
+      )}
 
       {/* Interactive overlay button */}
       <button

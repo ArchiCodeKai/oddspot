@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Map, AttributionControl, type MapRef, type ViewStateChangeEvent } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { SpotMarker } from "./SpotMarker";
@@ -33,6 +34,7 @@ interface MapViewProps {
 }
 
 export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetToRadius, isError, onRetry }: MapViewProps) {
+  const t = useTranslations("map");
   const [selectedSpot, setSelectedSpot] = useState<SpotMapPoint | null>(null);
   const [zoom, setZoom] = useState(TAIPEI_CENTER.zoom);
   // 外部導航選擇 sheet 開關（純 UI state，不放 store）
@@ -135,7 +137,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
       return (
         <>
           <p className="text-sm font-content" style={{ color: "var(--muted)" }}>
-            視野盡頭也沒有什麼 · 試試拖動地圖
+            {t("emptyViewport")}
           </p>
           {onResetToRadius && (
             <button
@@ -151,7 +153,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
                 cursor: "pointer",
               }}
             >
-              回到附近 {radius}km
+              {t("backToRadius", { radius })}
             </button>
           )}
         </>
@@ -160,7 +162,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
     return (
       <>
         <p className="text-sm font-content" style={{ color: "var(--muted)" }}>
-          ERR_NO_WEIRD_FOUND · 半徑 {radius}km 內暫無登記有案之怪地
+          {t("emptyRadius", { radius })}
         </p>
         {onExpandRadius ? (
           <button
@@ -176,11 +178,11 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
               cursor: "pointer",
             }}
           >
-            擴大搜尋範圍
+            {t("expandRadius")}
           </button>
         ) : (
           <p className="text-xs mt-0.5" style={{ color: "var(--muted)", opacity: 0.6 }}>
-            已是最大搜尋範圍
+            {t("maxRadius")}
           </p>
         )}
       </>
@@ -207,7 +209,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
             }}
           >
             <div className="text-xs uppercase opacity-50">err_no_token</div>
-            <div className="text-sm uppercase mt-1">NEXT_PUBLIC_MAPBOX_TOKEN 未設定</div>
+            <div className="text-sm uppercase mt-1">{t("tokenMissing")}</div>
           </div>
         </div>
       ) : (
@@ -291,7 +293,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
             }}
           >
             <p className="text-sm font-content" style={{ color: "var(--foreground)" }}>
-              無法載入景點
+              {t("loadFailed")}
             </p>
             {onRetry && (
               <button
@@ -305,7 +307,7 @@ export function MapView({ spots, userLocation, mapRef, onExpandRadius, onResetTo
                   cursor: "pointer",
                 }}
               >
-                重試
+                {t("retry")}
               </button>
             )}
           </div>

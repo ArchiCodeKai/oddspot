@@ -1,5 +1,9 @@
-import { CATEGORY_CODES, CATEGORY_LABELS, type SpotCategory } from "@/lib/constants/categories";
+"use client";
+
+import { useTranslations } from "next-intl";
+import { CATEGORY_CODES, type SpotCategory } from "@/lib/constants/categories";
 import { CATEGORY_GLYPHS } from "@/lib/constants/categoryGlyphs";
+import { getCategoryLabel } from "@/lib/i18n/spotMeta";
 
 interface CategoryBadgeProps {
   category: SpotCategory;
@@ -15,7 +19,9 @@ interface CategoryBadgeProps {
 export function CategoryBadge({ category, compact = false, size = "sm", label }: CategoryBadgeProps) {
   const Glyph = CATEGORY_GLYPHS[category];
   const code = CATEGORY_CODES[category];
-  const displayLabel = label ?? CATEGORY_LABELS[category];
+  // 沒傳 label 時退回 i18n 字典，不會出現寫死的中文
+  const t = useTranslations("spotMeta");
+  const displayLabel = label ?? getCategoryLabel(t, category);
 
   const sizes = {
     sm: { fontSize: 10, padding: "3px 7px 3px 6px", glyph: 10, codeSize: 9 },

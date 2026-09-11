@@ -14,6 +14,7 @@ interface SpotActionBarProps {
 
 export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  const t = useTranslations("spotDetail");
   const tToast = useTranslations("actionToast");
   const { user } = useSession();
   const openLoginPrompt = useLoginPromptStore((s) => s.open);
@@ -57,7 +58,7 @@ export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
           cursor: "pointer",
         }}
       >
-        {saved ? "♥" : "♡"} {saved ? "已收藏" : "收藏"}
+        {saved ? "♥" : "♡"} {saved ? t("saved") : t("save")}
       </button>
       <a
         href={mapsUrl}
@@ -72,7 +73,7 @@ export function SpotActionBar({ lat, lng, spotId }: SpotActionBarProps) {
           letterSpacing: "0.12em",
         }}
       >
-        導航前往
+        {t("navigate")}
       </a>
     </div>
   );

@@ -1,4 +1,8 @@
-import { STATUS_DOT, STATUS_LABELS, type SpotStatus } from "@/lib/constants/status";
+"use client";
+
+import { useTranslations } from "next-intl";
+import { STATUS_DOT, type SpotStatus } from "@/lib/constants/status";
+import { getStatusLabel } from "@/lib/i18n/spotMeta";
 
 interface StatusBadgeProps {
   status: SpotStatus;
@@ -8,6 +12,8 @@ interface StatusBadgeProps {
 // v3 monochrome status：全用 accent 色，dot 形態區分
 // active=實心發光 · uncertain=空心環 · disappeared=淡色 · pending=脈動
 export function StatusBadge({ status, size = "sm" }: StatusBadgeProps) {
+  // 標籤走 i18n 字典，不再直接用 constants 的中文
+  const t = useTranslations("spotMeta");
   const cfg = STATUS_DOT[status] ?? STATUS_DOT.active;
 
   const sizes = {
@@ -47,7 +53,7 @@ export function StatusBadge({ status, size = "sm" }: StatusBadgeProps) {
           flexShrink: 0,
         }}
       />
-      {STATUS_LABELS[status]}
+      {getStatusLabel(t, status)}
     </span>
   );
 }

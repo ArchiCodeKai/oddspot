@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, useDragControls, useReducedMotion } from "framer-motion";
 import { useRoutePlannerStore } from "@/store/useRoutePlannerStore";
 import {
@@ -40,6 +41,7 @@ export function ExternalNavSheet({
   onClose,
   userLocation,
 }: ExternalNavSheetProps) {
+  const t = useTranslations("externalNav");
   const selectedSpots = useRoutePlannerStore((s) => s.selectedSpots);
   const dragControls = useDragControls();
   const shouldReduceMotion = useReducedMotion();
@@ -49,7 +51,7 @@ export function ExternalNavSheet({
     if (!isOpen) return null;
     const points: NavWaypoint[] = [
       ...(userLocation
-        ? [{ lat: userLocation.lat, lng: userLocation.lng, label: "我的位置" }]
+        ? [{ lat: userLocation.lat, lng: userLocation.lng, label: t("myLocation") }]
         : []),
       ...selectedSpots.map((s) => ({
         lat: s.lat,
@@ -58,7 +60,7 @@ export function ExternalNavSheet({
       })),
     ];
     return buildExternalNavLinks(points);
-  }, [isOpen, userLocation, selectedSpots]);
+  }, [isOpen, userLocation, selectedSpots, t]);
 
   const handlePick = (opt: ExternalNavOption) => {
     // 分三條路：
@@ -153,7 +155,7 @@ export function ExternalNavSheet({
                   color: "var(--muted)",
                 }}
               >
-                archive://nav · 開始導航
+                {t("title")}
               </div>
               <div
                 style={{
@@ -180,7 +182,7 @@ export function ExternalNavSheet({
                     opacity: 0.6,
                   }}
                 >
-                  err_no_app · 此平台無可用導航
+                  {t("noApp")}
                 </div>
               ) : (
                 <ul style={{ listStyle: "none", padding: 0 }}>
@@ -218,7 +220,7 @@ export function ExternalNavSheet({
                             el.style.borderColor = "var(--line-strong)";
                           }}
                         >
-                          <span>{opt.label}</span>
+                          <span>{opt.labelKey ? t(opt.labelKey) : opt.label}</span>
                           <span
                             style={{ color: "var(--accent)", fontSize: 14 }}
                           >
@@ -248,7 +250,7 @@ export function ExternalNavSheet({
                   letterSpacing: "0.18em",
                 }}
               >
-                取消
+                {t("cancel")}
               </button>
             </div>
           </motion.div>

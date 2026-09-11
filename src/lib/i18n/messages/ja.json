@@ -47,7 +47,15 @@
     "permissionDenied": "permission denied · システム設定で位置情報を許可",
     "gpsError": "err_gps · 信号ロスト",
     "quickSaved": "保存済み",
-    "quickTrip": "今日の行程"
+    "quickTrip": "今日の行程",
+    "emptyViewport": "視界の果てにも何もない · 地図をドラッグしてみて",
+    "backToRadius": "付近 {radius}km に戻る",
+    "emptyRadius": "ERR_NO_WEIRD_FOUND · 半径 {radius}km 内に登録済みの怪地はありません",
+    "expandRadius": "検索範囲を広げる",
+    "maxRadius": "すでに最大範囲です",
+    "tokenMissing": "NEXT_PUBLIC_MAPBOX_TOKEN が未設定です",
+    "loadFailed": "スポットを読み込めません",
+    "retry": "再試行"
   },
   "settings": {
     "open": "設定メニューを開く",
@@ -129,7 +137,65 @@
     "successDescription": "スポットは審査に送られました。承認後にマップへ表示されます。",
     "continueSubmit": "続けて投稿",
     "viewSubmissions": "投稿状況を見る",
-    "backToMap": "マップへ戻る"
+    "backToMap": "マップへ戻る",
+    "loginRequired": "投稿にはログインが必要です",
+    "title": "奇妙なスポットを投稿",
+    "pasteLabel": "Google Maps のリンクか座標を貼り付け *",
+    "pastePlaceholder": "Google Maps のリンクか座標を貼り付け",
+    "resetCoords": "元の座標に戻す",
+    "resetShort": "リセット",
+    "statusParsed": "座標を読み取りました：{lat}, {lng}",
+    "statusAdjusted": "座標を微調整しました：{lat}, {lng}",
+    "statusReset": "元の座標に戻しました：{lat}, {lng}",
+    "statusResolving": "Google Maps の共有リンクを解析中...",
+    "statusNoCoords": "座標を読み取れません。座標か Google Maps の URL を貼り付けてください。",
+    "statusNoCoordsFull": "座標を読み取れません。座標か完全な Google Maps の URL を貼り付けてください。",
+    "statusResolveFailed": "Google Maps 短縮 URL の解析に失敗しました。座標か完全な URL を貼り付けてください。",
+    "nameLabel": "スポット名 *",
+    "namePlaceholder": "例：萬華の地下にある謎の廟",
+    "nameEnLabel": "英語名（任意）",
+    "nameEnPlaceholder": "e.g. Wanhua Underground Temple",
+    "categoryLabel": "カテゴリ *",
+    "categoryPlaceholder": "カテゴリを選択",
+    "advancedCoords": "座標を直接入力",
+    "latPlaceholder": "緯度（例：25.0478）",
+    "lngPlaceholder": "経度（例：121.5319）",
+    "coordsHint": "Google Maps のリンクを読み取れない場合は、緯度と経度を手動で入力できます。",
+    "addressLabel": "住所（任意）",
+    "addressPlaceholder": "例：台北市萬華區〇〇路123號",
+    "difficultyLabel": "到達難易度",
+    "descriptionLabel": "スポットの説明（任意）",
+    "descriptionPlaceholder": "この場所のどこが特別か...",
+    "legendLabel": "伝説やエピソード（任意）",
+    "legendPlaceholder": "この場所にまつわる奇妙な話や伝説はありますか？",
+    "timeLabel": "おすすめの訪問時間（任意）",
+    "timePlaceholder": "例：深夜、夕暮れ、平日の午後",
+    "photosLabel": "写真（任意、最大 {max} 枚）",
+    "photosHint": "写真は圧縮してからクラウドにアップロードし、審査に送られます。",
+    "photoCompressing": "圧縮中...",
+    "photoCompressed": "{count} 枚の写真を圧縮しました。送信時にアップロードして審査に送ります。",
+    "photoUploaded": "写真をアップロードしました。審査に送信中です。",
+    "photoPreviewAlt": "投稿写真プレビュー {index}",
+    "photoRemove": "{index} 枚目の写真を削除",
+    "submit": "審査に送る",
+    "submitting": "送信中...",
+    "errRequired": "名前、カテゴリ、座標は必須です",
+    "errPhoto": "写真の処理に失敗しました。選び直してください",
+    "errUpload": "写真のアップロードに失敗しました",
+    "errSubmit": "投稿に失敗しました",
+    "errNetwork": "ネットワークエラー。しばらくしてから再試行してください",
+    "previewLoading": "位置プレビューを読み込み中",
+    "previewLoadingLabel": "地図プレビューを読み込み中",
+    "previewNoToken": "Mapbox token がないため、座標は読み取れましたが地図プレビューを表示できません。",
+    "previewAria": "ドラッグできる位置プレビュー {lat}, {lng}",
+    "previewHint": "地図をドラッグまたはズームして位置を微調整",
+    "imageErrors": {
+      "readFailed": "画像を読み込めません。別の写真を選んでください",
+      "unsupportedType": "JPG、PNG、WebP の画像のみ対応しています",
+      "tooLarge": "写真 1 枚あたり 8MB 以下にしてください",
+      "compressUnavailable": "このブラウザでは画像を圧縮できません",
+      "stillTooLarge": "圧縮後も写真が大きすぎます。小さいサイズの画像を選んでください"
+    }
   },
   "routeSheet": {
     "title": "archive://route · ルート計画",
@@ -153,13 +219,32 @@
     "planInOrder": "ルート計画",
     "optimize": "最適化",
     "optimizing": "最適化中",
-    "start": "start / ナビ開始"
+    "start": "start / ナビ開始",
+    "errors": {
+      "needTwoPoints": "ルート計画には最低 2 点必要です",
+      "tooManyPoints": "Mapbox の地点数上限を超えています",
+      "tokenMissing": "NEXT_PUBLIC_MAPBOX_TOKEN が未設定です",
+      "apiFailed": "Directions API のリクエストに失敗しました",
+      "noRoute": "有効なルートが見つかりません",
+      "planFailed": "ルート計画に失敗しました"
+    }
+  },
+  "externalNav": {
+    "title": "archive://nav · ナビ開始",
+    "noApp": "err_no_app · このプラットフォームで使えるナビアプリがありません",
+    "cancel": "キャンセル",
+    "myLocation": "現在地",
+    "otherMapsApp": "他の地図アプリ",
+    "googleMapsNewTab": "Google Maps（新しいタブ）"
   },
   "spotDetail": {
     "back": "マップへ戻る",
     "legend": "伝説",
     "recommendedTime": "おすすめ時間帯",
-    "addressPrefix": "📍"
+    "addressPrefix": "📍",
+    "save": "保存",
+    "saved": "保存済み",
+    "navigate": "ナビ開始"
   },
   "tabs": {
     "map": "マップ",
@@ -202,6 +287,9 @@
     "gestureSave": "右 · 保存＋行程",
     "gestureCollect": "+ · 保存のみ",
     "gestureDetail": "スクロール · 詳細",
+    "loadFailed": "スポットを読み込めません",
+    "loadFailedHint": "ネットワーク接続を確認して再試行してください",
+    "retry": "再試行",
     "difficulty": {
       "easy": "簡単",
       "medium": "普通",
@@ -217,7 +305,8 @@
   },
   "theme": {
     "toDark": "ダークモードへ",
-    "toLight": "ライトモードへ"
+    "toLight": "ライトモードへ",
+    "cycle": "テーマ切り替え（現在：{theme}）"
   },
   "lang": {
     "toggle": "次の言語へ",

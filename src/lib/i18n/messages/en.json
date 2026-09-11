@@ -47,7 +47,15 @@
     "permissionDenied": "permission denied · enable location in system settings",
     "gpsError": "err_gps · signal lost",
     "quickSaved": "Saved",
-    "quickTrip": "Trip"
+    "quickTrip": "Trip",
+    "emptyViewport": "Nothing at the edge of view either · try dragging the map",
+    "backToRadius": "Back to nearby {radius}km",
+    "emptyRadius": "ERR_NO_WEIRD_FOUND · no registered weirdness within {radius}km",
+    "expandRadius": "Expand search radius",
+    "maxRadius": "Already at the maximum radius",
+    "tokenMissing": "NEXT_PUBLIC_MAPBOX_TOKEN is not set",
+    "loadFailed": "Failed to load spots",
+    "retry": "Retry"
   },
   "settings": {
     "open": "Open settings menu",
@@ -129,7 +137,65 @@
     "successDescription": "Your spot is in review. It will appear on the map once approved.",
     "continueSubmit": "Submit Another",
     "viewSubmissions": "View Submission Status",
-    "backToMap": "Back to Map"
+    "backToMap": "Back to Map",
+    "loginRequired": "Sign in to submit a spot",
+    "title": "Submit a Quirky Spot",
+    "pasteLabel": "Paste a Google Maps link or coordinates *",
+    "pastePlaceholder": "Paste a Google Maps link or coordinates",
+    "resetCoords": "Back to original coordinates",
+    "resetShort": "Reset",
+    "statusParsed": "Coordinates read: {lat}, {lng}",
+    "statusAdjusted": "Coordinates adjusted: {lat}, {lng}",
+    "statusReset": "Back to original coordinates: {lat}, {lng}",
+    "statusResolving": "Resolving the Google Maps share link...",
+    "statusNoCoords": "No coordinates found. Paste coordinates or a Google Maps URL instead.",
+    "statusNoCoordsFull": "No coordinates found. Paste coordinates or a full Google Maps URL instead.",
+    "statusResolveFailed": "Could not resolve the Google Maps short link. Paste coordinates or a full Google Maps URL instead.",
+    "nameLabel": "Spot name *",
+    "namePlaceholder": "e.g. Wanhua Underground Temple",
+    "nameEnLabel": "English name (optional)",
+    "nameEnPlaceholder": "e.g. Wanhua Underground Temple",
+    "categoryLabel": "Category *",
+    "categoryPlaceholder": "Choose a category",
+    "advancedCoords": "Advanced coordinates",
+    "latPlaceholder": "Latitude (e.g. 25.0478)",
+    "lngPlaceholder": "Longitude (e.g. 121.5319)",
+    "coordsHint": "If the Google Maps link cannot be read, paste the latitude and longitude manually.",
+    "addressLabel": "Address (optional)",
+    "addressPlaceholder": "e.g. No. 123, Some Road, Wanhua District, Taipei",
+    "difficultyLabel": "Difficulty to reach",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "What makes this place special...",
+    "legendLabel": "Legend or story (optional)",
+    "legendPlaceholder": "Any strange stories or legends about this place?",
+    "timeLabel": "Best time to visit (optional)",
+    "timePlaceholder": "e.g. late night, sunset, weekday afternoons",
+    "photosLabel": "Photos (optional, up to {max})",
+    "photosHint": "Photos are compressed first, then uploaded to cloud storage for review.",
+    "photoCompressing": "Compressing...",
+    "photoCompressed": "{count} photos compressed. They will be uploaded and sent for review on submit.",
+    "photoUploaded": "Photos uploaded, sending for review.",
+    "photoPreviewAlt": "Submission photo preview {index}",
+    "photoRemove": "Remove photo {index}",
+    "submit": "Submit for review",
+    "submitting": "Submitting...",
+    "errRequired": "Name, category and coordinates are required",
+    "errPhoto": "Photo processing failed, please choose again",
+    "errUpload": "Photo upload failed",
+    "errSubmit": "Submission failed",
+    "errNetwork": "Network error, please try again later",
+    "previewLoading": "Loading location preview",
+    "previewLoadingLabel": "Loading map preview",
+    "previewNoToken": "Mapbox token missing. Coordinates were read but the map preview is unavailable.",
+    "previewAria": "Draggable location preview {lat}, {lng}",
+    "previewHint": "Drag or zoom the map to fine-tune the location",
+    "imageErrors": {
+      "readFailed": "Could not read the image, please pick another photo",
+      "unsupportedType": "Only JPG, PNG or WebP images are supported",
+      "tooLarge": "Each photo must be under 8MB",
+      "compressUnavailable": "This browser cannot compress the image",
+      "stillTooLarge": "The photo is still too large after compression, please choose a smaller one"
+    }
   },
   "routeSheet": {
     "title": "archive://route · Route Plan",
@@ -153,13 +219,32 @@
     "planInOrder": "Plan Route",
     "optimize": "Optimize",
     "optimizing": "Optimizing",
-    "start": "start / Navigate"
+    "start": "start / Navigate",
+    "errors": {
+      "needTwoPoints": "Need at least two points to plan a route",
+      "tooManyPoints": "Too many points for Mapbox",
+      "tokenMissing": "NEXT_PUBLIC_MAPBOX_TOKEN is not set",
+      "apiFailed": "Directions API request failed",
+      "noRoute": "No viable route found",
+      "planFailed": "Route planning failed"
+    }
+  },
+  "externalNav": {
+    "title": "archive://nav · Navigate",
+    "noApp": "err_no_app · no navigation app on this platform",
+    "cancel": "Cancel",
+    "myLocation": "My location",
+    "otherMapsApp": "Other maps app",
+    "googleMapsNewTab": "Google Maps (new tab)"
   },
   "spotDetail": {
     "back": "Back to Map",
     "legend": "Legend",
     "recommendedTime": "Best Time to Visit",
-    "addressPrefix": "📍"
+    "addressPrefix": "📍",
+    "save": "Save",
+    "saved": "Saved",
+    "navigate": "Navigate"
   },
   "tabs": {
     "map": "Map",
@@ -202,6 +287,9 @@
     "gestureSave": "Right · save + trip",
     "gestureCollect": "+ · Save only",
     "gestureDetail": "Scroll · more info",
+    "loadFailed": "Failed to load spots",
+    "loadFailedHint": "Check your connection and try again",
+    "retry": "Retry",
     "difficulty": {
       "easy": "Easy",
       "medium": "Medium",
@@ -217,7 +305,8 @@
   },
   "theme": {
     "toDark": "Switch to Dark Mode",
-    "toLight": "Switch to Light Mode"
+    "toLight": "Switch to Light Mode",
+    "cycle": "Cycle theme (current: {theme})"
   },
   "lang": {
     "toggle": "切換為繁體中文",

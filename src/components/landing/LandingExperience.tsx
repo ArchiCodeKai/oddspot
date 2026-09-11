@@ -7,18 +7,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { BrandTag } from "@/components/ui/BrandTag";
-import { AcidButton } from "@/components/ui/AcidButton";
-import { EyeMark } from "@/components/ui/EyeMark";
 import { useAppStore } from "@/store/useAppStore";
 import { useLocaleStore } from "@/store/useLocaleStore";
 import { useGlobeTier } from "@/hooks/useViewportTier";
-import {
-  BarcodeS,
-  DealWithItS,
-  ErrorTagS,
-  StarBurstS,
-  WordmarkS,
-} from "./AcidStickers";
+import { ArchiveCardS, ErrorTagS, WordmarkS } from "./AcidStickers";
+import { CategoryLegend } from "./CategoryLegend";
+import { GravityGrid } from "./GravityGrid";
+import { TerrainScanButton } from "./TerrainScanButton";
 import { TerrainDeco } from "./TerrainDeco";
 import { Marquee } from "./Marquee";
 import { LangPortalToggle } from "./LangPortalToggle";
@@ -223,6 +218,42 @@ export function LandingExperience() {
         }}
       />
 
+      {/* 手機版覆蓋層規則：底部 20% 只留 標題/CTA + 跑馬燈 + 狀態列，
+          裝飾貼紙、地形、右上經緯度全部讓位，語言切換縮小 */}
+      <style>{`
+        /* 標題區與語言切換的位置是 inline style，媒體查詢必須 !important 才蓋得過 */
+        @media (max-width: 767px) {
+          .landing-terrain,
+          .hud-coord,
+          .landing-grid,
+          .landing-sticker-desktop { display: none; }
+          .landing-headline { bottom: max(96px, 14%) !important; left: 5% !important; right: 5% !important; }
+          .landing-lang-portal { top: 5% !important; right: 4% !important; }
+        }
+        /* 矮視窗：分類圖例會撞到上移後的標題區，讓位 */
+        @media (max-height: 760px) {
+          .landing-legend { display: none; }
+        }
+      `}</style>
+
+      {/* 重力網格 — 只在 idle、桌機/平板。
+          DOM 位置刻意放在 canvas 之前、不設 z-index：地球畫在網格上面，看起來像壓著它。 */}
+      <AnimatePresence>
+        {isIdle && !exiting && !useLightGlobe && (
+          <motion.div
+            key="gravity-grid"
+            className="landing-grid"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.2, delay: 0.15 }}
+            style={{ position: "absolute", inset: 0 }}
+          >
+            <GravityGrid />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Globe canvas — 全螢幕
           mobile / reduced-motion        → GlobeSceneMobile（海岸線版）
           tablet / desktop reduced-motion → GlobeScene tier="reduced"（點雲 -30%）
@@ -255,7 +286,16 @@ export function LandingExperience() {
           maxWidth: "calc(100% - 40px)",
         }}
       >
-        <BrandTag glow>sys://oddspot · v0.2.0-alpha</BrandTag>
+        {/* 主題切換入口從眼睛 mascot 移到系統標籤（landing 只留月球這一顆眼睛） */}
+        <button
+          type="button"
+          onClick={() => useAppStore.getState().cycleTheme()}
+          aria-label={t("cycleTheme")}
+          title={t("cycleTheme")}
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", pointerEvents: "auto" }}
+        >
+          <BrandTag glow>sys://oddspot · v0.2.0-alpha</BrandTag>
+        </button>
         <BrandTag>{cap.tag}</BrandTag>
       </div>
 
@@ -372,34 +412,28 @@ export function LandingExperience() {
               <TerrainDeco />
             </motion.div>
 
-            {/* 眼睛 mascot — OddSpot wordmark「ot」正下方，點擊循環切主題 */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.4 }}
-              className="landing-eye"
-              style={{
-                position: "absolute",
-                top: "22%",
-                left: "25%",
-                zIndex: 6,
-              }}
-            >
-              <EyeMark
-                size={70}
-                mood="scanning"
-                onClick={() => useAppStore.getState().cycleTheme()}
-                ariaLabel={t("cycleTheme")}
-                title={t("cycleTheme")}
-              />
-            </motion.div>
-
-            {/* Acid stickers — SphereS（GLOBAL NULL）已移除，會擋住地球
-                SwirlS 被 LangPortalToggle 取代 */}
-            <WordmarkS     style={{ top: "8%",  left: "4%"  }} rotate={-3}  delay={0.1} />
-            <ErrorTagS     style={{ bottom: "14%", left: "3%" }}            delay={0.5} />
-            <StarBurstS    style={{ bottom: "22%", left: "36%" }}            delay={0.6} />
-            <DealWithItS   style={{ bottom: "14%", right: "6%" }}            delay={0.7} />
+            {/* Acid stickers — 只留「系統物件」：商標、錯誤標籤、歸檔卡。
+                星芒與 DEAL WITH IT 梗圖章已移除（通用貼紙 / 英文梗，不是系統物件）；
+                2D 眼睛 mascot 已移除（月球本身就是這頁唯一的眼睛），
+                原位置改放分類圖例（app 自己的 8 個線框圖示 = 即將進入那張地圖的圖例）。
+                手機版只留商標，其餘讓位給標題與 CTA。 */}
+            <WordmarkS style={{ top: "8%", left: "4%" }} rotate={-3} delay={0.1} />
+            <CategoryLegend
+              className="landing-sticker-desktop landing-legend"
+              style={{ top: "27%", left: "6%", zIndex: 6 }}
+              delay={0.35}
+            />
+            <ErrorTagS
+              className="landing-sticker-desktop"
+              style={{ bottom: "14%", left: "3%" }}
+              delay={0.5}
+            />
+            <ArchiveCardS
+              className="landing-sticker-desktop"
+              style={{ bottom: "14%", right: "6%" }}
+              rotate={4}
+              delay={0.6}
+            />
 
             {/* 語言切換蟲洞 — 右上角，縮小版 */}
             <motion.div
@@ -420,21 +454,24 @@ export function LandingExperience() {
                 zIndex: 10,
               }}
             >
-              {/* Glow burst 圈 — 蟲洞「劈啪」彈出時的光環擴散 */}
-              <motion.div
-                initial={{ scale: 0.2, opacity: 0.85 }}
-                animate={{ scale: 2.4, opacity: 0 }}
-                transition={{ delay: 0.55, duration: 0.9, ease: [0.32, 0.72, 0, 1] }}
-                style={{
-                  position: "absolute",
-                  inset: -16,
-                  borderRadius: "50%",
-                  border: "1px solid var(--accent)",
-                  boxShadow: "0 0 32px rgb(var(--accent-rgb) / 0.6), inset 0 0 24px rgb(var(--accent-rgb) / 0.3)",
-                  pointerEvents: "none",
-                }}
-              />
-              <LangPortalToggle size={116} />
+              {/* Glow burst 圈 — 蟲洞「劈啪」彈出時的光環擴散（手機省略） */}
+              {!useLightGlobe && (
+                <motion.div
+                  initial={{ scale: 0.2, opacity: 0.85 }}
+                  animate={{ scale: 2.4, opacity: 0 }}
+                  transition={{ delay: 0.55, duration: 0.9, ease: [0.32, 0.72, 0, 1] }}
+                  style={{
+                    position: "absolute",
+                    inset: -16,
+                    borderRadius: "50%",
+                    border: "1px solid var(--accent)",
+                    boxShadow: "0 0 32px rgb(var(--accent-rgb) / 0.6), inset 0 0 24px rgb(var(--accent-rgb) / 0.3)",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              {/* 手機（light tier）不掛 3D 牙齒：省 876KB GLB 與第二個 WebGL context */}
+              <LangPortalToggle size={useLightGlobe ? 72 : 116} lite={useLightGlobe} />
             </motion.div>
 
             {/* Headline + CTA */}
@@ -445,7 +482,8 @@ export function LandingExperience() {
               className="landing-headline"
               style={{
                 position: "absolute",
-                bottom: "18%",
+                // 18% → 22%：整塊上移，加上按鈕變高，標題約再往上 90px
+                bottom: "22%",
                 left: "6%",
                 right: "6%",
                 maxWidth: 640,
@@ -503,19 +541,8 @@ export function LandingExperience() {
                   pointerEvents: "auto",
                 }}
               >
-                <AcidButton
-                  onClick={enterMap}
-                  variant="accent"
-                  size="lg"
-                  icon={
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  }
-                >
-                  {t("cta")}
-                </AcidButton>
+                {/* 主按鈕：無人機視角向前飛的線框山巒（2D canvas，山形每次隨機） */}
+                <TerrainScanButton onClick={enterMap}>{t("cta")}</TerrainScanButton>
                 <BrandTag>{t("ctaMeta")}</BrandTag>
               </div>
             </motion.div>

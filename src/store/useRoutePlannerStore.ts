@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import type { SpotMapPoint } from "@/types/spots";
 import {
+  DirectionsError,
   fetchOptimizedRoute,
   fetchRouteInOrder,
+  type DirectionsErrorCode,
   type DirectionsResponse,
 } from "@/lib/mapbox/directions";
 import {
@@ -26,6 +28,9 @@ interface LngLat {
   lng: number;
 }
 
+// error 存代碼不存文字，RouteSheet 用 routeSheet.errors.* 依語系顯示
+export type RouteErrorCode = DirectionsErrorCode | "planFailed";
+
 interface RoutePlannerStore {
   // 選點清單（不包含使用者位置；使用者位置由呼叫 optimize() 時傳入當 origin）
   selectedSpots: SpotMapPoint[];
@@ -36,7 +41,7 @@ interface RoutePlannerStore {
   // 路線結果
   route: DirectionsResponse | null;
   isOptimizing: boolean;
-  error: string | null;
+  error: RouteErrorCode | null;
 
   // selection actions
   addSpot: (spot: SpotMapPoint) => void;
@@ -126,7 +131,7 @@ export const useRoutePlannerStore = create<RoutePlannerStore>((set, get) => ({
 
     const minSpots = origin ? 1 : 2;
     if (selectedSpots.length < minSpots) {
-      set({ error: "至少需要兩個點才能規劃路線" });
+      set({ error: "needTwoPoints" });
       return;
     }
 
@@ -149,7 +154,7 @@ export const useRoutePlannerStore = create<RoutePlannerStore>((set, get) => ({
       });
     } catch (err) {
       set({
-        error: err instanceof Error ? err.message : "路線規劃失敗",
+        error: err instanceof DirectionsError ? err.code : "planFailed",
         isOptimizing: false,
       });
     }
@@ -162,7 +167,7 @@ export const useRoutePlannerStore = create<RoutePlannerStore>((set, get) => ({
     // 沒 origin 時，最少需要 2 個 spot
     const minSpots = origin ? 1 : 2;
     if (selectedSpots.length < minSpots) {
-      set({ error: "至少需要兩個點才能規劃路線" });
+      set({ error: "needTwoPoints" });
       return;
     }
 
@@ -210,7 +215,7 @@ export const useRoutePlannerStore = create<RoutePlannerStore>((set, get) => ({
       persistRouteSpots(finalSpots);
     } catch (err) {
       set({
-        error: err instanceof Error ? err.message : "路線規劃失敗",
+        error: err instanceof DirectionsError ? err.code : "planFailed",
         isOptimizing: false,
       });
     }

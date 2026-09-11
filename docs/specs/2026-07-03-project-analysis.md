@@ -102,8 +102,10 @@ MVP v1 六大功能（地圖、滑卡、行程路線、收藏同步、投稿審�
 ### 已查證不是債的（澄清）
 
 - `/api/maps/resolve`「無驗證」的疑慮：**不成立**，防護完整（見架構優點 1）。
-- TeethJawR3F / RomanBustR3F / WormholeR3F「死碼」疑慮：**不成立**，
-  被 `LangPortalToggle` 與 `globe/Moon` 引用，是 landing 體驗的一部分。
+- TeethJawR3F / WormholeR3F「死碼」疑慮：**不成立**，被 `LangPortalToggle` 引用，
+  是 landing 體驗的一部分。
+  （2026-09-03 更正：`RomanBustR3F`、`globe/EyeModel`、`RandomSpotButton` 經 grep
+  確認**無人引用**，連同 4 個孤兒 GLB（約 15MB）已於 landing 視覺稽核 Phase 1 刪除。）
 - iOS 外部導航 fallback：git 歷史顯示已實作（`3d88284`），
   roadmap P0 清單該項應標記完成，只剩真機驗證。
 

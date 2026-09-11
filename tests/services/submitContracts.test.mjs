@@ -110,6 +110,9 @@ test("maps resolve API is authenticated and rate limited", () => {
   assert.match(mapsResolveSource, /maps-resolve/);
 });
 
+// 投稿頁文案已走 i18n：源碼只留 key，實際文字到 zh-TW 字典驗
+const zhSubmit = JSON.parse(readFileSync("src/lib/i18n/messages/zh-TW.json", "utf8")).submitPage;
+
 test("submit page exposes maps paste and compressed photo upload controls", () => {
   assert.match(submitSource, /parseGoogleMapsInput/);
   assert.match(submitSource, /compressSubmitImage/);
@@ -118,20 +121,25 @@ test("submit page exposes maps paste and compressed photo upload controls", () =
   assert.match(submitSource, /fetch\("\/api\/uploads\/spots"/);
   assert.doesNotMatch(submitSource, /imageDataUrls: imageDataUrls/);
   assert.match(submitSource, /accept="image\/jpeg,image\/png,image\/webp"/);
-  assert.match(submitSource, /Google Maps/);
+  assert.match(zhSubmit.pasteLabel, /Google Maps/);
 });
 
 test("submit page makes maps paste the primary location input", () => {
-  assert.match(submitSource, /貼上 Google Maps 連結或座標/);
+  assert.match(submitSource, /tSubmit\("pasteLabel"\)/);
+  assert.match(zhSubmit.pasteLabel, /貼上 Google Maps 連結或座標/);
   assert.match(submitSource, /handleMapPasteChange/);
-  assert.match(submitSource, /已讀取座標/);
+  assert.match(submitSource, /tSubmit\("statusParsed"/);
+  assert.match(zhSubmit.statusParsed, /已讀取座標/);
   assert.match(submitSource, /sourceCoords/);
   assert.match(submitSource, /locationPreviewResetKey/);
   assert.match(submitSource, /setLocationPreviewResetKey/);
   assert.match(submitSource, /handleResetLocationPreview/);
-  assert.match(submitSource, />\s*復位\s*</);
-  assert.match(submitSource, /回到原始座標/);
-  assert.match(submitSource, /進階座標/);
+  assert.match(submitSource, /\{tSubmit\("resetShort"\)\}/);
+  assert.equal(zhSubmit.resetShort, "復位");
+  assert.match(submitSource, /tSubmit\("resetCoords"\)/);
+  assert.match(zhSubmit.resetCoords, /回到原始座標/);
+  assert.match(submitSource, /tSubmit\("advancedCoords"\)/);
+  assert.equal(zhSubmit.advancedCoords, "進階座標");
   assert.match(submitSource, /LocationPreviewSkeleton/);
   assert.match(submitSource, /resolveGoogleMapsShortLink/);
   assert.match(submitSource, /\/api\/maps\/resolve/);

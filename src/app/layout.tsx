@@ -38,7 +38,8 @@ const vt323 = VT323({
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  // 800 給 landing 主 CTA 用；沒載實體字重瀏覽器只會用 700 假粗體
+  weight: ["400", "500", "700", "800"],
   display: "swap",
 });
 

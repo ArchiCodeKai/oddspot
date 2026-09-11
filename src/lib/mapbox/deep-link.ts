@@ -21,7 +21,9 @@ export type NavApp = "google-web" | "google-ios" | "apple-maps" | "android-geo";
 
 export interface ExternalNavOption {
   app: NavApp;
+  // label 是品牌名或英文 fallback；非品牌名的選項另帶 labelKey，由 UI 依語系翻譯（externalNav.*）
   label: string;
+  labelKey?: "otherMapsApp" | "googleMapsNewTab";
   url: string;
   // app scheme 失敗時的 web fallback URL（目前只有 google-ios 會帶）
   fallbackUrl?: string;
@@ -128,7 +130,8 @@ export function buildExternalNavLinks(points: NavWaypoint[]): ExternalNavLinks {
         },
         {
           app: "android-geo",
-          label: "其他地圖 app",
+          label: "Other maps app",
+          labelKey: "otherMapsApp",
           url: buildAndroidGeoUrl(points),
         },
       ],
@@ -141,7 +144,8 @@ export function buildExternalNavLinks(points: NavWaypoint[]): ExternalNavLinks {
     options: [
       {
         app: "google-web",
-        label: "Google Maps（新分頁）",
+        label: "Google Maps (new tab)",
+        labelKey: "googleMapsNewTab",
         url: buildGoogleWebUrl(points),
       },
     ],

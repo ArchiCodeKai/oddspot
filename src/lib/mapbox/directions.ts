@@ -10,6 +10,24 @@ import type { LineString } from "geojson";
 
 export type DirectionsProfile = "driving" | "walking" | "cycling";
 
+// 錯誤用代碼丟出，顯示文字由 RouteSheet 依語系翻譯（routeSheet.errors.*）
+export type DirectionsErrorCode =
+  | "tokenMissing"
+  | "needTwoPoints"
+  | "tooManyPoints"
+  | "apiFailed"
+  | "noRoute";
+
+export class DirectionsError extends Error {
+  code: DirectionsErrorCode;
+
+  constructor(code: DirectionsErrorCode, detail?: string) {
+    super(detail ? `${code}: ${detail}` : code);
+    this.name = "DirectionsError";
+    this.code = code;
+  }
+}
+
 interface LngLat {
   lat: number;
   lng: number;
@@ -64,7 +82,7 @@ export async function fetchOptimizedRoute(
 ): Promise<DirectionsResponse> {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   if (!token) {
-    throw new Error("NEXT_PUBLIC_MAPBOX_TOKEN 未設定");
+    throw new DirectionsError("tokenMissing");
   }
 
   const profile = req.profile ?? "driving";
@@ -75,10 +93,10 @@ export async function fetchOptimizedRoute(
   ];
 
   if (points.length < 2) {
-    throw new Error("路線至少需要兩點");
+    throw new DirectionsError("needTwoPoints");
   }
   if (points.length > MAX_POINTS) {
-    throw new Error(`Mapbox 上限 ${MAX_POINTS} 點`);
+    throw new DirectionsError("tooManyPoints", `max ${MAX_POINTS}`);
   }
 
   const useOptimize = points.length >= 3;
@@ -102,7 +120,7 @@ export async function fetchOptimizedRoute(
 
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`Directions API 失敗 (${res.status})`);
+    throw new DirectionsError("apiFailed", `HTTP ${res.status}`);
   }
   const data = await res.json();
 
@@ -110,7 +128,7 @@ export async function fetchOptimizedRoute(
     const trips = data.trips as MapboxRoute[] | undefined;
     const waypoints = data.waypoints as MapboxWaypoint[] | undefined;
     if (!trips?.length || !waypoints?.length) {
-      throw new Error("找不到可行路線");
+      throw new DirectionsError("noRoute");
     }
     const trip = trips[0];
     // Mapbox 回的 waypoints[originalIdx].waypoint_index = 該點在最佳化後的位置
@@ -130,7 +148,7 @@ export async function fetchOptimizedRoute(
   // 2 點走 Directions API，順序不變
   const routes = data.routes as MapboxRoute[] | undefined;
   if (!routes?.length) {
-    throw new Error("找不到可行路線");
+    throw new DirectionsError("noRoute");
   }
   const route = routes[0];
   return {
@@ -146,7 +164,7 @@ export async function fetchRouteInOrder(
 ): Promise<DirectionsResponse> {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   if (!token) {
-    throw new Error("NEXT_PUBLIC_MAPBOX_TOKEN 未設定");
+    throw new DirectionsError("tokenMissing");
   }
 
   const profile = req.profile ?? "driving";
@@ -157,10 +175,10 @@ export async function fetchRouteInOrder(
   ];
 
   if (points.length < 2) {
-    throw new Error("路線至少需要兩點");
+    throw new DirectionsError("needTwoPoints");
   }
   if (points.length > MAX_POINTS) {
-    throw new Error(`Mapbox 上限 ${MAX_POINTS} 點`);
+    throw new DirectionsError("tooManyPoints", `max ${MAX_POINTS}`);
   }
 
   const params = new URLSearchParams({
@@ -172,12 +190,12 @@ export async function fetchRouteInOrder(
 
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`Directions API 失敗 (${res.status})`);
+    throw new DirectionsError("apiFailed", `HTTP ${res.status}`);
   }
   const data = await res.json();
   const routes = data.routes as MapboxRoute[] | undefined;
   if (!routes?.length) {
-    throw new Error("找不到可行路線");
+    throw new DirectionsError("noRoute");
   }
   const route = routes[0];
 

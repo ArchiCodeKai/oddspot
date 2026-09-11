@@ -551,7 +551,7 @@ export function RouteSheet({ userLocation, spots, onStart }: RouteSheetProps) {
                 color: "#ff8080",
               }}
             >
-              err · {error}
+              err · {t(`errors.${error}`)}
             </div>
           )}
 

@@ -3,8 +3,10 @@
 import { motion } from "framer-motion";
 import type { CSSProperties } from "react";
 
-// 7 個 acid stickers — 散落在 Landing 四周，-8° ~ +8° 旋轉
-// dissolve 完成後從不同角度 fly-in（各自的 delay 不同）
+// Acid stickers — 只保留「系統物件」類的貼紙：條碼、錯誤標籤、商標。
+// 通用星芒、梗圖章（DEAL WITH IT）、GLOBAL NULL 線框球、INPUT:0 同心圓已移除：
+// 它們不是系統裡「撿到」的東西，是為了裝飾而畫的，會把整頁拉向廉價貼圖感。
+// 散落在 Landing 四周，-8° ~ +8° 旋轉，dissolve 完成後蓋章式進場。
 
 interface StickerProps {
   style?: CSSProperties;
@@ -51,11 +53,12 @@ const stickerMotion = (rotate: number, delay: number, fromDir: StickerProps["fro
 };
 
 // S1 · Barcode with fake coordinates
-export function BarcodeS({ style, rotate = -6, delay = 0.1 }: StickerProps) {
+export function BarcodeS({ style, className, rotate = -6, delay = 0.1 }: StickerProps) {
   return (
     <motion.div
+      className={className}
       style={{ position: "absolute", color: "var(--fg)", ...style }}
-      {...stickerMotion(rotate, delay, "left")}
+      {...stickerMotion(rotate, delay, "right")}
     >
       <svg width="90" height="36" viewBox="0 0 90 36" aria-hidden="true">
         <g fill="currentColor">
@@ -77,9 +80,10 @@ export function BarcodeS({ style, rotate = -6, delay = 0.1 }: StickerProps) {
 }
 
 // S3 · Error triangle + archive tag
-export function ErrorTagS({ style, rotate = -3, delay = 0.35 }: StickerProps) {
+export function ErrorTagS({ style, className, rotate = -3, delay = 0.35 }: StickerProps) {
   return (
     <motion.div
+      className={className}
       style={{ position: "absolute", color: "var(--fg)", ...style }}
       {...stickerMotion(rotate, delay, "bottom")}
     >
@@ -89,81 +93,6 @@ export function ErrorTagS({ style, rotate = -3, delay = 0.35 }: StickerProps) {
         <circle cx="12" cy="17" r="0.8" fill="currentColor" />
       </svg>
       <div style={{ ...stickerLabelStyle, marginTop: 6 }}>ERR_NO_LEGEND / archive 1998-08-13</div>
-    </motion.div>
-  );
-}
-
-// S4 · 4-point star burst
-export function StarBurstS({ style, rotate = 2, delay = 0.45 }: StickerProps) {
-  return (
-    <motion.div
-      style={{ position: "absolute", color: "var(--accent)", ...style }}
-      {...stickerMotion(rotate, delay, "bottom")}
-    >
-      <svg width="44" height="44" viewBox="0 0 44 44" fill="currentColor" aria-hidden="true">
-        <path d="M22 0 L25 18 L44 22 L25 26 L22 44 L19 26 L0 22 L19 18 Z" />
-      </svg>
-    </motion.div>
-  );
-}
-
-// S5 · Wireframe sphere with GLOBAL NULL
-export function SphereS({ style, rotate = -8, delay = 0.3 }: StickerProps) {
-  return (
-    <motion.div
-      style={{ position: "absolute", color: "var(--fg)", ...style }}
-      {...stickerMotion(rotate, delay, "top")}
-    >
-      <svg width="70" height="70" viewBox="0 0 70 70" fill="none" stroke="currentColor" strokeWidth="0.8" aria-hidden="true">
-        <circle cx="35" cy="35" r="32" />
-        <ellipse cx="35" cy="35" rx="32" ry="10" />
-        <ellipse cx="35" cy="35" rx="32" ry="20" />
-        <ellipse cx="35" cy="35" rx="10" ry="32" />
-        <ellipse cx="35" cy="35" rx="20" ry="32" />
-      </svg>
-      <div style={{ ...stickerLabelStyle, marginTop: 6 }}>GLOBAL NULL</div>
-    </motion.div>
-  );
-}
-
-// S6 · DEAL WITH IT stamp
-export function DealWithItS({ style, rotate = 5, delay = 0.55 }: StickerProps) {
-  return (
-    <motion.div
-      style={{ position: "absolute", color: "var(--fg)", ...style }}
-      {...stickerMotion(rotate, delay, "right")}
-    >
-      <div style={{ border: "2px solid currentColor", padding: "8px 14px" }}>
-        <div
-          style={{
-            fontSize: 20,
-            fontFamily: "var(--font-jetbrains-mono), monospace",
-            fontWeight: 700,
-            letterSpacing: "0.04em",
-          }}
-        >
-          DEAL WITH IT
-        </div>
-        <div style={{ ...stickerLabelStyle, marginTop: 4 }}>It works. Make it raw.</div>
-      </div>
-    </motion.div>
-  );
-}
-
-// S7 · Concentric circles + INPUT:0
-export function SwirlS({ style, rotate = 8, delay = 0.25 }: StickerProps) {
-  return (
-    <motion.div
-      style={{ position: "absolute", color: "var(--accent)", ...style }}
-      {...stickerMotion(rotate, delay, "top")}
-    >
-      <svg width="46" height="46" viewBox="0 0 46 46" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
-        <circle cx="23" cy="23" r="3" />
-        <circle cx="23" cy="23" r="8" />
-        <circle cx="23" cy="23" r="14" />
-        <circle cx="23" cy="23" r="20" />
-      </svg>
-      <div style={stickerLabelStyle}>INPUT:0</div>
     </motion.div>
   );
 }
@@ -178,10 +107,106 @@ const stickerLabelStyle: CSSProperties = {
   marginTop: 4,
 };
 
-// S8 · Brand wordmark — OddSpot（EN H1 規格：VT323 + accent glow 35%）
-export function WordmarkS({ style, rotate = -3, delay = 0.05 }: StickerProps) {
+// S2 · Archive specimen card — 取代梗圖章：同樣的邊框份量，但內容是一筆「記錄」，
+// 直接預告產品裡的景點卡。系統聲音為主，唯一的中文是狀態詞。
+const cardRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "34px 1fr",
+  columnGap: 8,
+  fontFamily: "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
+  fontSize: 9,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+  lineHeight: 1.75,
+  whiteSpace: "nowrap",
+};
+
+export function ArchiveCardS({ style, className, rotate = 4, delay = 0.6 }: StickerProps) {
   return (
     <motion.div
+      className={className}
+      style={{ position: "absolute", color: "var(--fg)", ...style }}
+      {...stickerMotion(rotate, delay, "right")}
+    >
+      <div
+        style={{
+          width: 196,
+          padding: "10px 12px 9px",
+          border: "1px solid var(--line-strong)",
+          borderRadius: 2,
+          background: "var(--panel-glass)",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
+        }}
+      >
+        <div style={{ ...stickerLabelStyle, marginTop: 0, fontSize: 7, letterSpacing: "0.24em" }}>
+          archive
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
+            fontSize: 15,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            lineHeight: 1.2,
+            marginTop: 2,
+            marginBottom: 7,
+          }}
+        >
+          NO. 0237
+        </div>
+        <div style={{ height: 1, background: "var(--line)", marginBottom: 6 }} />
+        <div style={cardRowStyle}>
+          <span style={{ color: "var(--muted)" }}>cat</span>
+          <span>GO / giant-object</span>
+        </div>
+        <div style={cardRowStyle}>
+          <span style={{ color: "var(--muted)" }}>stat</span>
+          <span>
+            <span
+              style={{
+                fontFamily: "var(--font-noto-sans-tc), 'Noto Sans TC', sans-serif",
+                textTransform: "none",
+                letterSpacing: "0.06em",
+                color: "var(--accent)",
+              }}
+            >
+              未驗證
+            </span>
+            {" · unverified"}
+          </span>
+        </div>
+        <div style={cardRowStyle}>
+          <span style={{ color: "var(--muted)" }}>seen</span>
+          <span>1998-08-13</span>
+        </div>
+        {/* 條碼 + 假座標，跟 BarcodeS 同一套語言 */}
+        <svg width="172" height="30" viewBox="0 0 172 30" aria-hidden="true" style={{ marginTop: 7, display: "block" }}>
+          <g fill="currentColor">
+            {[
+              [0, 2], [4, 1], [7, 3], [12, 1], [15, 2], [19, 1], [22, 4], [28, 1],
+              [31, 2], [35, 3], [40, 1], [43, 2], [47, 1], [50, 3], [55, 2], [59, 1], [62, 2], [66, 4],
+              [72, 1], [75, 3], [80, 1], [83, 2], [87, 4], [93, 1], [96, 2], [100, 1],
+            ].map(([x, w]) => <rect key={x} x={x} y="0" width={w} height="20" />)}
+          </g>
+          <text
+            x="0" y="29"
+            fontFamily="var(--font-jetbrains-mono), monospace"
+            fontSize="7" fill="currentColor" letterSpacing="1.2"
+          >
+            N25°03&apos;13.2&quot; · E121°33&apos;55.4&quot;
+          </text>
+        </svg>
+      </div>
+    </motion.div>
+  );
+}
+
+// S8 · Brand wordmark — OddSpot（EN H1 規格：VT323 + accent glow 35%）
+export function WordmarkS({ style, className, rotate = -3, delay = 0.05 }: StickerProps) {
+  return (
+    <motion.div
+      className={className}
       style={{ position: "absolute", ...style }}
       {...stickerMotion(rotate, delay, "left")}
     >
